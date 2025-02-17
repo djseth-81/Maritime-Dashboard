@@ -1,0 +1,62 @@
+- Event streaming
+    - capture data real-time from event sources
+        - relying on dbs, sensors, mobile devices
+        - processing data realtime
+    - For updating database with API calls, and user inputs
+        - Maybe for pulling in sensor data ??? (AIS/Satellite)
+    - write/read event streams
+    - continuous import/export data to other systems
+    - store datastreams of events reliably as they happen
+    - process streams as they occur
+
+- Distributed systems of servers and clients
+    - servers can be ran as a cluster
+    ! Kafka Connect: continuously import/export data as event streams to integrate with existing relational databses and other clusters
+    - clients allow distributed apps and microservices
+        - process streams in parallel, at scale, fault-tolerant
+        ! kafka streams libraries
+
+- Event: records something that happened. AKA a "record" or "message"
+    - typically has a key, value, and timestamp. Common to include metadata headers
+- Producer: client app that writes events to kafka
+- Consumers: client app that read and process
+- broker: server forming storage layer
+- Topic: events organized and "durably stored"
+    - stored over a number of "buckets" located on different "brokers"
+    - Apparently it matters where it goes! important for scalability and allows read/write at the same time by multiple clients
+    - every topic is replicated so there's multiple brokers
+
+- APIs
+    Admin API - manage, inspect topics, brokers, other kafka objects
+    Producer API - publish (write) streams of events to topics
+    Consumer API - subscribe (reads) one or more topics and to process stream of events
+    Streams API - implement stream processing apps and microservices
+    Connect API - build and run resuable data, import/export connectors that read or write streams of events from and to external systems and apps so they can integrate with Kafka
+        Ex: PostgrSQL <-> Kafka Connect <-> python middleware
+
+- creating a topic
+$ bin/kafka-topics.sh --create --topic quickstart-events --bootstrap-server localhost:9092
+
+- display usage info
+$ bin/kafka-topics.sh --describe --topic quickstart-events --bootstrap-server localhost:9092
+
+- writing events to a topic
+$ bin/kafka-console-producer.sh --topic quickstart-events --bootstrap-server localhost:9092
+
+- reading events of a topic
+$ bin/kafak-console-consumer.sh --topic quickstart-events --from-beginning --botstrap-server localhost:9092
+
+- import/export data as streams of events with kafka connect
+    might have to add/change plugin.path in config/connect-standalone.properties to add connect-file-*.jar
+
+- spinning up our instance in two connectors in standalone local processes using 3 config files
+    $ bin/connect-standalone.sh config/connect-standalone.properties config/connect-file-source.properties config/connect-file-sink.properties
+    - 1st is our generic config file
+    - 2nd is a source connector reading lines from an input file, producing each to a kafka topic
+    - 3rd sink connect that reads messages from topic and produces each as a line in an output file
+    - when started, automatically reads lines from *txt and then creates a similar *.sink.txt
+        - saves under connect-*, but this is default
+
+- can use python's kafka-python modules (https://github.com/dpkp/kafka-python)
+
+- Goal for a RESTful API
