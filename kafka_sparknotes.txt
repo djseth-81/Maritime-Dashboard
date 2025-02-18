@@ -60,3 +60,5 @@ $ bin/kafak-console-consumer.sh --topic quickstart-events --from-beginning --bot
 - can use python's kafka-python modules (https://github.com/dpkp/kafka-python)
 
 - Goal for a RESTful API
+
+### installing 
