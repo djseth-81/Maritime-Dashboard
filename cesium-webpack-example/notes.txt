@@ -1,0 +1,6 @@
+Following this: https://cesium.com/learn/cesiumjs-learn/cesiumjs-webpack/
+
+npm init
+npm install --save-dev webpack style-loader css-loader url-loader html-webpack-plugin webpack-cli webpack-dev-server cesium copy-webpack-plugin
+
+you may need to uncomment out the node module if you get fs-related errors
