@@ -7,19 +7,33 @@ const CustomGeometry = ({ isDrawing, shapeType, geometries, setGeometries }) => 
 
     useEffect(() => {
         Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIxZjRjZjA4Ny05YjE2LTQ4NWItOGJkNi04ZjkyZjJlZmExYTgiLCJpZCI6MjczMzkxLCJpYXQiOjE3Mzg3MDUzNzB9.Ur_w05dnvhyA0R13ddj4E7jtUkOXkmqy0G507nY0aos";
-
+        console.log("Zoning tool active:", isDrawing);
         if (!viewerRef.current || !isDrawing) return;
 
         const viewer = viewerRef.current.cesiumElement;
         const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
 
+        if(!isDrawing) {
+            handler.destroy();
+            return;
+        }
+        
         handler.setInputAction((click) => {
-            const cartesian = viewer.scene.pickPosition(click.position);
+            console.log("Click event detected");
+            // const cartesian = viewer.scene.pickPosition(click.position);
+            let cartesian = viewer.scene.pickPosition(click.position);
+            if(!cartesian) {
+                cartesian = viewer.scene.camera.pickEllipsoid(click.position, viewer.scene.globe.ellipsoid);
+            }
+            console.log("Posititon picked:", cartesian);
             if (cartesian) {
                 setGeometries((prev) => {
+                    console.log("Current geometries: ", prev);
                     if (prev.length === 0 || prev[prev.length - 1].completed) {
+                        console.log("Creating new geometry");
                         return [...prev, { shapeType, positions: [cartesian], completed: false }];
                     } else {
+                        console.log("Adding point to existing geometry");
                         const updated = [...prev];
                         updated[updated.length - 1].positions.push(cartesian);
                         return updated;
@@ -29,16 +43,18 @@ const CustomGeometry = ({ isDrawing, shapeType, geometries, setGeometries }) => 
         }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
         handler.setInputAction(() => {
+            console.log("Right-click detected, completing geometry.");
             setGeometries((prev) => {
                 if (prev.length === 0) return prev;
                 const updated = [...prev];
                 updated[updated.length - 1].completed = true;
+                console.log("Updated geometries after completion:", updated);
                 return updated;
             });
         }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
         
         return () => handler.destroy();
-    }, [isDrawing]);
+    }, [isDrawing, geometries]);
 
     return (
         <div className="cesium-container">
@@ -61,7 +77,7 @@ const CustomGeometry = ({ isDrawing, shapeType, geometries, setGeometries }) => 
                         )}
                         {geometry.shapeType === "polygon" && (
                             <PolygonGraphics
-                                hierarchy={new Cesium.PolygonHierarchy(geometry.position)}
+                                hierarchy={new Cesium.PolygonHierarchy(geometry.positions)}
                                 material={Cesium.Color.RED.withAlpha(0.5)}
                             />
                         )}

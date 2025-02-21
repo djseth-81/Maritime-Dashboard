@@ -1,6 +1,8 @@
 import { useState } from "react";
 import CustomGeometry from "./utilities/CustomGeometry";
 import UIControls from "./utilities/UIControls";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/ReactToastify.css";
 import './App.css';
 
 function App() {
@@ -9,7 +11,19 @@ function App() {
   const [geometries, setGeometries] = useState([]);
 
   const handleToggleDrawing = () => {
-    setIsDrawing(!isDrawing);
+    console.log("Toggled Zoning:", !isDrawing);
+    setIsDrawing((prev) => {
+      const newState = !prev;
+      toast.info(`Zoning Tool ${newState ? "Enabled" : "Disabled"}`, {
+        position: "bottom-right",
+        autoClose: 2000,
+        hideProgressBar: true,
+        closeOnClick: true,
+        pauseOnHover: false,
+        draggable: false,
+      });
+      return newState
+    });
   };
 
   const handleUndo = () => {
@@ -31,6 +45,7 @@ function App() {
 
   return (
     <div>
+      <ToastContainer />
       <UIControls
         onToggleDrawing={handleToggleDrawing}
         onUndo={handleUndo}
