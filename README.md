@@ -8,23 +8,10 @@
 
 ## 2. Install fastAPI & uvicorn
 `pip install fastapi`
-
 `pip install uvicorn`
 
-## 3. Create main.py file
-Format should be similar to below
-
-```
-from fastapi import FastAPI
-app = FastAPI()
-
-@app.get("/")
-def first_example():
-  '''
-  Example First Fast API Example 
-  '''
-  return {"Example": "FastAPI"}
-```
+## 3. Install PyGreSQL
+`pip install PyGreSQL`
 
 ## 4. Start fastAPI server with command
 `uvicorn main:app --reload`
@@ -33,3 +20,6 @@ def first_example():
 - http://127.0.0.1:8000/docs is the local server interactive API documentation source
 - http://127.0.0.1:8000/redoc is an alternative of the above
 - http://127.0.0.1:8000/ is the listening server
+
+# PyGreSQL
+DBOperator.py is a basic Object meant to strictly operate on PostGIS tables. It only performs very basic SQL queries right now.
