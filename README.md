@@ -21,5 +21,5 @@
 - http://127.0.0.1:8000/redoc is an alternative of the above
 - http://127.0.0.1:8000/ is the listening server
 
-# PyGreSQL
-DBOperator.py is a basic Object meant to strictly operate on PostGIS tables. It only performs very basic SQL queries right now.
+# DBOperator
+DBOperator is a basic Object meant to strictly operate on PostGIS tables. It only performs very basic SQL queries right now.
