@@ -131,9 +131,7 @@ class DBOperator():
         """
         print("getting table attributes of:", self.table)
         self.__cursor.execute(f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{self.table}'")
-        attr = self.__cursor.fetchall()
-        for i in attr:
-            print(i)
+        return self.__cursor.fetchall()
 
     # Fetching tables in DB --> Dev option!
     def get_tables(self) -> None:
@@ -152,7 +150,7 @@ class DBOperator():
         """
         # Maybe have it pull all possible operations and store them as metadata for object?
         self.__cursor.execute(f"SELECT has_table_privilege('{self.table}', '{operation}')")
-        print(self.__cursor.fetchall())
+        return self.__cursor.fetchall()
 
     # pull data from DB
     def query(self, attr: str) -> None:
@@ -196,7 +194,7 @@ if __name__ == "__main__":
     print()
 
     print("INSERT privileges on table:")
-    db.check_privileges('insert')
+    print(db.check_privileges('insert'))
     print()
 
     print("SELECT privileges on table:")

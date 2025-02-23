@@ -21,5 +21,9 @@
 - http://127.0.0.1:8000/redoc is an alternative of the above
 - http://127.0.0.1:8000/ is the listening server
 
+# main.py
+
+Handles GET requests made to localhost:8000. Uses DBOperator to retrive basic information from interfacing with the PostGIS example database "NYC Census Data".
+
 # DBOperator
 DBOperator is a basic Object meant to strictly operate on PostGIS tables. It only performs very basic SQL queries right now.
