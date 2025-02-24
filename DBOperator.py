@@ -1,3 +1,4 @@
+from pprint import pprint
 from pgdb import connect # https://www.pygresql.org/contents/pgdb/index.html
 
 class DBOperator():
@@ -11,26 +12,28 @@ class DBOperator():
 
     DBOperator will implicitly connect to a 'demo' database unless specified
     otherwise
+"""
+    # TODO:
+    # - push multiple entries to DB
+    # - effectively "rollback" updates to db
+    # - export table(?)
+    #     - To CSV/SQL
+    # - export database(?)
+    #     - To CSV/SQL
+    # - import to DB(?)
+    #     - From CSV/SQL?
+    # - remove fetching table attributes(?)
+    # - remove fetching tables in DB(?)
+    # - Parsing (Geo)JSON to enter as SQL commands
+    #     - Package as JSON
 
-    //TODO:
-    - push one entry to DB
-    - push multiple entries to DB
-    - effectively "rollback" updates to db
-    - export table(?)
-        - To CSV/SQL
-    - export database(?)
-        - To CSV/SQL
-    - import to DB(?)
-        - From CSV/SQL?
-    - remove fetching table attributes(?)
-    - remove fetching tables in DB(?)
-    - Parsing (Geo)JSON to enter as SQL commands
-        - Package as JSON
-        - Do we want additional structures?
-    - PostGIS related stuff
-        - Take advantage of geometric functions in PostGIS (See postGIS_notes.txt)
-            - There's also the geography/projection stuff, definitely gonna use those
-    """
+    # - PostGIS related stuff
+    #     - Take advantage of geometric functions in PostGIS (See postGIS_notes.txt)
+    #         - There's also the geography/projection stuff, definitely gonna use those
+    #     - Retrieved data should already be primed for geospatial/projection
+    #         - Look @ the projection/geography modules
+    #         - refer to geospatial conversion/modify functions!
+
     def __init__(self, table: str, host='localhost', port='5432', user='',
                  passwd='', schema='public', db='demo') -> None:
         self.table = table
@@ -43,37 +46,68 @@ class DBOperator():
 
     ### Mutators ###
 
-    def add(self, entry: dict) -> None:
+    def add(self, entity: dict) -> None:
         """
         Add entry
         Expects a dict = {key: value} to enter as `attribute` and value
         """
-        # TODO: TEST ME!
-        # FIXME: Replace these OBVIOUSLY syntactically bad dictionary calls before someone sees!
-        self.__cursor.execute(f"INSERT INTO {self.table} {entry.key} {entry.value}")
+        # TODO: Handlel multiple entities for bulk additions
+        # I might want to track relations, and organize entity values based off of it.
+        # An entity might be added by a source, but then the entity will be immediately updated. It might be worth tracking what the values are so everything is up to date as fast as possible
+        #       - Linked List? RoundRobin Queue? Hash table?
+        # IDK how I want this to handle a bulk add, but I know it will include cursor.executemany()
+        #   - Prolly have entity become entities = [dict]
+        #   - Pretty sure this will replicate for modify() and delete() too
+        
+        # Wonder if this can be restricted to expect all values to be added to DB
+        #   i.e. JSON is provided, with all values, and data that is unkown/un-needed is given default or NULL value
+        #   - This doesn't solve my agnostic key/value-datatype problem though!
+        pprint("attributes: ")
+        pprint(",".join(entity.keys()))
+        pprint()
 
-    def modify(self, entry: dict) -> None:
-        """
-        Add entry
-        """
-        # TODO: TEST ME!
-        self.__cursor.execute(f"UPDATE {self.table} SET `attribute` {entry}")
+        pprint("values: ")
+        pprint(','.join(entity.values()))
+        pprint()
+        self.__cursor.execute(f"INSERT INTO {self.table} ({','.join(entity.keys())}) VALUES (%s)", (','.join(entity.values()),))
 
-    def delete(self, attr) -> None:
+    def modify(self, entity: dict, data: dict) -> None:
+        """
+        Modifying exisitng entity
+        """
+        # Wonder if I can restrict what's expected to be provided for entity
+        #   Not going to solve my problem even if restricted to higher components in Dashboard!
+        pprint("Entity targetted:")
+        pprint(entity)
+        pprint("")
+
+        pprint("Attributes to update:")
+        pprint(data)
+        pprint("")
+
+        # TODO: I need to figure out how to make this ubiquitous to different datatypes
+        old = [i for i in entity.values()]
+        new = [i for i in data.values()]
+
+        pprint(f"UPDATE {self.table} SET {''.join(data.keys())} = {new[0]} WHERE {''.join(entity.keys())} = {old[0]}")
+
+        # self.__cursor.execute(f"UPDATE {self.table} SET {data.keys()} = {data.values()} WHERE {entity.keys()} = {entity.values()}")
+
+    def delete(self, entity: dict) -> None:
         """
         deletes entry that has matching attribute
         ONLY deletes from connected table, tables inheriting from connected are NOT processed
             - I'm highly tempted to have it wipe inherited entries as well, but that defeats the purpose of this class
         """
-        # TODO: TEST ME!
         # TODO: Might need to check if attr value type is string, so it can be wrapped in single quotes
-        self.__cursor.execute(f"DELETE FROM ONLY {self.table} WHERE `attribute` = {attr}")
+        pprint("ID to delete:")
+        pprint(id)
+        # self.__cursor.execute(f"DELETE FROM ONLY {self.table} WHERE `attribute` = {attr}")
 
     def clear(self) -> None:
         """
         Clears all entries from table
         """
-        # TODO: TEST ME!
         self.__cursor.execute(f"DELETE FROM {self.table}")
 
     def custom_cmd(self, cmd: str, call: str) -> None:
@@ -83,18 +117,30 @@ class DBOperator():
         """
         # NOTE: WILL IMPLICITLY COMMIT COMMAND
         self.__cursor.execute(cmd)
-        self.__db.commit() if call == 'w' else self.__db.fetchall()
+        if call == 'w':
+            pprint(self.__db.commit())
+        else:
+            pprint(self.__cursor.fetchall())
 
     # commit command
     def commit(self) -> None:
         # NOTE: Currently just want this to be manually executed rn, so changes are user-aware
-        # TODO: TEST ME!
         self.__db.commit()
+        pprint("### DBOperator: Commands submitted.")
 
     # rollback command
     def rollback(self) -> None:
-        # TODO: TEST ME!
         self.__db.rollback()
+        pprint("### DBOperator: Command queue cleared.")
+
+    def close(self) -> None:
+        """
+        Closes table connection
+        """
+        self.__cursor.close()
+        self.__db.close()
+        pprint("### DBOperator: Connection closed.")
+
 
     def import_db(self) -> None:
         """
@@ -127,9 +173,8 @@ class DBOperator():
     ### Accessors ###
     def get_attributes(self) -> None:
         """
-        Fetching table attributes
+        Fetches table attributes
         """
-        print("getting table attributes of:", self.table)
         self.__cursor.execute(f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{self.table}'")
         return self.__cursor.fetchall()
 
@@ -138,22 +183,24 @@ class DBOperator():
         """
         Fetching tables in DB
         """
-        print("getting tables in db:")
+        pprint("getting tables in db:")
         self.__cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
         attr = self.__cursor.fetchall()
         for table in attr:
-            print(table)
+            pprint(table)
 
-    def check_privileges(self, operation: str) -> None:
+    def check_privileges(self) -> list:
         """
         Lists the privileges assigned to user per a given operation
         """
-        # Maybe have it pull all possible operations and store them as metadata for object?
-        self.__cursor.execute(f"SELECT has_table_privilege('{self.table}', '{operation}')")
+        operations = ['SELECT', 'INSERT', 'UPDATE', 'DELETE']
+
+        for op in operations:
+            self.__cursor.execute(f"SELECT has_table_privilege('{self.table}', '{op}')") 
         return self.__cursor.fetchall()
 
     # pull data from DB
-    def query(self, attr: str) -> None:
+    def query(self, attr: str) -> list:
         """
         Querys all of an attr (possibly add constraints and user defined limits?)
         """
@@ -163,7 +210,7 @@ class DBOperator():
         # NOTE: I wonder if it would be better for asynchronous calls to use the 
         # fetchone() command, and just have FAST script call DBOperator.query()
         # n times
-        return self.__cursor.fetchall()
+        return self.__cursor.fetchone()
 
     def get_table(self) -> list:
         """
@@ -176,28 +223,80 @@ class DBOperator():
         """
         Returns count of entries in table
         """
+        # FIXME: DOES NOT return int, returns list
         # Idea is for this to be faster and more efficeint than pulling the whole table and counting it
         self.__cursor.execute(f"SELECT Count(*) FROM {self.table}")
         return self.__cursor.fetchall()
 
+    # These are ideally supposed to take advantage of the PostGIS stuff
+    def get_within(self, geom):
+        """
+        Gets data within region
+        """
+        pass
+
+    def get_surrounding(self, geom):
+        """
+        Gets data within region
+        """
+        pass
+
 if __name__ == "__main__":
-    db = DBOperator(db=input("Enter db: "),table=input("Enter table:"))
+    # db = DBOperator(db=input("Enter db: "),table=input("Enter table: "))
+    db = DBOperator(db='nyc', table='fruits')
 
-    db.get_tables()
+    # pprint()
+    # db.get_tables()
+    # pprint()
+
+    pprint("Table Attributes:")
+    pprint(db.get_attributes())
     print()
 
-    db.get_attributes()
-    print()
+    # pprint("Number of entries in table:")
+    # pprint(db.get_count())
+    # pprint("Type: ", type(db.get_count()))
+    # pprint()
 
-    print("Number of entries in table:")
-    print(db.get_count())
-    print()
+    # pprint("SELECT privileges on table:")
+    # pprint(db.check_privileges())
+    # pprint("Type: ", type(db.check_privileges()))
+    # pprint()
 
-    print("INSERT privileges on table:")
-    print(db.check_privileges('insert'))
-    print()
+    # pprint("Entry from table:")
+    # pprint(db.query("name"))
+    # pprint("Type of fetchone()", type(db.query("name")))
+    # pprint()
 
-    print("SELECT privileges on table:")
-    db.check_privileges('select')
-    print()
+    # pprint("Adding value to table...")
+    # db.add({'name':'papaya'})
+    # db.commit()
+    # pprint("New value:")
+    # ppprint(db.get_table()) # Table should have new entity
 
+    # TODO
+    pprint("Modifying existing value...")
+    db.modify({'id':9},{'id':8})
+    db.commit()
+    pprint("Modified value:")
+    pprint(db.query("name")) # Entity should now be modified
+
+    # TODO
+    # db.delete()
+    # db.commit()
+    # pprint("New table:")
+    # pprint(db.get_table()) # Entity should now be gone
+
+    # TODO
+    # pprint("Rolling back clear table...")
+    # db.clear()
+    # db.rollback()
+    # pprint(db.get_table()) # should still have full table
+
+    # TODO
+    # pprint("Clearing table...")
+    # db.clear()
+    # db.commit()
+    # pprint(db.get_table()) # table should have no entries
+
+    db.close()

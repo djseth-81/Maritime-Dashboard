@@ -23,6 +23,15 @@ def weather():
             "Retrieved": datetime.now(),
            }
 
+@app.get("/users/")
+def users():
+    '''
+    Users query
+    '''
+    return {"Message": "Getting users!",
+            "Retrieved": datetime.now(),
+           }
+
 @app.get("/streets/")
 def query_streets():
     '''
@@ -31,18 +40,17 @@ def query_streets():
 
     operator = DBOperator(db=db,table='nyc_streets')
 
-    return {"Message": "NYC street data",
+    print("### Server: Assembling Payload...")
+    payload = {"Message": "NYC street data",
             "Retrieved": datetime.now(),
-            "Privileges": [
-                operator.check_privileges("insert"),
-                operator.check_privileges("select"),
-                operator.check_privileges("update"),
-                operator.check_privileges("delete")
-            ],
+            "Privileges": operator.check_privileges(),
             "Total entities": operator.get_count(),
             "Table attribuets": operator.get_attributes(),
             "payload": operator.get_table()[0]
            }
+    print("### Server: Payload assembled.")
+    operator.close() # Closes table instance
+    return payload
 
 @app.get("/census/")
 def query_census():
@@ -52,18 +60,17 @@ def query_census():
 
     operator = DBOperator(db=db,table='nyc_census_blocks')
 
-    return {"Message": "NYC Census blocks",
+    print("### Server: Assembling Payload...")
+    payload = {"Message": "NYC street data",
             "Retrieved": datetime.now(),
-            "Privileges": [
-                operator.check_privileges("insert"),
-                operator.check_privileges("select"),
-                operator.check_privileges("update"),
-                operator.check_privileges("delete")
-            ],
+            "Privileges": operator.check_privileges(),
             "Total entities": operator.get_count(),
             "Table attribuets": operator.get_attributes(),
             "payload": operator.get_table()[0]
            }
+    print("### Server: Payload assembled.")
+    operator.close() # Closes table instance
+    return payload
 
 @app.get("/homicides/")
 
@@ -73,38 +80,36 @@ def query_homicides():
     '''
     operator = DBOperator(db=db,table='nyc_homicides')
 
-    return {"Message": "Data on NYC homicide reports",
+    print("### Server: Assembling Payload...")
+    payload = {"Message": "NYC street data",
             "Retrieved": datetime.now(),
-            "Privileges": [
-                operator.check_privileges("insert"),
-                operator.check_privileges("select"),
-                operator.check_privileges("update"),
-                operator.check_privileges("delete")
-            ],
+            "Privileges": operator.check_privileges(),
             "Total entities": operator.get_count(),
             "Table attribuets": operator.get_attributes(),
             "payload": operator.get_table()[0]
            }
+    print("### Server: Payload assembled.")
+    operator.close() # Closes table instance
+    return payload
 
 @app.get("/neighborhoods/")
 def query_neighborhoods():
     '''
     <query_description>
     '''
-    operator = DBOperator(db=db,table='nyc_homicides')
+    operator = DBOperator(db=db,table='nyc_neighborhoods')
 
-    return {"Message": "NYC neighborhood data",
+    print("### Server: Assembling Payload...")
+    payload = {"Message": "NYC Homicide data",
             "Retrieved": datetime.now(),
-            "Privileges": [
-                operator.check_privileges("insert"),
-                operator.check_privileges("select"),
-                operator.check_privileges("update"),
-                operator.check_privileges("delete")
-            ],
+            "Privileges": operator.check_privileges(),
             "Total entities": operator.get_count(),
             "Table attribuets": operator.get_attributes(),
             "payload": operator.get_table()[0]
            }
+    print("### Server: Payload assembled.")
+    operator.close() # Closes table instance
+    return payload
 
 @app.get("/subway_stations/")
 
@@ -114,18 +119,17 @@ def query_subway_stations():
     '''
     operator = DBOperator(db=db,table='nyc_subway_stations')
 
-    return {"Message": "NYC Subway Station data",
+    print("### Server: Assembling Payload...")
+    payload = {"Message": "NYC Subway Station data",
             "Retrieved": datetime.now(),
-            "Privileges": [
-                operator.check_privileges("insert"),
-                operator.check_privileges("select"),
-                operator.check_privileges("update"),
-                operator.check_privileges("delete")
-            ],
+            "Privileges": operator.check_privileges(),
             "Total entities": operator.get_count(),
             "Table attribuets": operator.get_attributes(),
             "payload": operator.get_table()[0]
            }
+    print("### Server: Payload assembled.")
+    operator.close() # Closes table instance
+    return payload
 
 @app.get("/geometry/")
 
@@ -135,18 +139,17 @@ def query_geom():
     '''
     operator = DBOperator(db=db,table='geometries')
 
-    return {"Message": "geometry data",
+    print("### Server: Assembling Payload...")
+    payload = {"Message": "NYC geometric data",
             "Retrieved": datetime.now(),
-            "Privileges": [
-                operator.check_privileges("insert"),
-                operator.check_privileges("select"),
-                operator.check_privileges("update"),
-                operator.check_privileges("delete")
-            ],
+            "Privileges": operator.check_privileges(),
             "Total entities": operator.get_count(),
             "Table attribuets": operator.get_attributes(),
             "payload": operator.get_table()[0]
            }
+    print("### Server: Payload assembled.")
+    operator.close() # Closes table instance
+    return payload
 
 @app.get("/metadata/")
 
@@ -156,15 +159,14 @@ def query_metadata():
     '''
     operator = DBOperator(db=db,table='spatial_ref_sys')
 
-    return {"Message": "Metadata on NYC census data",
+    print("### Server: Assembling Payload...")
+    payload = {"Message": "Metadata for NYC dataset",
             "Retrieved": datetime.now(),
-            "Privileges": [
-                operator.check_privileges("insert"),
-                operator.check_privileges("select"),
-                operator.check_privileges("update"),
-                operator.check_privileges("delete")
-            ],
+            "Privileges": operator.check_privileges(),
             "Total entities": operator.get_count(),
             "Table attribuets": operator.get_attributes(),
             "payload": operator.get_table()[0]
            }
+    print("### Server: Payload assembled.")
+    operator.close() # Closes table instance
+    return payload
