@@ -1,7 +1,17 @@
 from fastapi import FastAPI
 from datetime import datetime
 from DBOperator import DBOperator
+from json import loads, dumps
+
+from kafka import KafkaProducer
+
 app = FastAPI()
+producer = KafkaProducer(bootstrap_servers='localhost:9092')
+
+@app.post("/publish/{topic}")
+def publish(topic: str, message: str):
+    producer.send(topic, message.encode())
+    return{"status": "message published successfully"}
 
 db = 'nyc'
 
@@ -43,10 +53,10 @@ def query_streets():
     print("### Server: Assembling Payload...")
     payload = {"Message": "NYC street data",
             "Retrieved": datetime.now(),
-            "Privileges": operator.check_privileges(),
+            "Privileges": operator.get_privileges(),
             "Total entities": operator.get_count(),
             "Table attribuets": operator.get_attributes(),
-            "payload": operator.get_table()[0]
+            "payload": operator.query(('id',4))
            }
     print("### Server: Payload assembled.")
     operator.close() # Closes table instance
@@ -63,10 +73,10 @@ def query_census():
     print("### Server: Assembling Payload...")
     payload = {"Message": "NYC street data",
             "Retrieved": datetime.now(),
-            "Privileges": operator.check_privileges(),
+            "Privileges": operator.get_privileges(),
             "Total entities": operator.get_count(),
             "Table attribuets": operator.get_attributes(),
-            "payload": operator.get_table()[0]
+            "payload": operator.query(('gid',1))
            }
     print("### Server: Payload assembled.")
     operator.close() # Closes table instance
@@ -83,10 +93,10 @@ def query_homicides():
     print("### Server: Assembling Payload...")
     payload = {"Message": "NYC street data",
             "Retrieved": datetime.now(),
-            "Privileges": operator.check_privileges(),
+            "Privileges": operator.get_privileges(),
             "Total entities": operator.get_count(),
             "Table attribuets": operator.get_attributes(),
-            "payload": operator.get_table()[0]
+            "payload": operator.query(('gid',1))
            }
     print("### Server: Payload assembled.")
     operator.close() # Closes table instance
@@ -102,10 +112,10 @@ def query_neighborhoods():
     print("### Server: Assembling Payload...")
     payload = {"Message": "NYC Homicide data",
             "Retrieved": datetime.now(),
-            "Privileges": operator.check_privileges(),
+            "Privileges": operator.get_privileges(),
             "Total entities": operator.get_count(),
             "Table attribuets": operator.get_attributes(),
-            "payload": operator.get_table()[0]
+            "payload": operator.query(('gid',1))
            }
     print("### Server: Payload assembled.")
     operator.close() # Closes table instance
@@ -122,10 +132,10 @@ def query_subway_stations():
     print("### Server: Assembling Payload...")
     payload = {"Message": "NYC Subway Station data",
             "Retrieved": datetime.now(),
-            "Privileges": operator.check_privileges(),
+            "Privileges": operator.get_privileges(),
             "Total entities": operator.get_count(),
             "Table attribuets": operator.get_attributes(),
-            "payload": operator.get_table()[0]
+            "payload": operator.query(('id',1))
            }
     print("### Server: Payload assembled.")
     operator.close() # Closes table instance
@@ -142,10 +152,10 @@ def query_geom():
     print("### Server: Assembling Payload...")
     payload = {"Message": "NYC geometric data",
             "Retrieved": datetime.now(),
-            "Privileges": operator.check_privileges(),
+            "Privileges": operator.get_privileges(),
             "Total entities": operator.get_count(),
             "Table attribuets": operator.get_attributes(),
-            "payload": operator.get_table()[0]
+            "payload": operator.custom_cmd("SELECT * FROM geometries LIMIT 1;", 'r')
            }
     print("### Server: Payload assembled.")
     operator.close() # Closes table instance
@@ -162,10 +172,10 @@ def query_metadata():
     print("### Server: Assembling Payload...")
     payload = {"Message": "Metadata for NYC dataset",
             "Retrieved": datetime.now(),
-            "Privileges": operator.check_privileges(),
+            "Privileges": operator.get_privileges(),
             "Total entities": operator.get_count(),
             "Table attribuets": operator.get_attributes(),
-            "payload": operator.get_table()[0]
+            "payload": operator.query(('srid',26918))
            }
     print("### Server: Payload assembled.")
     operator.close() # Closes table instance
