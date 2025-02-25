@@ -253,39 +253,39 @@ class DBOperator():
 
 if __name__ == "__main__":
     # db = DBOperator(db=input("Enter db: "),table=input("Enter table: "))
-    db = DBOperator(db='nyc', table='nyc_streets')
+    db = DBOperator(db='nyc', table='fruits')
 
     # pprint()
     # db.get_tables()
     # pprint()
 
-    # pprint("Table Attributes:")
-    # pprint(db.get_attributes())
-    # print()
+    pprint("Table Attributes:")
+    pprint(db.get_attributes())
+    print()
 
-    # pprint("Number of entries in table:")
-    # pprint(db.get_count())
-    # print()
+    pprint("Number of entries in table:")
+    pprint(db.get_count())
+    print()
 
-    # pprint("privileges on table:")
-    # pprint(db.get_privileges())
-    # print()
+    pprint("privileges on table:")
+    pprint(db.get_privileges())
+    print()
 
-    # pprint("Entry from table:")
-    # pprint(db.query(('id',1)))
-    # print()
+    pprint("First entry from table:")
+    pprint(db.query(('id',1)))
+    print()
 
     # pprint("Adding value to table...")
-    # db.add({'name':'banana', 'count': 3})
+    # db.add({'name':'dragonfruit', 'count': 1})
     # db.commit()
     # pprint("New value:")
     # pprint(db.get_table()) # Table should have new entity
 
     # pprint("Modifying existing value...")
-    # db.modify(('id', 2), {'name':'papaya'})
+    # db.modify(('id', 2), {'name':'apple'})
     # db.commit()
     # pprint("Modified value:")
-    # pprint(db.query(("id",2))) # Entity should now be modified
+    # pprint(db.query(("id",3))) # Entity should now be modified
 
     # db.delete(("id",2))
     # db.commit()
