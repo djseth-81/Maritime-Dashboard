@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-const UIControls = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
-    const [isOpen, setIsOpen] =useState(false);
+const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
+    const [isOpen, setIsOpen] = useState(false);
     const [selectedShape, setSelectedShape] = useState("polygon");
 
     const handleShapeChange = (event) => {
@@ -10,7 +10,7 @@ const UIControls = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
     };
 
     return (
-        <div style={{position: "absolute", top: 10, left: 10, zIndex: 1000}}>
+        <div style={{ position: "absolute", top: 10, left: 10, zIndex: 1000 }}>
             {/*Button to expand/collapse sidebar*/}
             <button
                 onClick={() => setIsOpen(!isOpen)}
@@ -75,4 +75,4 @@ const UIControls = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
     );
 };
 
-export default UIControls;
+export default ToolsUI;

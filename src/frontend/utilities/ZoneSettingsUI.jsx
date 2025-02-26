@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const ZoneSettings = ({ zoneName, onSave, onDelete, onRename }) => {
+const ZoneSettingsUI = ({ zoneName, onSave, onDelete, onRename }) => {
     const [isRenaming, setIsRenaming] = useState(false);
     const [newName, setNewName] = useState(zoneName);
 
@@ -15,7 +15,7 @@ const ZoneSettings = ({ zoneName, onSave, onDelete, onRename }) => {
         <div className="zone-settings-ui">
             <div className="settings-header">
                 <h2>
-                    Settings for Zone '{zoneName}'
+                    Settings for zone '{zoneName}'
                     <button
                         className="rename-button"
                         onClick={() => setIsRenaming(true)}
@@ -36,7 +36,7 @@ const ZoneSettings = ({ zoneName, onSave, onDelete, onRename }) => {
                         placeholder="Edit zone name"
                         autoFocus
                     />
-                    <button onClick={() => {onRename(newName); setIsRenaming(false); }}>
+                    <button onClick={() => { onRename(newName); setIsRenaming(false); }}>
                         Save Name
                     </button>
                     <button onClick={() => setIsRenaming(false)}>Cancel</button>
@@ -51,4 +51,4 @@ const ZoneSettings = ({ zoneName, onSave, onDelete, onRename }) => {
     );
 };
 
-export default ZoneSettings;
+export default ZoneSettingsUI;

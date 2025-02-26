@@ -2,11 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import { Viewer, Entity, PolylineGraphics, PolygonGraphics, PointGraphics } from "resium";
 import * as Cesium from "cesium";
 
-const CustomGeometry = ({ isDrawing, shapeType, geometries, setGeometries,setSelectedGeometry, setShowContextMenu, setContextMenuPosition }) => {
+const CustomGeometry = ({ isDrawing, shapeType, geometries, setGeometries, setSelectedGeometry, setShowContextMenu, setContextMenuPosition, setShowSettings }) => {
     // const [showContextMenu, setShowContextMenu] = useState(false);
     // const [selectedGeometry, setSelectedGeometry] = useState(null);
     // const [contextMenuPosition, setContextMenuPosition] = useState({x: 0, y: 0});
     const viewerRef = useRef(null);
+
+    // const createGeometry = (positions, name) => ({
+    //     id: Date.now().toString(),
+    //     positions,
+    //     name: name || `Zone ${geometries.length + 1}`,
+    //     shapeType,
+    //     completed: false
+    // });
 
     useEffect(() => {
         Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIxZjRjZjA4Ny05YjE2LTQ4NWItOGJkNi04ZjkyZjJlZmExYTgiLCJpZCI6MjczMzkxLCJpYXQiOjE3Mzg3MDUzNzB9.Ur_w05dnvhyA0R13ddj4E7jtUkOXkmqy0G507nY0aos";
@@ -22,7 +30,7 @@ const CustomGeometry = ({ isDrawing, shapeType, geometries, setGeometries,setSel
             console.log("Right-click detected");
 
             const pickedEntity = viewer.scene.pick(click.position);
-            console.log("Right Click: Picked entity;", pickedEntity);
+            console.log("Right Click: Entity selected", pickedEntity);
             if (Cesium.defined(pickedEntity)) {
                 setSelectedGeometry(pickedEntity);
                 setContextMenuPosition({ x: click.position.x, y: click.position.y });
@@ -32,14 +40,28 @@ const CustomGeometry = ({ isDrawing, shapeType, geometries, setGeometries,setSel
             }
         }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
 
-        if(isDrawing) {
+        // Left-click to select entities (geometries ATM)
+        handler.setInputAction((click) => {
+            const pickedEntity = viewer.scene.pick(click.position);
+            console.log("Left-click: Entity selected.", pickedEntity);
+            if (Cesium.defined(pickedEntity)) {
+                setSelectedGeometry(pickedEntity);
+            } else {
+                console.log("Deselected geometry");
+                setShowContextMenu(false);
+                setShowSettings(false);
+                setSelectedGeometry(null);
+            }
+        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+        if (isDrawing) {
 
             //Left click to start geometry 
             handler.setInputAction((click) => {
                 console.log("Click event detected");
                 // const cartesian = viewer.scene.pickPosition(click.position);
                 let cartesian = viewer.scene.pickPosition(click.position);
-                if(!cartesian) {
+                if (!cartesian) {
                     cartesian = viewer.scene.camera.pickEllipsoid(click.position, viewer.scene.globe.ellipsoid);
                 }
                 console.log("Posititon picked:", cartesian);
@@ -59,7 +81,7 @@ const CustomGeometry = ({ isDrawing, shapeType, geometries, setGeometries,setSel
                     });
                 }
             }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
-    
+
             // double click geometry complete
             handler.setInputAction(() => {
                 console.log("Left-double-click detected, completing geometry.");
@@ -75,13 +97,13 @@ const CustomGeometry = ({ isDrawing, shapeType, geometries, setGeometries,setSel
             return;
         }
 
-        
+
         return () => handler.destroy();
-    }, [isDrawing, geometries]);
+    }, [isDrawing, geometries, setSelectedGeometry, setShowContextMenu, setShowSettings]);
 
     return (
         <div className="cesium-container">
-            <Viewer 
+            <Viewer
                 ref={viewerRef}
                 className="cesium-viewer"
                 animation={false}
@@ -104,7 +126,7 @@ const CustomGeometry = ({ isDrawing, shapeType, geometries, setGeometries,setSel
                                 material={Cesium.Color.RED.withAlpha(0.5)}
                             />
                         )}
-                        {geometry.shapeType === "point" && 
+                        {geometry.shapeType === "point" &&
                             geometry.positions.map((pos, i) => (
                                 <Entity key={i} position={pos}>
                                     <PointGraphics pixelSize={10} color={Cesium.Color.BLACK} />
@@ -112,7 +134,7 @@ const CustomGeometry = ({ isDrawing, shapeType, geometries, setGeometries,setSel
                             ))}
                     </Entity>
                 ))}
-            </Viewer>            
+            </Viewer>
         </div>
     );
 };
