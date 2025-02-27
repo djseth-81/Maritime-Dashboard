@@ -23,11 +23,16 @@ function App() {
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const [showSettings, setShowSettings] = useState(false);
+  const [showOverlays, setShowOverlays] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
+  // Handler for ToolUI 'Toggle ZOne
   const handleToggleDrawing = () => {
     console.log("Toggled Zoning:", !isDrawing);
     setIsDrawing((prev) => {
       const newState = !prev;
+
+      // notification of tool state
       toast.info(`Zoning Tool ${newState ? "Enabled" : "Disabled"}`, {
         position: "bottom-right",
         autoClose: 2000,
@@ -40,6 +45,17 @@ function App() {
     });
   };
 
+  const handleToggleOverlays = () => {
+    setShowOverlays((prev) => !prev);
+    console.log("Overlays toggled:", !showOverlays);
+  };
+
+  const handleToggleFilters = () => {
+    setShowFilters((prev) => !prev);
+    console.log("Filters toggled: ", !showFilters);
+  };
+
+  // Undos previous point placed, will undo until the stack is empty
   const handleUndo = () => {
     setGeometries((prev) => {
       if (prev.length === 0) return prev;
@@ -49,16 +65,23 @@ function App() {
     });
   };
 
+  // Clears entire cesium viewer of geometries
   const handleClear = () => {
     setGeometries([]);
     setSelectedGeometry(null);
     setShowContextMenu(false);
   };
 
+  // Radio buttons selected in ToolsUI
   const handleSelectShape = (shape) => {
     setShapeType(shape);
   };
 
+  /*
+    Should rename the selected geometry. Currently non-functional.
+    Implementation may depend on information stored in the database.
+    Note: Cesium Entities have a __name attribute. 
+  */
   const handleRename = (newName) => {
     setGeometries((prev) =>
       prev.map((geo) =>
@@ -68,6 +91,11 @@ function App() {
     setSelectedGeometry((prev) => ({ ...prev, name: newName }));
   };
 
+  /* 
+    Should delete a selected geometry, but is currently non-functional.
+    Implementation may depend on information stored in the database.
+    Note: Cesium Entities have a __id attribute. 
+  */
   const handleDelete = () => {
     setGeometries((prev) => prev.filter((geo) => geo !== selectedGeometry));
     setShowSettings(false);
@@ -75,11 +103,13 @@ function App() {
     setShowContextMenu(false);
   };
 
+  // Placeholder for save functionality
   const handleSave = () => {
     console.log("Zone settings saved.");
     setShowSettings(false);
   };
 
+  // Debug
   console.log("Show Context Menu:", showContextMenu);
   console.log("Selected Geometry:", selectedGeometry);
   console.log("Context Menu Position:", contextMenuPosition);
@@ -93,6 +123,8 @@ function App() {
         onUndo={handleUndo}
         onClear={handleClear}
         onSelectShape={handleSelectShape}
+        onToggleOverlays={handleToggleOverlays}
+        onToggleFilters={handleToggleFilters}
       />
       <CustomGeometry
         isDrawing={isDrawing}
@@ -108,7 +140,6 @@ function App() {
       {showContextMenu && selectedGeometry && (
 
         <div
-          // ref={contextMenuRef}
           className="context-menu"
           style={{
 
@@ -126,14 +157,14 @@ function App() {
       )}
 
       {showSettings && selectedGeometry && (
-        // <div ref={settingsRef}>
+
         <ZoneSettingsUI
           zoneName={selectedGeometry.name || "Untitled Zone"}
           onRename={handleRename}
           onDelete={handleDelete}
           onSave={handleSave}
         />
-        // </div>       
+
       )}
     </div>
   );

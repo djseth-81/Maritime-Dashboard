@@ -17,12 +17,17 @@ const CustomGeometry = ({ isDrawing, shapeType, geometries, setGeometries, setSe
     // });
 
     useEffect(() => {
+
+        //Cesium access token, may have a more optimal location for this.
         Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIxZjRjZjA4Ny05YjE2LTQ4NWItOGJkNi04ZjkyZjJlZmExYTgiLCJpZCI6MjczMzkxLCJpYXQiOjE3Mzg3MDUzNzB9.Ur_w05dnvhyA0R13ddj4E7jtUkOXkmqy0G507nY0aos";
         console.log("Zoning tool active:", isDrawing);
         if (!viewerRef.current?.cesiumElement) return;
 
         const viewer = viewerRef.current.cesiumElement;
+        
+        //disables native browser context menu.
         viewer.scene.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+        
         const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
 
         // Right-click context menu
@@ -57,6 +62,7 @@ const CustomGeometry = ({ isDrawing, shapeType, geometries, setGeometries, setSe
         if (isDrawing) {
 
             //Left click to start geometry 
+            // Implement id attachment to geometry, will simplify deletion, renaming, saving.
             handler.setInputAction((click) => {
                 console.log("Click event detected");
                 // const cartesian = viewer.scene.pickPosition(click.position);
@@ -104,6 +110,7 @@ const CustomGeometry = ({ isDrawing, shapeType, geometries, setGeometries, setSe
     return (
         <div className="cesium-container">
             <Viewer
+                // enable/disable for default cesium elements
                 ref={viewerRef}
                 className="cesium-viewer"
                 animation={false}
