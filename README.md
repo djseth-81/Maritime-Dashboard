@@ -1,6 +1,5 @@
-# Seth's Workspace for Backend
-
-So you all can watch me break things in semi-real time :^)
+# Maritime-Ops-Dashboard
+Northrop Grumman - Capstone 2025 - Maritime Operations Monitoring Dashboard
 
 # Configuring environment
 ## 1. Activate Python Virtual Environment
@@ -16,13 +15,27 @@ So you all can watch me break things in semi-real time :^)
 ## 3. Install PyGreSQL
 `pip install PyGreSQL`
 
-# Running FastAPI
-### Navigate to backend directory
-
-### Start fastAPI server with command
+## 4. Running FastAPI
+### Start fastAPI server with command (in backend directory)
 `uvicorn main:app --reload`
 
-### Info
+## 5. Installing React & Dependencies
+### Node Package Manager (npm) is required
+- [Windows Link](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+- [MacOS Link](https://formulae.brew.sh/formula/node)
+- [Linux Link](http://www.blankwebsite.com)
+
+### Initialize & Install Dependencies
+`npm init -y`
+`npm install react react-dom`
+`npm install cesium resium`
+`npm install --save-dev vite @vitejs/plugin-react vite-plugin-cesium`
+`npm install react-toastify`
+
+### Run Dev Server
+`npm run dev`
+
+### Backend Info
 - http://127.0.0.1:8000/docs is the local server interactive API documentation source
 - http://127.0.0.1:8000/redoc is an alternative of the above
 - http://127.0.0.1:8000/ is the listening server
