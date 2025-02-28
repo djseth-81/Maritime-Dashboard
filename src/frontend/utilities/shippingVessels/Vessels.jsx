@@ -28,9 +28,6 @@ export function placeVessel(longitude, latitude, elevation, type="cargo", name="
   const encodedSvg = encodeURIComponent(svgString);
   const dataUrl = `data:image/svg+xml;charset=utf-8,${encodedSvg}`;
 
-  // For debugging - if SVG isn't working, use a simple colored circle
-  // Uncomment this line to test with a simple colored pin
-  //const dataUrl = "https://upload.wikimedia.org/wikipedia/commons/8/8c/Map_marker.svg";
 
   // Return the Entity component with the boat icon
   return (
