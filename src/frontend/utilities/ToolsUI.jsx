@@ -1,7 +1,9 @@
 import { useState } from "react";
+import Overlays from "./OverlaysUI";
+import Filters from "./FiltersUI";
 
-const UIControls = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
-    const [isOpen, setIsOpen] =useState(false);
+const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
+    const [openPanel, setOpenPanel] = useState(false);
     const [selectedShape, setSelectedShape] = useState("polygon");
 
     const handleShapeChange = (event) => {
@@ -9,32 +11,28 @@ const UIControls = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
         onSelectShape(event.target.value);
     };
 
+    const handleToggle = (panel) => {
+        setOpenPanel((prev) => (prev === panel ? null : panel));
+    };
+
     return (
-        <div style={{position: "absolute", top: 10, left: 10, zIndex: 1000}}>
-            {/*Button to expand/collapse sidebar*/}
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                style={{
-                    padding: "10px",
-                    backgroundColor: "#333",
-                    color: "#fff",
-                    border: "none",
-                    cursor: "pointer",
-                }}
-            >
-                {isOpen ? "Close" : "Tools"}
+        <div className="ui-controls">
+            {/*Button to expand/collapse sidebars*/}
+            <button onClick={() => handleToggle("tools")}>
+                {openPanel === "tools" ? "Close" : "Tools"}
+            </button>
+            
+            <button onClick={() => handleToggle("overlays")}>
+                {openPanel === "overlays" ? "Close" : "Overlays"}
+            </button>
+
+            <button onClick={() => handleToggle("filters")}>
+                {openPanel === "filters" ? "Close" : "Filters"}
             </button>
 
             {/* Sidebar Content */}
-            {isOpen && (
-                <div
-                    style={{
-                        backgroundColor: "rgba(255,255,255,0.9)",
-                        padding: "10px",
-                        borderRadius: "5px",
-                        marginTop: "5px",
-                    }}
-                >
+            {openPanel === "tools" && (
+                <div className="tools-panel">
                     <h4>Zoning Tools</h4>
 
                     <button onClick={onToggleDrawing}>Toggle Zoning Tool</button>
@@ -71,8 +69,28 @@ const UIControls = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
                     </label>
                 </div>
             )}
+
+            {openPanel === "overlays" && (
+                <div className="overlay-panel">
+                    <h3>Overlays</h3>
+                    <button>Weather</button>
+                    <button>Ocean Conditions</button>
+                    <button>Traffic Heatmap</button>
+                    <button onClick={() => handleToggle(null)}>Close</button>
+                </div>
+            )}
+
+            {openPanel === "filters" && (
+                <div className="filter-panel">
+                    <h3>Filters</h3>
+                    <button>Vessel types</button>
+                    <button>Flag</button>
+                    <button>Status</button>
+                    <button onClick={() => handleToggle(null)}>Close</button>
+                </div>
+            )}
         </div>
     );
 };
 
-export default UIControls;
+export default ToolsUI;

@@ -17,7 +17,7 @@ export default function BoatIcon({
     // Get the base color
     const baseColor = vesselColors[type] || vesselColors.cargo;
     // Return the color with 50% opacity
-    return baseColor + "80"; // 80 in hex is 50% opacity
+    return baseColor + "90"; // 80 in hex is 50% opacity
   };
   
   // Calculate the points for a simple angle shape like <
@@ -45,18 +45,6 @@ export default function BoatIcon({
         strokeWidth="3" // Bolder border
         strokeLinejoin="round" // Rounded corners on the stroke
       />
-      
-      {/* Label for vessel type */}
-      <text
-        x={size / 2}
-        y={size / 2 + 5}
-        textAnchor="middle"
-        fill="#000" // Black text for better visibility on semi-transparent background
-        fontWeight="bold"
-        fontSize={size / 6}
-      >
-        {type.charAt(0).toUpperCase()}
-      </text>
     </svg>
   );
 }
