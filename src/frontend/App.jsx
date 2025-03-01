@@ -5,7 +5,7 @@ import ZoneSettingsUI from "./utilities/ZoneSettingsUI";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/ReactToastify.css";
 import './App.css';
-import {placeVessel} from "./utilities/shippingVessels/Vessels";
+import { placeVessel } from "./utilities/shippingVessels/Vessels";
 import { Viewer } from "resium";
 import { SceneMode } from "cesium";
 /*
@@ -22,20 +22,20 @@ function App() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [shapeType, setShapeType] = useState("polygon");
   const [geometries, setGeometries] = useState([]);
-  const viewerRef = useRef(null);
-
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const [showSettings, setShowSettings] = useState(false);
   const [showOverlays, setShowOverlays] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [viewerReady, setViewerReady] = useState(false);
 
+  const viewerRef = useRef(null);
   // Add an effect to handle scene mode changes
   useEffect(() => {
     if (viewerRef.current && viewerRef.current.cesiumElement) {
       const viewer = viewerRef.current.cesiumElement;
-      
+      setViewerReady(true);
       // Create a scene mode change event handler
       const sceneModeChangeHandler = () => {
         // If there's a selected entity, re-select it to update the info box position
@@ -47,10 +47,10 @@ function App() {
           }, 100);
         }
       };
-      
+
       // Add event listener for scene mode changes
       viewer.scene.morphComplete.addEventListener(sceneModeChangeHandler);
-      
+
       // Clean up event listener when component unmounts
       return () => {
         if (viewer && viewer.scene && !viewer.isDestroyed()) {
@@ -58,7 +58,7 @@ function App() {
         }
       };
     }
-  }, []);
+  }, [viewerRef.current]);
 
   // Handler for ToolUI 'Toggle ZOne
   const handleToggleDrawing = () => {
@@ -150,8 +150,41 @@ function App() {
   console.log("showSettings:", showSettings);
 
   return (
-    <div>
+    <div className="cesium-viewer">
       <ToastContainer />
+      <Viewer
+        ref={viewerRef}
+        full
+        timeline={false}
+        animation={false}
+        homeButton={true}
+        baseLayerPicker={true}
+        navigationHelpButton={false}
+        sceneModePicker={true}
+        geocoder={true}
+        infoBox={true} // Important for seeing vessel descriptions
+        selectionIndicator={true}>
+
+        {/* Place a cargo vessel */}
+        {placeVessel(-122.4194, 37.7749, 1000, "cargo", "Cargo Ship 1")}
+
+        {/* Place a fishing vessel */}
+        {placeVessel(-74.0060, 40.7128, 0, "fishing", "Fishing Boat 1")}
+
+        <CustomGeometry
+          viewer={viewerRef}
+          viewerReady={viewerReady}
+          isDrawing={isDrawing}
+          shapeType={shapeType}
+          geometries={geometries}
+          setGeometries={setGeometries}
+          setSelectedGeometry={setSelectedGeometry}
+          setShowContextMenu={setShowContextMenu}
+          setContextMenuPosition={setContextMenuPosition}
+          setShowSettings={setShowSettings}
+        />
+
+      </Viewer>
       <ToolsUI
         onToggleDrawing={handleToggleDrawing}
         onUndo={handleUndo}
@@ -159,16 +192,6 @@ function App() {
         onSelectShape={handleSelectShape}
         onToggleOverlays={handleToggleOverlays}
         onToggleFilters={handleToggleFilters}
-      />
-      <CustomGeometry
-        isDrawing={isDrawing}
-        shapeType={shapeType}
-        geometries={geometries}
-        setGeometries={setGeometries}
-        setSelectedGeometry={setSelectedGeometry}
-        setShowContextMenu={setShowContextMenu}
-        setContextMenuPosition={setContextMenuPosition}
-        setShowSettings={setShowSettings}
       />
 
       {showContextMenu && selectedGeometry && (
@@ -200,26 +223,6 @@ function App() {
         />
       )}
 
-      <Viewer
-      ref={viewerRef}
-      full
-      timeline={false}
-      animation={false}
-      homeButton={true}
-      baseLayerPicker={true}
-      navigationHelpButton={false}
-      sceneModePicker={true}
-      geocoder={true}
-      infoBox={true} // Important for seeing vessel descriptions
-      selectionIndicator={true}>
-
-        {/* Place a cargo vessel */}
-        {placeVessel(-122.4194, 37.7749, 1000, "cargo", "Cargo Ship 1")}
-
-        {/* Place a fishing vessel */}
-        {placeVessel(-74.0060, 40.7128, 0, "fishing", "Fishing Boat 1")}
-        
-      </Viewer>
     </div>
   );
 }

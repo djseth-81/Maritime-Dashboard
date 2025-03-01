@@ -21,7 +21,7 @@ const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
             <button onClick={() => handleToggle("tools")}>
                 {openPanel === "tools" ? "Close" : "Tools"}
             </button>
-            
+
             <button onClick={() => handleToggle("overlays")}>
                 {openPanel === "overlays" ? "Close" : "Overlays"}
             </button>
