@@ -1,0 +1,7 @@
+.removePadding {
+    padding: 0 !important;
+}
+
+.togglePassword {
+    cursor: pointer;
+}

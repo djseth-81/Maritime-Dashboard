@@ -2,18 +2,27 @@ from fastapi import FastAPI
 from datetime import datetime
 from DBOperator import DBOperator
 from json import loads, dumps
+from fastapi.middleware.cors import CORSMiddleware
+from Crypto.Cipher import AES
+import base64
 
-from kafka import KafkaProducer
-
-app = FastAPI()
-producer = KafkaProducer(bootstrap_servers='localhost:9092')
-
-@app.post("/publish/{topic}")
-def publish(topic: str, message: str):
-    producer.send(topic, message.encode())
-    return{"status": "message published successfully"}
-
+# from kafka import KafkaProducer
 db = 'nyc'
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # React app origin
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],   # Allow all headers
+)
+
+# producer = KafkaProducer(bootstrap_servers='localhost:9092')
+
+# @app.post("/publish/{topic}")
+# def publish(topic: str, message: str):
+#     producer.send(topic, message.encode())
+#     return{"status": "message published successfully"}
 
 @app.get("/")
 def welcome():
@@ -83,7 +92,6 @@ def query_census():
     return payload
 
 @app.get("/homicides/")
-
 def query_homicides():
     '''
     <query_description>
@@ -122,7 +130,6 @@ def query_neighborhoods():
     return payload
 
 @app.get("/subway_stations/")
-
 def query_subway_stations():
     '''
     <query_description>
@@ -142,7 +149,6 @@ def query_subway_stations():
     return payload
 
 @app.get("/geometry/")
-
 def query_geom():
     '''
     <query_description>
@@ -162,7 +168,6 @@ def query_geom():
     return payload
 
 @app.get("/metadata/")
-
 def query_metadata():
     '''
     <query_description>
@@ -180,3 +185,21 @@ def query_metadata():
     print("### Server: Payload assembled.")
     operator.close() # Closes table instance
     return payload
+
+def decrypt_password(encrypted_password, secret_key):
+    encrypted_data = base64.b64decode(encrypted_password)
+    cipher = AES.new(secret_key.encode('utf-8'), AES.MODE_ECB)
+    decrypted_bytes = cipher.decrypt(encrypted_data)
+    return decrypted_bytes.strip().decode('utf-8')
+
+@app.post("/addUser")
+async def add_user(formData: dict):
+    print(formData)
+    return formData
+
+@app.post("/login")
+async def login(formData: dict):
+    print(formData)
+    # email = formData["email"]
+    # decrypted_password = decrypt_password(formData["password"], secret_key="my-secret-key")
+    return (formData)
