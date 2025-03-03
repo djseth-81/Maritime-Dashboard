@@ -3,8 +3,6 @@ from datetime import datetime
 from DBOperator import DBOperator
 from json import loads, dumps
 
-from kafka import KafkaProducer
-
 app = FastAPI()
 
 db = 'nyc'
