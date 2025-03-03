@@ -58,8 +58,12 @@ Northrop Grumman - Capstone 2025 - Maritime Operations Monitoring Dashboard
 # Release Notes
 ## v1.0
 ### Features
-- Example
+- CesiumJS Implementation of a 2D/3D Map
+- Initial FastAPI and Database Setup
+- Interactable UI with initial geometry and filters
+- [UI Design Plan](https://balsamiq.cloud/sp2vjb1/p94nxql/r2278)
+
 ### Bug Fixes
-- Example
+- N/A
 ### Other
-- Example
+- N/A

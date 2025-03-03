@@ -1,8 +1,8 @@
 {
-  "name": "cesium-app",
+  "name": "Maritime-OPS-Dashboard",
   "version": "1.0.0",
   "description": "Northrop Grumman - Capstone 2025 - Maritime Operations Monitoring Dashboard",
-  "main": "index.js",
+  "main": "main.jsx",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite",
