@@ -6,12 +6,6 @@ from json import loads, dumps
 from kafka import KafkaProducer
 
 app = FastAPI()
-producer = KafkaProducer(bootstrap_servers='localhost:9092')
-
-@app.post("/publish/{topic}")
-def publish(topic: str, message: str):
-    producer.send(topic, message.encode())
-    return{"status": "message published successfully"}
 
 db = 'nyc'
 
