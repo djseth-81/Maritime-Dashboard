@@ -6,16 +6,18 @@ const FiltersUI = ({ onClose }) => {
     const [showStatus, setShowStatus] = useState(false);
     const [countryOfOrigin, setCountryOfOrigin] = useState('');
 
+    // Implementation of checkbox change handler, requires DB implementation to be fully functional.
     const handleCheckboxChange = (event) => { 
         const { name, checked } = event.target;
      };
 
+    // Implementation of country of origin change handler, requires DB implementation to be fully functional.
     const handleCountryChange = (event) => {
         setCountryOfOrigin(event.target.value);
     }
 
     return (
-        // placeholder values and buttons
+
         <div className="filter-panel">
             <h3>Filters</h3>
             <button onClick={onClose}>Close</button>
@@ -38,7 +40,7 @@ const FiltersUI = ({ onClose }) => {
                         <input type="checkbox" name="fishing" onChange={handleCheckboxChange} />
                         Fishing
                     </label>
-                    {/* Add more vessel types */}
+                    {/* Add more vessel types, should align with DB values */}
                 </div>
              )}
 
@@ -54,7 +56,7 @@ const FiltersUI = ({ onClose }) => {
                         />
                         
                     </label>
-                    {/* Add more countries */}
+
                 </div>
               )}
 
