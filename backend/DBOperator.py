@@ -1,5 +1,6 @@
 from pprint import pprint
-from pgdb import connect # https://www.pygresql.org/contents/pgdb/index.html
+import psycopg2
+
 
 class DBOperator():
     """
@@ -40,7 +41,14 @@ class DBOperator():
         self.__port = port
         self.__user = user
         self.__passwd = passwd
-        self.__db = connect(database = db)
+        self.__db = psycopg2.connect(
+            dbname=db,
+            user="your_user",       # Replace with your PostgreSQL username
+            password="your_password", # Replace with your PostgreSQL password
+            host=self.__host,
+            port=self.__port
+        )
+
         self.__cursor = self.__db.cursor()
 
     ### Mutators ###

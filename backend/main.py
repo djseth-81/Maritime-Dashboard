@@ -1,182 +1,57 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks
 from datetime import datetime
 from DBOperator import DBOperator
 from json import loads, dumps
-
-from kafka import KafkaProducer
+from kafka import KafkaProducer, KafkaConsumer
+import json
+import threading
 
 app = FastAPI()
-producer = KafkaProducer(bootstrap_servers='localhost:9092')
+
+producer = KafkaProducer(
+    bootstrap_servers='localhost:9092',
+    key_serializer=lambda k: k.encode('utf-8'),
+    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+)
 
 @app.post("/publish/{topic}")
-def publish(topic: str, message: str):
-    producer.send(topic, message.encode())
-    return{"status": "message published successfully"}
+def publish(topic: str, data: dict):
+    """
+    Send JSON data to a Kafka topic.
+    """
+    key = data.get("ship_id", "unknown_ship")
+    message = data.get("event", "No event provided")
 
-db = 'nyc'
+    producer.send(topic, key=key, value=message)
+    producer.flush()
+    return {"status": "message published successfully"}
+
+def consume_messages():
+    """
+    Kafka consumer that runs in the background.
+    """
+    consumer = KafkaConsumer(
+        'maritime-events',
+        bootstrap_servers='localhost:9092',
+        auto_offset_reset='earliest',
+        enable_auto_commit=True,
+        key_deserializer=lambda k: k.decode('utf-8') if k else None,
+        value_deserializer=lambda v: json.loads(v.decode('utf-8'))
+    )
+
+    print("Kafka Consumer is listening for events...")
+    for message in consumer:
+        print(f"[Kafka] Received Event: {message.key} -> {message.value}")
+
+consumer_thread = threading.Thread(target=consume_messages, daemon=True)
+consumer_thread.start()
 
 @app.get("/")
 def welcome():
-    '''
-    Example First Fast API Example
-    '''
-    return {"Message": "Welcome to FastAPI!",
-            "Retrieved": datetime.now(),
-           }
-
-@app.get("/weather/")
-def weather():
-    '''
-    Weather query
-    '''
-    return {"Message": "Weather!",
-            "Retrieved": datetime.now(),
-           }
-
-@app.get("/users/")
-def users():
-    '''
-    Users query
-    '''
-    return {"Message": "Getting users!",
-            "Retrieved": datetime.now(),
-           }
-
-@app.get("/streets/")
-def query_streets():
-    '''
-    <query_description>
-    '''
-
-    operator = DBOperator(db=db,table='nyc_streets')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC street data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('id',4))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-@app.get("/census/")
-def query_census():
-    '''
-    <query_description>
-    '''
-
-    operator = DBOperator(db=db,table='nyc_census_blocks')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC street data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('gid',1))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-@app.get("/homicides/")
-
-def query_homicides():
-    '''
-    <query_description>
-    '''
-    operator = DBOperator(db=db,table='nyc_homicides')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC street data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('gid',1))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-@app.get("/neighborhoods/")
-def query_neighborhoods():
-    '''
-    <query_description>
-    '''
-    operator = DBOperator(db=db,table='nyc_neighborhoods')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC Homicide data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('gid',1))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-@app.get("/subway_stations/")
-
-def query_subway_stations():
-    '''
-    <query_description>
-    '''
-    operator = DBOperator(db=db,table='nyc_subway_stations')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC Subway Station data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('id',1))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-@app.get("/geometry/")
-
-def query_geom():
-    '''
-    <query_description>
-    '''
-    operator = DBOperator(db=db,table='geometries')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC geometric data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.custom_cmd("SELECT * FROM geometries LIMIT 1;", 'r')
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-@app.get("/metadata/")
-
-def query_metadata():
-    '''
-    <query_description>
-    '''
-    operator = DBOperator(db=db,table='spatial_ref_sys')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "Metadata for NYC dataset",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('srid',26918))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
+    """
+    FastAPI Home Endpoint.
+    """
+    return {
+        "Message": "Welcome to FastAPI with Kafka!",
+        "Retrieved": datetime.now(),
+    }
