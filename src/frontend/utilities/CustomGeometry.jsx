@@ -110,25 +110,25 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, shapeType, geometries,
     return (
         <div>
 
-                {geometries.map((geometry, index) => (
-                    <Entity key={index}>
-                        {geometry.shapeType === "polyline" && (
-                            <PolylineGraphics positions={geometry.positions} material={Cesium.Color.RED} width={3} />
-                        )}
-                        {geometry.shapeType === "polygon" && (
-                            <PolygonGraphics
-                                hierarchy={new Cesium.PolygonHierarchy(geometry.positions)}
-                                material={Cesium.Color.RED.withAlpha(0.5)}
-                            />
-                        )}
-                        {geometry.shapeType === "point" &&
-                            geometry.positions.map((pos, i) => (
-                                <Entity key={i} position={pos}>
-                                    <PointGraphics pixelSize={10} color={Cesium.Color.BLACK} />
-                                </Entity>
-                            ))}
-                    </Entity>
-                ))}
+            {geometries.map((geometry, index) => (
+                <Entity key={index}>
+                    {geometry.shapeType === "polyline" && (
+                        <PolylineGraphics positions={geometry.positions} material={Cesium.Color.RED} width={3} />
+                    )}
+                    {geometry.shapeType === "polygon" && (
+                        <PolygonGraphics
+                            hierarchy={new Cesium.PolygonHierarchy(geometry.positions)}
+                            material={Cesium.Color.RED.withAlpha(0.5)}
+                        />
+                    )}
+                    {geometry.shapeType === "point" &&
+                        geometry.positions.map((pos, i) => (
+                            <Entity key={i} position={pos}>
+                                <PointGraphics pixelSize={10} color={Cesium.Color.BLACK} />
+                            </Entity>
+                        ))}
+                </Entity>
+            ))}
 
         </div>
     );
