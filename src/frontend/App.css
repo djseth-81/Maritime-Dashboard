@@ -157,10 +157,23 @@ body,
   z-index: 1000;
 }
 
-.tools-panel,
-.filter-panel,
+.tools-panel {
+  width: 100px;
+}
+
+.filter-panel {
+  width: 200px;
+}
+
 .overlay-panel {
   width: 100px;
+}
+
+.vessel-subwindow,
+.status-subwindow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* Make sure entities are visible */

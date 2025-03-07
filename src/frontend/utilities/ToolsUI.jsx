@@ -5,6 +5,10 @@ import Filters from "./FiltersUI";
 const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
     const [openPanel, setOpenPanel] = useState(false);
     const [selectedShape, setSelectedShape] = useState("polygon");
+    const [showVesselTypes, setShowVesselTypes] = useState(false);
+    const [showOrigin, setShowOrigin] = useState(false);
+    const [showStatus, setShowStatus] = useState(false);
+    const [showOverlays, setShowOverlays] = useState(false);
 
     const handleShapeChange = (event) => {
         setSelectedShape(event.target.value);
@@ -83,10 +87,15 @@ const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
             {openPanel === "filters" && (
                 <div className="filter-panel">
                     <h3>Filters</h3>
-                    <button>Vessel types</button>
-                    <button>Flag</button>
-                    <button>Status</button>
+                    <button onClick={() => setShowVesselTypes(!showVesselTypes)}>Vessel types</button>
+                    <Filters showVesselTypes={showVesselTypes} />
+                    <button onClick={() => setShowOrigin(!showOrigin)}>Flag</button>
+                    <Filters showOrigin={showOrigin} />
+                    <button onClick={() => setShowStatus(!showStatus)}>Status</button>
+                    <Filters showStatus={showStatus} />
                     <button onClick={() => handleToggle(null)}>Close</button>
+                    <Filters onClose={() => handleToggle(null)} />
+
                 </div>
             )}
         </div>

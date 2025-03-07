@@ -1,15 +1,12 @@
 import { useState } from 'react';
 
-const FiltersUI = ({ onClose }) => {
-    const [showVesselTypes, setShowVesselTypes] = useState(false);
-    const [showOrigin, setShowOrigin] = useState(false);
-    const [showStatus, setShowStatus] = useState(false);
+const FiltersUI = ({ showVesselTypes, showOrigin, showStatus, onClose }) => {
     const [countryOfOrigin, setCountryOfOrigin] = useState('');
 
     // Implementation of checkbox change handler, requires DB implementation to be fully functional.
-    const handleCheckboxChange = (event) => { 
+    const handleCheckboxChange = (event) => {
         const { name, checked } = event.target;
-     };
+    };
 
     // Implementation of country of origin change handler, requires DB implementation to be fully functional.
     const handleCountryChange = (event) => {
@@ -18,16 +15,14 @@ const FiltersUI = ({ onClose }) => {
 
     return (
 
-        <div className="filter-panel">
-            <h3>Filters</h3>
-            <button onClick={onClose}>Close</button>
-            <button onClick={() => setShowVesselTypes(!showVesselTypes)}> Vessel Type </button>
-            <button onClick={() => setShowOrigin(!showOrigin)}> Country of Origin </button>
-            <button onClick={() => setShowStatus(!showStatus)}> Status </button>
+        <div className="filter-subwindow">
 
-            {showVesselTypes && ( 
-                <div className="subwindow">
-                    <h4>Vessel Types</h4>
+            {showVesselTypes && (
+                <div className='vessel-subwindow'>
+                    <label>
+                        <input type="checkbox" name="all" onChange={handleCheckboxChange} />
+                        Select/Deselect All
+                    </label>
                     <label>
                         <input type="checkbox" name="tanker" onChange={handleCheckboxChange} />
                         Tanker
@@ -40,29 +35,36 @@ const FiltersUI = ({ onClose }) => {
                         <input type="checkbox" name="fishing" onChange={handleCheckboxChange} />
                         Fishing
                     </label>
-                    {/* Add more vessel types, should align with DB values */}
-                </div>
-             )}
-
-             {showOrigin && ( 
-                <div className="subwindow">
-                    <h4>Country of Origin</h4>
                     <label>
-                        <input 
-                            type="checkbox" 
-                            value={countryOfOrigin} 
-                            onChange={handleCountryChange} 
-                            placeholder='Enter country of origin'    
+                        <input type="checkbox" name="leasure" onChange={handleCheckboxChange} />
+                        Leasure
+                    </label>
+                    <label>
+                        <input type="checkbox" name="other" onChange={handleCheckboxChange} />
+                        Other
+                    </label>
+                    {/* Add more vessel types, should align with DB values */}
+
+                </div>
+            )}
+
+            {showOrigin && (
+                <div className='origin-subwindow'>
+                    <label>
+                        <input
+                            type="text"
+                            value={countryOfOrigin}
+                            onChange={handleCountryChange}
+                            placeholder='Enter country of origin'
                         />
-                        
+
                     </label>
 
                 </div>
-              )}
+            )}
 
-            {showStatus && ( 
-                <div className="subwindow">
-                    <h4>Status</h4>
+            {showStatus && (
+                <div className='status-subwindow'>
                     <label>
                         <input type="checkbox" name="docked" onChange={handleCheckboxChange} />
                         Docked
@@ -77,7 +79,7 @@ const FiltersUI = ({ onClose }) => {
                     </label>
                     {/* Add more statuses */}
                 </div>
-              )}
+            )}
         </div>
     );
 };
