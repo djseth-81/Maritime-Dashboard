@@ -1,57 +1,67 @@
-from fastapi import FastAPI, BackgroundTasks
-from datetime import datetime
+from fastapi import FastAPI, HTTPException, Query
 from DBOperator import DBOperator
-from json import loads, dumps
-from kafka import KafkaProducer, KafkaConsumer
-import json
-import threading
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-producer = KafkaProducer(
-    bootstrap_servers='localhost:9092',
-    key_serializer=lambda k: k.encode('utf-8'),
-    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+# CORS Middleware Setup 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Requests from frontend
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"], 
 )
 
-@app.post("/publish/{topic}")
-def publish(topic: str, data: dict):
-    """
-    Send JSON data to a Kafka topic.
-    """
-    key = data.get("ship_id", "unknown_ship")
-    message = data.get("event", "No event provided")
+db = DBOperator(db='nyc', table='vessels')
 
-    producer.send(topic, key=key, value=message)
-    producer.flush()
-    return {"status": "message published successfully"}
+@app.get("/filters/", response_model=dict)
+async def get_filter_options():
+    try:
+        filter_options = db.fetch_filter_options()
+        if not filter_options:
+            raise HTTPException(status_code=404, detail="No filter options found.")
+        return filter_options
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching filter options: {str(e)}")
 
-def consume_messages():
+@app.get("/vessels/", response_model=list)
+async def get_filtered_vessels(
+    type: str = Query(None, description="Filter by vessel type"),
+    origin: str = Query(None, description="Filter by country of origin"),
+    status: str = Query(None, description="Filter by vessel status")
+):
     """
-    Kafka consumer that runs in the background.
+    Fetch vessel data filter options.
     """
-    consumer = KafkaConsumer(
-        'maritime-events',
-        bootstrap_servers='localhost:9092',
-        auto_offset_reset='earliest',
-        enable_auto_commit=True,
-        key_deserializer=lambda k: k.decode('utf-8') if k else None,
-        value_deserializer=lambda v: json.loads(v.decode('utf-8'))
-    )
+    # Ignore empty filters
+    filters = {key: value for key, value in {
+        "type": type if type else None,
+        "origin": origin if origin else None,
+        "status": status if status else None
+    }.items() if value}
 
-    print("Kafka Consumer is listening for events...")
-    for message in consumer:
-        print(f"[Kafka] Received Event: {message.key} -> {message.value}")
+    try:
+        # Return all vessels if no filters are provided
+        filtered_vessels = db.fetch_filtered_vessels(filters) if filters else db.get_table()
 
-consumer_thread = threading.Thread(target=consume_messages, daemon=True)
-consumer_thread.start()
+        if not filtered_vessels:
+            return []  # Return an empty list  
+        return filtered_vessels
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching filtered vessels: {str(e)}")
 
-@app.get("/")
-def welcome():
-    """
-    FastAPI Home Endpoint.
-    """
-    return {
-        "Message": "Welcome to FastAPI with Kafka!",
-        "Retrieved": datetime.now(),
-    }
+
+@app.post("/vessels/add/")
+async def add_vessel(data: dict):
+    required_fields = ["id", "name", "type", "country_of_origin", "status", "latitude", "longitude"]
+
+    if not all(field in data for field in required_fields):
+        raise HTTPException(status_code=400, detail=f"Missing required fields. Required fields are: {required_fields}")
+
+    try:
+        db.add(data)
+        db.commit()
+        return {"status": "success", "message": "Vessel added successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error adding vessel: {str(e)}")

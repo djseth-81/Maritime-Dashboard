@@ -1,55 +1,42 @@
-/* 
-
-This is Sean's attempt at API fetching for filtering types.
-Remove or replace this file with the actual API fetching code if found necessary.
-
-*/
-
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
 const useFetchFilters = (apiEndpoint) => {
-    const [vessels, setVessels] = useState([]);
     const [filterOptions, setFilterOptions] = useState({
         types: [],
         origins: [],
         statuses: []
     });
-    
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const source = axios.CancelToken.source();
+        let isMounted = true; 
         setLoading(true);
-        axios.get(apiEndpoint, { cancelToken: source.token })
-            .then((response) => {
-                const data = response.data;
-                setVessels(data);
 
-                const types = [...new Set(data.map(vessel => vessel.type))];
-                const origins = [...new Set(data.map(vessel => vessel.origin))];
-                const statuses = [...new Set(data.map(vessel => vessel.status))];
-                setFilterOptions({ types, origins, statuses });
-                
+        axios.get(apiEndpoint)
+            .then((response) => {
+                if (isMounted) {
+                    const data = response.data;
+                    setFilterOptions(data);
+                }
             })
             .catch((error) => {
-                if (axios.isCancel(error)) {
-                    console.log('Request canceled', error.message);
-                } else {
+                if (isMounted) {
                     setError(`Error fetching vessel data: ${error.message}`);
                 }
             })
             .finally(() => {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             });
 
         return () => {
-            source.cancel('Operation canceled by the user.');
+            isMounted = false;
         };
     }, [apiEndpoint]);
 
-    return { vessels, filterOptions, loading, error };
+    return { filterOptions, loading, error };
 };
 
 export default useFetchFilters;

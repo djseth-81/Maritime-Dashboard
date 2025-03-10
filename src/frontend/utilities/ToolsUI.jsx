@@ -3,13 +3,9 @@ import Overlays from "./OverlaysUI";
 import FiltersUI from "./filters/FiltersUI";
 import useFetchFilters from "./filters/Filters";
 
-const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape, apiEndpoint }) => {
+const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape, apiEndpoint, onFilterApply }) => {
     const [openPanel, setOpenPanel] = useState(false);
     const [selectedShape, setSelectedShape] = useState("polygon");
-    const [showVesselTypes, setShowVesselTypes] = useState(false);
-    const [showOrigin, setShowOrigin] = useState(false);
-    const [showStatus, setShowStatus] = useState(false);
-    // -> add overlay toggles
     const { loading, error } = useFetchFilters(apiEndpoint);
 
     const handleShapeChange = (event) => {
@@ -92,14 +88,10 @@ const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape, apiEndpoint 
                     {loading && <div>Loading...</div>}
                     {error && <div>{error}</div>}
                     {!loading && !error && (
-                        <>
-                            <button onClick={() => setShowVesselTypes(!showVesselTypes)}>Vessel types</button>
-                            <FiltersUI apiEndpoint={apiEndpoint} showVesselTypes={showVesselTypes} />
-                            <button onClick={() => setShowOrigin(!showOrigin)}>Flag</button>
-                            <FiltersUI apiEndpoint={apiEndpoint} showOrigin={showOrigin} />
-                            <button onClick={() => setShowStatus(!showStatus)}>Status</button>
-                            <FiltersUI apiEndpoint={apiEndpoint} showStatus={showStatus} />
-                        </>
+                        <FiltersUI
+                            apiEndpoint={apiEndpoint}
+                            onFilterApply={onFilterApply}
+                        />
                     )}
                     <button onClick={() => handleToggle(null)}>Close</button>
                 </div>

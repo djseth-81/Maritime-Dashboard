@@ -1,22 +1,24 @@
 import { useState } from 'react';
 import useFetchFilters from './Filters';
 
-const FiltersUI = ({ apiEndpoint }) => {
-    const { vessels, filterOptions, loading, error } = useFetchFilters(apiEndpoint);
-    const [countryOfOrigin, setCountryOfOrigin] = useState('');
+const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
+    const { filterOptions, loading, error } = useFetchFilters(apiEndpoint);
+    const [selectedFilters, setSelectedFilters] = useState({
+        type: "",
+        origin: "",
+        status: ""
+    });
 
-    const handleVesselCheckboxChange = (event) => {
-        const { name, checked } = event.target;
-        // Handle vessel checkbox change
+    const handleFilterChange = (event) => {
+        const { name, value } = event.target;
+        setSelectedFilters((prev) => ({
+            ...prev,
+            [name]: value
+        }));
     };
 
-    const handleCountryChange = (event) => {
-        setCountryOfOrigin(event.target.value);
-    };
-
-    const handleStatusCheckboxChange = (event) => {
-        const { name, checked } = event.target;
-        // Handle status checkbox change
+    const handleApplyFilters = () => {
+        onFilterApply(selectedFilters);
     };
 
     if (loading) return <div>Loading...</div>;
@@ -24,44 +26,37 @@ const FiltersUI = ({ apiEndpoint }) => {
 
     return (
         <div className="filter-subwindow">
-            {filterOptions.types.length > 0 && (
-                <div className='vessel-subwindow'>
-                    <label>
-                        <input type="checkbox" name="all" onChange={handleVesselCheckboxChange} />
-                        Select/Deselect All
-                    </label>
+            <div className='vessel-subwindow'>
+                <label>Vessel Type:</label>
+                <select name="type" onChange={handleFilterChange}>
+                    <option value="">All</option>
                     {filterOptions.types.map((type) => (
-                        <label key={type}>
-                            <input type="checkbox" name={type} onChange={handleVesselCheckboxChange} />
-                            {type}
-                        </label>
+                        <option key={type} value={type}>{type}</option>
                     ))}
-                </div>
-            )}
+                </select>
+            </div>
 
-            {filterOptions.origins.length > 0 && (
-                <div className='origin-subwindow'>
-                    <label>
-                        <input
-                            type="text"
-                            value={countryOfOrigin}
-                            onChange={handleCountryChange}
-                            placeholder='Enter country of origin'
-                        />
-                    </label>
-                </div>
-            )}
+            <div className='origin-subwindow'>
+                <label>Country of Origin:</label>
+                <select name="origin" onChange={handleFilterChange}>
+                    <option value="">All</option>
+                    {filterOptions.origins.map((origin) => (
+                        <option key={origin} value={origin}>{origin}</option>
+                    ))}
+                </select>
+            </div>
 
-            {filterOptions.statuses.length > 0 && (
-                <div className='status-subwindow'>
+            <div className='status-subwindow'>
+                <label>Status:</label>
+                <select name="status" onChange={handleFilterChange}>
+                    <option value="">All</option>
                     {filterOptions.statuses.map((status) => (
-                        <label key={status}>
-                            <input type="checkbox" name={status} onChange={handleStatusCheckboxChange} />
-                            {status}
-                        </label>
+                        <option key={status} value={status}>{status}</option>
                     ))}
-                </div>
-            )}
+                </select>
+            </div>
+
+            <button onClick={handleApplyFilters}>Apply Filters</button>
         </div>
     );
 };
