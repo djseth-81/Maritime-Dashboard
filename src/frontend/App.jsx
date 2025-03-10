@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useReducer } from "react";
+import { useState, useRef, useEffect } from "react";
 import CustomGeometry from "./utilities/CustomGeometry";
 import ToolsUI from "./utilities/ToolsUI";
 import ZoneSettingsUI from "./utilities/ZoneSettingsUI";
@@ -29,8 +29,11 @@ function App() {
   const [showOverlays, setShowOverlays] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [viewerReady, setViewerReady] = useState(false);
+  const [showWeather, setShowWeather] = useState(false);
 
   const viewerRef = useRef(null);
+  const apiEndpoint = "api-endpoint-here"; // Replace with actual API endpoint
+
   // Add an effect to handle scene mode changes
   useEffect(() => {
     if (viewerRef.current && viewerRef.current.cesiumElement) {
@@ -60,7 +63,7 @@ function App() {
     }
   }, [viewerRef.current]);
 
-  // Handler for ToolUI 'Toggle ZOne
+  // Handler for ToolUI 'Toggle Zoning'
   const handleToggleDrawing = () => {
     console.log("Toggled Zoning:", !isDrawing);
     setIsDrawing((prev) => {
@@ -75,7 +78,7 @@ function App() {
         pauseOnHover: false,
         draggable: false,
       });
-      return newState
+      return newState;
     });
   };
 
@@ -192,17 +195,15 @@ function App() {
         onSelectShape={handleSelectShape}
         onToggleOverlays={handleToggleOverlays}
         onToggleFilters={handleToggleFilters}
+        apiEndpoint={apiEndpoint} // Pass the apiEndpoint to ToolsUI
       />
 
       {showContextMenu && selectedGeometry && (
-
         <div
           className="context-menu"
           style={{
-
             top: contextMenuPosition.y,
             left: contextMenuPosition.x,
-
           }}
         >
           <button onClick={() => setShowSettings(true)}>Settings</button>
@@ -214,7 +215,6 @@ function App() {
       )}
 
       {showSettings && selectedGeometry && (
-
         <ZoneSettingsUI
           zoneName={selectedGeometry.name || "Untitled Zone"}
           onRename={handleRename}
@@ -222,7 +222,6 @@ function App() {
           onSave={handleSave}
         />
       )}
-
     </div>
   );
 }

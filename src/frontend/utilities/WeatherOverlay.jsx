@@ -16,33 +16,10 @@ import { useEffect, useState } from "react";
 
 */
 const WeatherOverlay = ({ showWeather }) => {
-    // const { viewer } = useCesium;
-    // const [weatherLayer, setWeatherLayer] = useState(null);
+
 
     useEffect(() => {
-        // if (viewer && showWeather) {
 
-        //     const layer = viewer.imageryLayers.addImageryProvider(
-        //         new WebMapServiceImageryProvider({
-        //             // Figure out the API URL, and if needed, where the Key goes
-        //             url: "",
-        //             layers: "1",
-        //             parameters: {
-        //                 transparent: true,
-        //                 format: "image/png",
-        //             },
-        //         })
-        //     );
-        //     console.log("Weather layer added");
-        //     setWeatherLayer(layer);
-
-        //     return () => {
-        //         if (layer) {
-        //             viewer.imageryLayers.remove(layer);
-        //             console.log("Weather layer removed");
-        //         }
-        //     };
-        // }
     }, []);
 
     return null;
