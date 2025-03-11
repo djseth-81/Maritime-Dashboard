@@ -4,52 +4,143 @@ import sys
 import requests
 from pprint import pprint
 from json import loads, dumps
+from DBOperator import DBOperator
+
+"""
+// TODO
+- ADD stations to sources table
+    - Make sure DBOperator.add() is functioning as intended!
+    - iterate through ALL of data['stations']
+"""
 
 coop_stations_url = "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json"
 
-# Meteorology
-air_temp_url = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=8594900&product=air_temperature&datum=STND&time_zone=gmt&units=english&format=json"
+r = requests.get(coop_stations_url)
+print(f"STATUS: {r.status_code}")
+data = r.json()
 
-wind_url= "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=8594900&product=wind&datum=STND&time_zone=gmt&units=english&format=json"
+# pprint(data.keys())
+# Metadata
+count = data['count']
+units = data['units']
+
+# for station in data['stations']:
+#     pprint(station['name'])
+
+station = data['stations']
+for station in data['stations']:
+    # build apis array because I'm way too lazy
+    apis = []
+    for product in "air_temperature wind water_temperature air_pressure humidity conductivity visibility salinity water_level hourly_height high_low daily_mean monthly_mean one_minute_water_level predictions air_gap currents currents_predictions ofs_water_level".split():
+        url = f"https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station={station['id']}&product={product}&datum=STND&time_zone=gmt&units=english&format=json"
+        print(product)
+        apis.append(url)
+
+    apis.append(station['datums']['self']) # append with datums
+    apis.append(station['notices']['self']) # start array with notices
+
+    # Parsing CO-OP station data of last entry
+    # print(f"Name: {station['name']}")
+    # print(f"ID: {station['id']}")
+    # print(f"State: {station['state']}")
+    # print(f"\"shefcode\": {station['shefcode']}")
+    # print(f"\"portscode\": {station['portscode']}")
+    # print(f"Type: NOAA-{station['affiliations']}")
+    # print(f"Timezone: {station['timezone']} (GMT {station['timezonecorr']})")
+    # print(f"Lat,Lon: {station['lat']},{station['lng']}")
+    # print(f"Disclaimers: {station['disclaimers']['self']}")
+    # print(f"Notices: {station['notices']['self']}")
+    # print(f"Datums: {station['datums']['self']}")
+    # print(f"Forecast: {station['forecast']}")
+    # print()
+
+    entity = {
+        "id": station['id'],
+        "name": station['name'],
+        "type": f"NOAA-{station['affiliations']}",
+        "lat": station['lat'],
+        "lon": station['lng'],
+        "APIS": apis,
+        "region": "US",
+        "timezone": f"{station['timezone']} (GMT {station['timezonecorr']})",
+        "geom": "NULL"
+    }
+
+    pprint(entity)
+    print(f"Adding entity to db...")
+    # sources = DBOperator(db="capstone",table="sources")
+    # sources.add(entity)
+    input()
+
+"""
+API Key:
+--------------------------------
+0. air temp
+1. wind
+2. water temp
+3. air pressure
+4. humidity
+5. conductivity
+6. visibility
+7. salinity
+8. water lvl
+9. hr_height
+10. hi/low
+11. daily mean
+12. montly mean
+13. one min lvl
+14. prediction water lvl
+15. air gap (bridge and water lvl)
+16. currents
+17. currents prediciton
+18. ofs water lvl
+19. datums/disclaimers
+20. notices
+"""
+
+"""
+^^^ ABOVE IS WHAT IS IMPORTANT
+vvv BELOW IS WHAT I WANNA RUN TO PULL DATA
+"""
+def query(url: str) -> dict:
+    response = requests.get(url)
+    print(f"STATUS: {response.status_code}")
+    pprint(response.json())
+    return response.json()
+
+# Meteorology
+a_temp = query(apis[0])
+
+wind = query(apis[1])
+
+air_pressure = query(apis[3])
+
+humidity = query(apis[4])
+
+visibility = query(apis[6])
 
 # Oceanography
-water_temp_url = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=8594900&product=water_temperature&datum=STND&time_zone=gmt&units=english&format=json"
+w_temp = query(apis[2])
 
-wdc_metadata_url = "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/8594900.json?expand=details,sensors,floodlevels,datums,harcon,tidepredoffsets,products,disclaimers,notices&units=english"
+water_lvl = query(apis[8])
 
-# coop_stations = requests.get(coop_stations_url)
-# print(f"STATUS: {coop_stations.status_code}")
-# pprint(coop_stations.json()['stations'][0])
+# daily_lvl_mean = query(apis[11])
 
-# wdc_metadata = requests.get(wdc_metadata_url)
-# print(f"STATUS: {wdc_metadata.status_code}")
-# pprint(wdc_metadata.json())
+monthly_lvl_mean = query(apis[12])
+
+air_gap = query(apis[15])
+
+currents = query(apis[16])
+
+currents_predict = query(apis[16])
+
+# Datums
+datums = query(apis[19])
+
+# Notice reports
+notices = query(apis[20])
 
 """
 NOTES
-- Can't think of a way to determine what met/ocean data can be retrieved with datagetter
-    - short of just trying each one, that is
-        - Generate string of product data to collect off of STATUS
-        - This might just have to be the move then lol
-            - worried I might get flagged for it lol
 - Extrapolate to entire NOAA MET zone station is located in?
-
-// TODO
-1. Get stations and their details
-2. Iterate and build collectable datums from stations
-3. Get historical datums from mdapi/*/{stationID}/datums.json
-    - For further historical details
 """
-
-air_temp = requests.get(air_temp_url)
-print(f"STATUS: {air_temp.status_code}")
-pprint(air_temp.json())
-
-water_temp = requests.get(water_temp_url)
-print(f"STATUS: {water_temp.status_code}")
-pprint(water_temp.json())
-
-wind = requests.get(wind_url)
-print(f"STATUS: {wind.status_code}")
-pprint(wind.json())
-

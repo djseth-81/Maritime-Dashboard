@@ -23,14 +23,15 @@ NOAA weather.gov API
     1. Get point: https//api.weather.gov/point/{lat},{lon}
     2. Get forecast with response.properties.forecast
 
-!!! NEEDS A POINT !!! 
+!!! NEEDS A POINT !!!
     - Could use existing lat/lon attrs from ships, COOP stations
     - OR could do some PostGIS calcs on zones to find central point and return forecast there?
 
     - "https://api.weather.gov/gridpoints/OAX/90,48/forecast/hourly"
-        WFO code _________________________|   |   |
+        WFO code __________________________|  |   |
         lat __________________________________|   |
         lon ______________________________________|
+
     - REPORTS GEOMETRY!
     - How do I correlate wfo to coordinates???
         - pass vessel/point/port/station coordinates?

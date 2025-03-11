@@ -27,6 +27,7 @@ class DBOperator():
     #     - Package as JSON
 
     # - PostGIS related stuff
+    #     - SRID = 4326 !!!
     #     - Take advantage of geometric functions in PostGIS (See postGIS_notes.txt)
     #         - There's also the geography/projection stuff, definitely gonna use those
     #     - Retrieved data should already be primed for geospatial/projection
@@ -50,6 +51,9 @@ class DBOperator():
         Add entry
         Expects a dict = {key: value} to enter as attribute and value
         """
+        # FIXME: Does NOT like a dictionary carrying only 1 value
+        # FIXME: DOES NOT LIKE BEING PASSED A GEOMETRY
+
         # TODO: Handlel multiple entities for bulk additions
         # I might want to track relations, and organize entity values based off of it.
         # An entity might be added by a source, but then the entity will be immediately updated. It might be worth tracking what the values are so everything is up to date as fast as possible
@@ -60,17 +64,28 @@ class DBOperator():
         
         # Wonder if this can be restricted to expect all values to be added to DB
         #   i.e. JSON is provided, with all values, and data that is unkown/un-needed is given default or NULL value
+        # entity['geom'] = f'ST_GeomFromText("{entity["geom"]}", 1234)'
+        pprint(entity)
+        input()
+
+        geom = entity.pop('geom')
+        print(f"Geometry: {geom}")
+
         attrs = ','.join(entity.keys())
+        print(len(entity.keys()))
         pprint("attributes:")
         pprint(attrs)
         print()
+        input()
 
         values = tuple(value for value in entity.values())
+        print(len(values))
         pprint("values:")
         pprint(values)
+        input()
 
-        cmd = f"INSERT INTO {self.table} ({attrs}) VALUES {values}"
-        self.__cursor.execute(cmd)
+        # cmd = f"INSERT INTO {self.table} ({attrs}) VALUES {values}"
+        self.__cursor.execute(f"INSERT INTO {self.table} ({attrs}) VALUES {values}")
 
     def modify(self, entity: tuple, data: dict) -> None:
         """
@@ -253,33 +268,38 @@ class DBOperator():
 
 if __name__ == "__main__":
     # db = DBOperator(db=input("Enter db: "),table=input("Enter table: "))
-    db = DBOperator(db='nyc', table='fruits')
+    vessels = DBOperator(db='capstone', table='vessels')
 
     # pprint()
     # db.get_tables()
     # pprint()
+    entity = {
+        'callsign': "",
+        'cargo_weight': 0.0,
+        'current_status': "anchored",
+        'dist_from_port': 311.75,
+        'dist_from_shore': 232.99,
+        'draft': 0.0,
+        'flag': "OTHER",
+        'geom': "Point(100 100)", # FIXME: add() HATES THIS i guess
+        'heading': 230.5,
+        'lat': 14.8656,
+        'length': 0.0,
+        'lon': -26.8537,
+        'mmsi': 12639560807591,
+        'speed': 8.2,
+        'src': "GFW-dalhousie_longliner",
+        'timestamp': "2012-01-21T03:01:44",
+        'type': "FISHING",
+        'vessel_name': "",
+        'width': 0.0
+    }
 
-    pprint("Table Attributes:")
-    pprint(db.get_attributes())
-    print()
 
-    pprint("Number of entries in table:")
-    pprint(db.get_count())
-    print()
-
-    pprint("privileges on table:")
-    pprint(db.get_privileges())
-    print()
-
-    pprint("First entry from table:")
-    pprint(db.query(('id',1)))
-    print()
-
-    # pprint("Adding value to table...")
-    # db.add({'name':'dragonfruit', 'count': 1})
-    # db.commit()
-    # pprint("New value:")
-    # pprint(db.get_table()) # Table should have new entity
+    vessels.add(entity)
+    vessels.commit()
+    pprint("New value:")
+    pprint(vessels.get_table()) # Table should have new entity
 
     # pprint("Modifying existing value...")
     # db.modify(('id', 2), {'name':'apple'})
