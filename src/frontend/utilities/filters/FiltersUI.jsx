@@ -56,11 +56,12 @@ const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
         <div className="filter-subwindow">
             <div className='vessel-subwindow'>
                 <label>Vessel Type:</label>
-                {filterOptions.types.map((type) => (
+                {filterOptions?.types?.map((type) => (
                     <label key={type}>
                         <input
                             type="checkbox"
                             value={type}
+                            checked={selectedFilters.types.includes(type)}
                             onChange={handleTypeChange}
                         />
                         {type}
@@ -80,11 +81,12 @@ const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
 
             <div className='status-subwindow'>
                 <label>Status:</label>
-                {filterOptions.statuses.map((status) => (
+                {filterOptions?.statuses?.map((status) => (
                     <label key={status}>
                         <input
                             type="checkbox"
                             value={status}
+                            checked={selectedFilters.statuses.includes(status)}
                             onChange={handleStatusChange}
                         />
                         {status}
