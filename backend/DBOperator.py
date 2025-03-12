@@ -51,10 +51,7 @@ class DBOperator():
         Add entry
         Expects a dict = {key: value} to enter as attribute and value
         """
-        # FIXME: Does NOT like a dictionary carrying only 1 value
-        # FIXME: DOES NOT LIKE BEING PASSED A GEOMETRY
-
-        # TODO: Handlel multiple entities for bulk additions
+        # TODO: Handle multiple entities for bulk additions
         # I might want to track relations, and organize entity values based off of it.
         # An entity might be added by a source, but then the entity will be immediately updated. It might be worth tracking what the values are so everything is up to date as fast as possible
         #       - Linked List? RoundRobin Queue? Hash table?
@@ -64,28 +61,59 @@ class DBOperator():
         
         # Wonder if this can be restricted to expect all values to be added to DB
         #   i.e. JSON is provided, with all values, and data that is unkown/un-needed is given default or NULL value
-        # entity['geom'] = f'ST_GeomFromText("{entity["geom"]}", 1234)'
-        pprint(entity)
-        input()
 
-        geom = entity.pop('geom')
-        print(f"Geometry: {geom}")
+        # pprint(entity)
+        # input()
 
+        geom = None
+        # If Geometry element exists, pop it to be added at the end
+        if 'geom' in entity.keys():
+            geom = entity.pop('geom')
+            # print(f"Geometry: {geom}")
+
+        # Format keys as attributes for INSERT INTO cmd
         attrs = ','.join(entity.keys())
-        print(len(entity.keys()))
-        pprint("attributes:")
-        pprint(attrs)
-        print()
-        input()
+        if geom != None: # If geometry was popped, append geom key to attrs
+            attrs += ',geom'
 
-        values = tuple(value for value in entity.values())
-        print(len(values))
-        pprint("values:")
-        pprint(values)
-        input()
+        # ### DEBUG: Verifying Attributes
+        # print(f"attributes ({len(attrs.split(','))}):")
+        # pprint(attrs)
+        # input()
 
-        # cmd = f"INSERT INTO {self.table} ({attrs}) VALUES {values}"
-        self.__cursor.execute(f"INSERT INTO {self.table} ({attrs}) VALUES {values}")
+        # Define values array for pruning LATER...
+        values = [value for value in entity.values()]
+
+        # Pre-formatting SQL command. 
+        #   Add table, formatted attributes string, and the number of %s to add for values
+        cmd = f'''
+            INSERT INTO {self.table} ({attrs})
+            VALUES ({'%s,' * (len(values))}'''
+
+        if geom != None: # if geom was popped, append value to values array
+            values += [geom]
+
+        # NOW we convert values into tuples
+        values = tuple(values)
+
+        # ### DEBUG: Checking that values were properly assigned
+        # print()
+        # pprint(f"values({len(values)}):")
+        # pprint(values)
+        # input()
+
+        # If geom was popped, finish off cmd string formatting append 'ST_GeomFromText()'
+        #   Otherwise, just add a ')'
+        if geom != None:
+            cmd += 'ST_GeographyFromText(%s))'
+        else:
+            cmd = cmd[:-1] + ')'
+
+        ### DEBUG: Verifying finalized cmd string
+        # input(cmd)
+
+        self.__cursor.execute(cmd,(values))
+        print("### DBOperator: Entry added to commands queue")
 
     def modify(self, entity: tuple, data: dict) -> None:
         """
@@ -144,13 +172,13 @@ class DBOperator():
     def commit(self) -> tuple:
         # NOTE: Currently just want this to be manually executed rn, so changes are user-aware
         self.__db.commit()
-        pprint("### DBOperator: Commands submitted.")
+        print("### DBOperator: Commands submitted.")
         return ("message", "Committed.")
 
     # rollback command
     def rollback(self) -> tuple:
         self.__db.rollback()
-        pprint("### DBOperator: Dumped cursor commands.")
+        print("### DBOperator: Dumped cursor commands.")
         return ("message", "Rollback executed.")
 
     def close(self) -> tuple:
@@ -274,32 +302,34 @@ if __name__ == "__main__":
     # db.get_tables()
     # pprint()
     entity = {
-        'callsign': "",
-        'cargo_weight': 0.0,
-        'current_status': "anchored",
-        'dist_from_port': 311.75,
-        'dist_from_shore': 232.99,
-        'draft': 0.0,
-        'flag': "OTHER",
-        'geom': "Point(100 100)", # FIXME: add() HATES THIS i guess
-        'heading': 230.5,
-        'lat': 14.8656,
-        'length': 0.0,
-        'lon': -26.8537,
-        'mmsi': 12639560807591,
-        'speed': 8.2,
-        'src': "GFW-dalhousie_longliner",
-        'timestamp': "2012-01-21T03:01:44",
-        'type': "FISHING",
-        'vessel_name': "",
-        'width': 0.0
+        'callsign': 'WDN2333',
+        'cargo_weight': 65.0,
+        'current_status': '0',
+        'dist_from_port': 0.0,
+        'dist_from_shore': 0.0,
+        'draft': 2.8,
+        'flag': 'USA',
+        'geom': 'Point(-91.0 30.15)',
+        'heading': 356.3,
+        'lat': 30.15,
+        'length': 137.0,
+        'lon': -91.0,
+        'mmsi': 368261120,
+        'speed': 7.6,
+        'src': 'MarineCadastre-AIS',
+        'timestamp': '2024-09-30T00:00:01',
+        'type': 'PASSENGER',
+        'vessel_name': 'VIKING MISSISSIPPI',
+        'width': 23.0
     }
-
 
     vessels.add(entity)
     vessels.commit()
     pprint("New value:")
-    pprint(vessels.get_table()) # Table should have new entity
+    pprint(vessels.query()) # Table should have new entity
+    input()
+    pprint(vessels.delete()) # Entity should now be gone
+    vessels.close()
 
     # pprint("Modifying existing value...")
     # db.modify(('id', 2), {'name':'apple'})
