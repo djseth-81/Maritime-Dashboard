@@ -1,14 +1,13 @@
-from fastapi import FastAPI
+from json import loads, dumps
 from datetime import datetime
 from DBOperator import DBOperator
-from json import loads, dumps
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 
 app = FastAPI()
 
-db = 'nyc'
-
 @app.get("/")
-def welcome():
+async def welcome():
     '''
     Example First Fast API Example
     '''
@@ -17,7 +16,7 @@ def welcome():
            }
 
 @app.get("/weather/")
-def weather():
+async def weather():
     '''
     Weather query
     '''
@@ -26,7 +25,7 @@ def weather():
            }
 
 @app.get("/users/")
-def users():
+async def users():
     '''
     Users query
     '''
@@ -34,141 +33,76 @@ def users():
             "Retrieved": datetime.now(),
            }
 
-@app.get("/streets/")
-def query_streets():
+@app.get("/vessels/")
+async def query_vessels():
     '''
     <query_description>
     '''
+    ### Attempt DB connection
+    try:
+        operator = DBOperator(table='vessels')
+        print("### Fast Server: Connected to vessels table")
+    except Exception:
+        print("### Fast Server: Unable connect to Vessels table")
+        return JSONResponse(
+            status_code=500,
+            content={"Error": "Unable to establish database connection"}
+        )
 
-    operator = DBOperator(db=db,table='nyc_streets')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC street data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('id',4))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-@app.get("/census/")
-def query_census():
-    '''
-    <query_description>
-    '''
-
-    operator = DBOperator(db=db,table='nyc_census_blocks')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC street data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('gid',1))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-@app.get("/homicides/")
-
-def query_homicides():
-    '''
-    <query_description>
-    '''
-    operator = DBOperator(db=db,table='nyc_homicides')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC street data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('gid',1))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-@app.get("/neighborhoods/")
-def query_neighborhoods():
-    '''
-    <query_description>
-    '''
-    operator = DBOperator(db=db,table='nyc_neighborhoods')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC Homicide data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('gid',1))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-@app.get("/subway_stations/")
-
-def query_subway_stations():
-    '''
-    <query_description>
-    '''
-    operator = DBOperator(db=db,table='nyc_subway_stations')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC Subway Station data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('id',1))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-@app.get("/geometry/")
-
-def query_geom():
-    '''
-    <query_description>
-    '''
-    operator = DBOperator(db=db,table='geometries')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC geometric data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.custom_cmd("SELECT * FROM geometries LIMIT 1;", 'r')
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
+    ### IF DB connection successful, attempt assembling payload
+    print("### Fast Server: Assembling Payload...")
+    try:
+        payload = {"Message": "grabbing a vessel...",
+                   "Retrieved": datetime.now(),
+                   "Privileges": operator.get_privileges(),
+                   "Total entities": operator.get_count(),
+                   "Table attribuets": operator.get_attributes(),
+                   "payload": operator.query(('mmsi',338457199))
+                   }
+        print("### Fast Server: Payload assembled.")
+        return payload
+    except:
+        print("### Fast Server: Error assembling payload.")
+        payload = JSONResponse(
+            status_code=400,
+            content={"Error": "Error assembling payload."}
+        )
+    finally:
+        operator.close() # Closes table instance
+        return payload
 
 @app.get("/metadata/")
-
-def query_metadata():
+async def query_metadata():
     '''
     <query_description>
     '''
-    operator = DBOperator(db=db,table='spatial_ref_sys')
+    ### Attempt DB connection
+    try:
+        operator = DBOperator(table='spatial_ref_sys')
+    except:
+        print("### Fast Server: Unable connect to spatial_ref_sys table")
+        return JSONResponse(
+            status_code=500,
+            content={"Error": "Unable to establish database connection"}
+        )
 
+    ### IF DB connection successful, attempt assembling payload
     print("### Server: Assembling Payload...")
-    payload = {"Message": "Metadata for NYC dataset",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('srid',26918))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
+    try:
+        payload = {"Message": "Metadata for Geometry",
+                   "Retrieved": datetime.now(),
+                   "Privileges": operator.get_privileges(),
+                   "Total entities": operator.get_count(),
+                   "Table attribuets": operator.get_attributes(),
+                   "payload": operator.query(('srid',4326)) # Spatial reference system, Global scope (https://spatialreference.org/ref/epsg/4326/)
+                   }
+        print("### Server: Payload assembled.")
+    except:
+        print("### Fast Server: Error assembling payload.")
+        payload = JSONResponse(
+            status_code=400,
+            content={"Error": "Error assembling payload."}
+        )
+    finally:
+        operator.close() # Closes table instance
+        return payload

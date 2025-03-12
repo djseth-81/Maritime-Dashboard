@@ -10,7 +10,7 @@ class DBOperator():
     with different geospatial DBs (https://peps.python.org/pep-0249/)
     - Enables things like threadsafety too???
 
-    DBOperator will implicitly connect to a 'demo' database unless specified
+    DBOperator will implicitly connect to 'capstone' database unless specified
     otherwise
     """
     # TODO:
@@ -35,7 +35,7 @@ class DBOperator():
     #         - refer to geospatial conversion/modify functions!
 
     def __init__(self, table: str, host='localhost', port='5432', user='',
-                 passwd='', schema='public', db='demo') -> None:
+                 passwd='', schema='public', db='capstone') -> None:
         self.table = table
         self.__host = host # Pretty sure this defines private var
         self.__port = port
