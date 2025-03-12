@@ -1,10 +1,12 @@
 import { useState } from "react";
 import Overlays from "./OverlaysUI";
-import Filters from "./FiltersUI";
+import FiltersUI from "./filters/FiltersUI";
+import useFetchFilters from "./filters/Filters";
 
-const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
+const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape, apiEndpoint, onFilterApply }) => {
     const [openPanel, setOpenPanel] = useState(false);
     const [selectedShape, setSelectedShape] = useState("polygon");
+    const { loading, error } = useFetchFilters(apiEndpoint);
 
     const handleShapeChange = (event) => {
         setSelectedShape(event.target.value);
@@ -83,9 +85,14 @@ const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
             {openPanel === "filters" && (
                 <div className="filter-panel">
                     <h3>Filters</h3>
-                    <button>Vessel types</button>
-                    <button>Flag</button>
-                    <button>Status</button>
+                    {loading && <div>Loading...</div>}
+                    {error && <div>{error}</div>}
+                    {!loading && !error && (
+                        <FiltersUI
+                            apiEndpoint={apiEndpoint}
+                            onFilterApply={onFilterApply}
+                        />
+                    )}
                     <button onClick={() => handleToggle(null)}>Close</button>
                 </div>
             )}
