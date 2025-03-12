@@ -31,92 +31,52 @@ function App() {
   // Fetch vessels from API
   const fetchVessels = async (filters = {}) => {
     try {
-      const response = await axios.get(apiEndpoint, { params: filters });
+        const queryParams = {};
 
-      if (response.data.length === 0) {
-        toast.info("No vessels found matching your filters.", {
-          position: "bottom-right",
-          autoClose: 3000,
-          hideProgressBar: true,
-          closeOnClick: true,
-          pauseOnHover: false,
-          draggable: false,
-        });
-        setVessels([]);  // Clear vessels
-        return;
-      }
+        if (filters.types && filters.types.length > 0) {
+            queryParams.type = filters.types.join(",");
+        }
 
-      console.log("Fetched Vessels (Raw Data):", response.data);
+        if (filters.origin) {
+            queryParams.origin = filters.origin;
+        }
 
-      const transformedVessels = response.data.map((vessel) =>
-        Array.isArray(vessel)
-          ? {
-            id: vessel[0],
-            name: vessel[1],
-            type: vessel[2],
-            country_of_origin: vessel[3],
-            status: vessel[4],
-            latitude: vessel[5],
-            longitude: vessel[6]
-          }
-          : vessel
-      );
+        if (filters.statuses && filters.statuses.length > 0) {
+            queryParams.status = filters.statuses.join(",");
+        }
 
-      console.log("Transformed Vessels:", transformedVessels);
-      setVessels(transformedVessels);
+        const response = await axios.get(apiEndpoint, { params: queryParams });
+
+        if (response.data.length === 0) {
+            toast.info("No vessels found matching your filters.");
+            setVessels([]);
+            return;
+        }
+
+        const transformedVessels = response.data.map((vessel) =>
+            Array.isArray(vessel)
+                ? {
+                    id: vessel[0],
+                    name: vessel[1],
+                    type: vessel[2],
+                    country_of_origin: vessel[3],
+                    status: vessel[4],
+                    latitude: vessel[5],
+                    longitude: vessel[6]
+                }
+                : vessel
+        );
+
+        setVessels(transformedVessels);
 
     } catch (error) {
-      if (error.response?.status === 500) {
-        toast.error("Server error occurred. Please try again later.", {
-          position: "bottom-right",
-          autoClose: 3000,
-          hideProgressBar: true,
-          closeOnClick: true,
-          pauseOnHover: false,
-          draggable: false,
-        });
-      } else {
-        toast.info("No vessels found matching your filters.", {
-          position: "bottom-right",
-          autoClose: 3000,
-          hideProgressBar: true,
-          closeOnClick: true,
-          pauseOnHover: false,
-          draggable: false,
-        });
-      }
-
-      console.error("Error fetching vessels:", error.message);
-      setVessels([]);  // Clear vessels
+        console.error("Error fetching vessels:", error.message);
+        toast.error("Failed to load vessels.");
+        setVessels([]);
     }
   };
 
-  useEffect(() => {
-    fetchVessels();  // Fetch all vessels
-
-    if (viewerRef.current && viewerRef.current.cesiumElement) {
-      const viewer = viewerRef.current.cesiumElement;
-      setViewerReady(true);  // Set viewerReady to true
-      // Create a scene mode change event handler
-      const sceneModeChangeHandler = () => {
-        if (viewer.selectedEntity) {
-          const currentEntity = viewer.selectedEntity;
-          viewer.selectedEntity = undefined;
-          setTimeout(() => {
-            viewer.selectedEntity = currentEntity;
-          }, 100);
-        }
-      };
-
-      viewer.scene.morphComplete.addEventListener(sceneModeChangeHandler);
-
-      return () => {
-        if (viewer && viewer.scene && !viewer.isDestroyed()) {
-          viewer.scene.morphComplete.removeEventListener(sceneModeChangeHandler);
-        }
-      };
-    }
-  }, [viewerRef.current]);
+  useEffect(() => { fetchVessels(); }, []);
 
   // Handler for ToolUI 'Toggle Zoning'
   const handleToggleDrawing = () => {
@@ -142,10 +102,7 @@ function App() {
     console.log("Overlays toggled:", !showOverlays);
   };
 
-  const handleToggleFilters = () => {
-    setShowFilters((prev) => !prev);
-    console.log("Filters toggled: ", !showFilters);
-  };
+  const handleToggleFilters = () => setShowFilters((prev) => !prev);
 
   // Undos previous point placed, will undo until the stack is empty
   const handleUndo = () => {
@@ -201,9 +158,7 @@ function App() {
     setShowSettings(false);
   };
   
-  const handleFilterApply = async (filters) => {
-    await fetchVessels(filters);
-  };
+  const handleFilterApply = async (filters) => await fetchVessels(filters);
 
   // Debug
   console.log("Show Context Menu:", showContextMenu);
@@ -214,6 +169,7 @@ function App() {
   return (
     <div className="cesium-viewer">
       <ToastContainer />
+
       <Viewer
         ref={viewerRef}
         full
@@ -252,13 +208,14 @@ function App() {
       </Viewer>
 
       <ToolsUI
+        onToggleFilters={handleToggleFilters}
+        apiEndpoint="http://localhost:5000/filters/"
+        onFilterApply={handleFilterApply}
         onToggleDrawing={handleToggleDrawing}
         onUndo={handleUndo}
         onClear={handleClear}
         onSelectShape={handleSelectShape}
         onToggleOverlays={handleToggleOverlays}
-        onToggleFilters={handleToggleFilters}
-        onFilterApply={handleFilterApply}
       />
 
       {showContextMenu && selectedGeometry && (
