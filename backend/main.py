@@ -1,10 +1,21 @@
+import base64
+from Crypto.Cipher import AES
 from json import loads, dumps
 from datetime import datetime
 from DBOperator import DBOperator
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # React app origin
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],   # Allow all headers
+)
 
 @app.get("/")
 async def welcome():
@@ -32,6 +43,24 @@ async def users():
     return {"Message": "Getting users!",
             "Retrieved": datetime.now(),
            }
+
+def decrypt_password(encrypted_password, secret_key):
+    encrypted_data = base64.b64decode(encrypted_password)
+    cipher = AES.new(secret_key.encode('utf-8'), AES.MODE_ECB)
+    decrypted_bytes = cipher.decrypt(encrypted_data)
+    return decrypted_bytes.strip().decode('utf-8')
+
+@app.post("/addUser")
+async def add_user(formData: dict):
+    print(formData)
+    return formData
+
+@app.post("/login")
+async def login(formData: dict):
+    print(formData)
+    # email = formData["email"]
+    # decrypted_password = decrypt_password(formData["password"], secret_key="my-secret-key")
+    return (formData)
 
 @app.get("/vessels/")
 async def query_vessels():
@@ -106,3 +135,4 @@ async def query_metadata():
     finally:
         operator.close() # Closes table instance
         return payload
+
