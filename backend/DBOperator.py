@@ -1,13 +1,14 @@
 from pprint import pprint
-from pgdb import connect # https://www.pygresql.org/contents/pgdb/index.html
+from psycopg2 import *
+
 
 class DBOperator():
     """
     A basic Class that will directly interface with a PostGIS database on
     behalf of the Maritime Dashboard
 
-    pgdb is DB-API 2.0 Compliant, so, *theoretically*, this could interface
-    with different geospatial DBs (https://peps.python.org/pep-0249/)
+    psycopg2 is DB-API 2.0 Compliant with different geospatial DBs
+    (https://peps.python.org/pep-0249/)
     - Enables things like threadsafety too???
 
     DBOperator will implicitly connect to 'capstone' database unless specified
@@ -84,7 +85,7 @@ class DBOperator():
         # Define values array for pruning LATER...
         values = [value for value in entity.values()]
 
-        # Pre-formatting SQL command. 
+        # Pre-formatting SQL command.
         #   Add table, formatted attributes string, and the number of %s to add for values
         cmd = f'''
             INSERT INTO {self.table} ({attrs})
@@ -263,7 +264,7 @@ class DBOperator():
         # NOTE: I wonder if it would be better for asynchronous calls to use the 
         # fetchone() command, and just have FAST script call DBOperator.query() n times
         query = self.__cursor.fetchone()
-        return {query._fields[i]: query[i] for i in range(len(query))}
+        return {query}
 
     def get_table(self) -> list:
         """
@@ -276,7 +277,6 @@ class DBOperator():
         """
         Returns count of entries in table
         """
-        # FIXME: DOES NOT return int, returns list
         # Idea is for this to be faster and more efficeint than pulling the whole table and counting it
         self.__cursor.execute(f"SELECT Count(*) FROM {self.table}")
         return self.__cursor.fetchone()[0]
@@ -323,12 +323,12 @@ if __name__ == "__main__":
         'width': 23.0
     }
 
-    vessels.add(entity)
-    vessels.commit()
-    pprint("New value:")
-    pprint(vessels.query()) # Table should have new entity
+    # vessels.add(entity)
+    # vessels.commit()
+    # pprint("New value:")
+    pprint(vessels.query(("mmsi",368261120))) # Table should have new entity
     input()
-    pprint(vessels.delete()) # Entity should now be gone
+    # pprint(vessels.delete()) # Entity should now be gone
     vessels.close()
 
     # pprint("Modifying existing value...")
