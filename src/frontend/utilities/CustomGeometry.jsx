@@ -4,7 +4,6 @@ import * as Cesium from "cesium";
 
 const CustomGeometry = ({ viewer, viewerReady, isDrawing, shapeType, geometries, setGeometries, setSelectedGeometry, setShowContextMenu, setContextMenuPosition, setShowSettings }) => {
     useEffect(() => {
-        console.log("Zoning tool active:", isDrawing);
         if (!viewerReady || !viewer.current?.cesiumElement) return;
 
         const scene = viewer.current.cesiumElement.scene;
@@ -16,12 +15,11 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, shapeType, geometries,
 
         // Right-click context menu
         handler.setInputAction((click) => {
-            console.log("Right-click detected");
-
             const pickedEntity = scene.pick(click.position);
-            console.log("Right Click: Entity selected", pickedEntity);
+            console.log("Right-click registered at position:", click.position);
             if (Cesium.defined(pickedEntity)) {
-                setSelectedGeometry(pickedEntity);
+                console.log("Right-click on entity:", pickedEntity);
+                setSelectedGeometry(pickedEntity.id);
                 setContextMenuPosition({ x: click.position.x, y: click.position.y });
                 setShowContextMenu(true);
             } else {
@@ -32,11 +30,11 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, shapeType, geometries,
         // Left-click to select entities (geometries ATM)
         handler.setInputAction((click) => {
             const pickedEntity = scene.pick(click.position);
-            console.log("Left-click: Entity selected.", pickedEntity);
+            console.log("Left-click registered at position:", click.position);
             if (Cesium.defined(pickedEntity)) {
-                setSelectedGeometry(pickedEntity);
+                console.log("Left-click on entity:", pickedEntity);
+                setSelectedGeometry(pickedEntity.id);
             } else {
-                console.log("Deselected geometry");
                 setShowContextMenu(false);
                 setShowSettings(false);
                 setSelectedGeometry(null);
@@ -46,23 +44,22 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, shapeType, geometries,
         if (isDrawing) {
             // Left click to start geometry
             handler.setInputAction((click) => {
-                console.log("Click event detected");
                 let cartesian = scene.pickPosition(click.position);
                 if (!cartesian) {
                     cartesian = scene.camera.pickEllipsoid(click.position, scene.globe.ellipsoid);
                 }
-                console.log("Position picked:", cartesian);
+                console.log("Drawing left-click registered at position:", click.position, "Cartesian:", cartesian);
                 if (cartesian) {
                     setGeometries((prev) => {
-                        console.log("Current geometries: ", prev);
                         if (prev.length === 0 || prev[prev.length - 1].completed) {
+                            const newZoneId = `zone-${Date.now()}`;
                             const newZoneName = `Zone ${prev.length + 1}`;
-                            console.log("Creating new geometry");
-                            return [...prev, { shapeType, positions: [cartesian], completed: false, name: newZoneName }];
+                            console.log("Starting new geometry:", newZoneName);
+                            return [...prev, { id: newZoneId, shapeType, positions: [cartesian], completed: false, name: newZoneName }];
                         } else {
-                            console.log("Adding point to existing geometry");
                             const updated = [...prev];
                             updated[updated.length - 1].positions.push(cartesian);
+                            console.log("Adding point to existing geometry:", updated[updated.length - 1]);
                             return updated;
                         }
                     });
@@ -71,12 +68,12 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, shapeType, geometries,
 
             // Double click to complete geometry
             handler.setInputAction(() => {
-                console.log("Left-double-click detected, completing geometry.");
+                console.log("Double-click registered to complete geometry");
                 setGeometries((prev) => {
                     if (prev.length === 0) return prev;
                     const updated = [...prev];
                     updated[updated.length - 1].completed = true;
-                    console.log("Updated geometries after completion:", updated);
+                    console.log("Completed geometry:", updated[updated.length - 1]);
                     return updated;
                 });
             }, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
@@ -89,8 +86,8 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, shapeType, geometries,
 
     return (
         <div>
-            {geometries.map((geometry, index) => (
-                <Entity key={index}>
+            {geometries.map((geometry) => (
+                <Entity key={geometry.id} id={geometry.id}>
                     {geometry.shapeType === "polyline" && (
                         <PolylineGraphics positions={geometry.positions} material={Cesium.Color.RED} width={3} />
                     )}
@@ -102,7 +99,7 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, shapeType, geometries,
                     )}
                     {geometry.shapeType === "point" &&
                         geometry.positions.map((pos, i) => (
-                            <Entity key={i} position={pos}>
+                            <Entity key={`${geometry.id}-${i}`} position={pos}>
                                 <PointGraphics pixelSize={10} color={Cesium.Color.BLACK} />
                             </Entity>
                         ))}
