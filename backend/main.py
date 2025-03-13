@@ -1,3 +1,5 @@
+from Crypto.Cipher import AES
+import base64
 from fastapi import FastAPI, HTTPException, Query
 from DBOperator import DBOperator
 from fastapi.middleware.cors import CORSMiddleware
@@ -65,3 +67,24 @@ async def add_vessel(data: dict):
         return {"status": "success", "message": "Vessel added successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error adding vessel: {str(e)}")
+
+# placeholder method just to communicate with frontend, need to implement fully
+@app.post("/addUser")
+async def add_user(formData: dict):
+    print(formData)
+    return formData
+
+# placeholder method just to communicate with frontend, need to implement fully
+@app.post("/login")
+async def login(formData: dict):
+    print(formData)
+    # email = formData["email"]
+    # decrypted_password = decrypt_password(formData["password"], secret_key="my-secret-key")
+    return (formData)
+
+# need to implement a standardized encryption/decryption method, placeholder for now
+def decrypt_password(encrypted_password, secret_key):
+    encrypted_data = base64.b64decode(encrypted_password)
+    cipher = AES.new(secret_key.encode('utf-8'), AES.MODE_ECB)
+    decrypted_bytes = cipher.decrypt(encrypted_data)
+    return decrypted_bytes.strip().decode('utf-8')
