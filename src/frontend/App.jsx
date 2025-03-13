@@ -1,22 +1,16 @@
-import { useState, useRef, useEffect, useReducer } from "react";
+import { useState, useRef, useEffect } from "react";
 import CustomGeometry from "./utilities/CustomGeometry";
 import ToolsUI from "./utilities/ToolsUI";
 import ZoneSettingsUI from "./utilities/ZoneSettingsUI";
+import FiltersUI from "./utilities/filters/FiltersUI";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/ReactToastify.css";
 import './App.css';
 import { placeVessel } from "./utilities/shippingVessels/Vessels";
 import { Viewer } from "resium";
 import { SceneMode } from "cesium";
-/*
-  TODO: Add Filters.jsx and Overlays.jsx
-  -> Filters: Ship types
-        -> Vessel types
-        -> Country of origin
-        -> 
-  -> Overlays: Weather, ocean conditions, exclusion zones, traffic heatmap
-*/
-
+import axios from "axios";
+import OverlaysUI from "./utilities/OverlaysUI";
 
 function App() {
   const [isDrawing, setIsDrawing] = useState(false);
@@ -28,39 +22,63 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showOverlays, setShowOverlays] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [vessels, setVessels] = useState([]);
   const [viewerReady, setViewerReady] = useState(false);
 
   const viewerRef = useRef(null);
-  // Add an effect to handle scene mode changes
-  useEffect(() => {
-    if (viewerRef.current && viewerRef.current.cesiumElement) {
-      const viewer = viewerRef.current.cesiumElement;
-      setViewerReady(true);
-      // Create a scene mode change event handler
-      const sceneModeChangeHandler = () => {
-        // If there's a selected entity, re-select it to update the info box position
-        if (viewer.selectedEntity) {
-          const currentEntity = viewer.selectedEntity;
-          viewer.selectedEntity = undefined; // Deselect
-          setTimeout(() => {
-            viewer.selectedEntity = currentEntity; // Re-select after a brief delay
-          }, 100);
-        }
-      };
+  const apiEndpoint = "http://localhost:5000/vessels/";
 
-      // Add event listener for scene mode changes
-      viewer.scene.morphComplete.addEventListener(sceneModeChangeHandler);
+  // Fetch vessels from API
+  const fetchVessels = async (filters = {}) => {
+    try {
+        const queryParams = {};
 
-      // Clean up event listener when component unmounts
-      return () => {
-        if (viewer && viewer.scene && !viewer.isDestroyed()) {
-          viewer.scene.morphComplete.removeEventListener(sceneModeChangeHandler);
+        if (filters.types && filters.types.length > 0) {
+            queryParams.type = filters.types.join(",");
         }
-      };
+
+        if (filters.origin) {
+            queryParams.origin = filters.origin;
+        }
+
+        if (filters.statuses && filters.statuses.length > 0) {
+            queryParams.status = filters.statuses.join(",");
+        }
+
+        const response = await axios.get(apiEndpoint, { params: queryParams });
+
+        if (response.data.length === 0) {
+            toast.info("No vessels found matching your filters.");
+            setVessels([]);
+            return;
+        }
+
+        const transformedVessels = response.data.map((vessel) =>
+            Array.isArray(vessel)
+                ? {
+                    id: vessel[0],
+                    name: vessel[1],
+                    type: vessel[2],
+                    country_of_origin: vessel[3],
+                    status: vessel[4],
+                    latitude: vessel[5],
+                    longitude: vessel[6]
+                }
+                : vessel
+        );
+
+        setVessels(transformedVessels);
+
+    } catch (error) {
+        console.error("Error fetching vessels:", error.message);
+        toast.error("Failed to load vessels.");
+        setVessels([]);
     }
-  }, [viewerRef.current]);
+  };
 
-  // Handler for ToolUI 'Toggle ZOne
+  useEffect(() => { fetchVessels(); }, []);
+
+  // Handler for ToolUI 'Toggle Zoning'
   const handleToggleDrawing = () => {
     console.log("Toggled Zoning:", !isDrawing);
     setIsDrawing((prev) => {
@@ -75,7 +93,7 @@ function App() {
         pauseOnHover: false,
         draggable: false,
       });
-      return newState
+      return newState;
     });
   };
 
@@ -84,10 +102,7 @@ function App() {
     console.log("Overlays toggled:", !showOverlays);
   };
 
-  const handleToggleFilters = () => {
-    setShowFilters((prev) => !prev);
-    console.log("Filters toggled: ", !showFilters);
-  };
+  const handleToggleFilters = () => setShowFilters((prev) => !prev);
 
   // Undos previous point placed, will undo until the stack is empty
   const handleUndo = () => {
@@ -142,16 +157,19 @@ function App() {
     console.log("Zone settings saved.");
     setShowSettings(false);
   };
+  
+  const handleFilterApply = async (filters) => await fetchVessels(filters);
 
   // Debug
   console.log("Show Context Menu:", showContextMenu);
   console.log("Selected Geometry:", selectedGeometry);
   console.log("Context Menu Position:", contextMenuPosition);
   console.log("showSettings:", showSettings);
-
+  
   return (
     <div className="cesium-viewer">
       <ToastContainer />
+
       <Viewer
         ref={viewerRef}
         full
@@ -162,14 +180,18 @@ function App() {
         navigationHelpButton={false}
         sceneModePicker={true}
         geocoder={true}
-        infoBox={true} // Important for seeing vessel descriptions
+        infoBox={true}
         selectionIndicator={true}>
 
-        {/* Place a cargo vessel */}
-        {placeVessel(-122.4194, 37.7749, 1000, "cargo", "Cargo Ship 1")}
-
-        {/* Place a fishing vessel */}
-        {placeVessel(-74.0060, 40.7128, 0, "fishing", "Fishing Boat 1")}
+        {vessels.map((vessel) =>
+          placeVessel(
+            vessel.longitude,
+            vessel.latitude,
+            0, //For elevation
+            vessel.type,
+            vessel.name
+          ) || <div key={vessel.id}>Invalid Vessel Data</div>
+        )}
 
         <CustomGeometry
           viewer={viewerRef}
@@ -183,46 +205,52 @@ function App() {
           setContextMenuPosition={setContextMenuPosition}
           setShowSettings={setShowSettings}
         />
-
       </Viewer>
+
       <ToolsUI
+        onToggleFilters={handleToggleFilters}
+        apiEndpoint="http://localhost:5000/filters/"
+        onFilterApply={handleFilterApply}
         onToggleDrawing={handleToggleDrawing}
         onUndo={handleUndo}
         onClear={handleClear}
         onSelectShape={handleSelectShape}
         onToggleOverlays={handleToggleOverlays}
-        onToggleFilters={handleToggleFilters}
       />
 
       {showContextMenu && selectedGeometry && (
-
         <div
           className="context-menu"
-          style={{
-
-            top: contextMenuPosition.y,
-            left: contextMenuPosition.x,
-
-          }}
+          style={{ top: contextMenuPosition.y, left: contextMenuPosition.x }}
         >
           <button onClick={() => setShowSettings(true)}>Settings</button>
           <button onClick={handleDelete}>Delete</button>
-          <button onClick={() => setShowSettings(true)}>
-            Rename
-          </button>
+          <button onClick={() => setShowSettings(true)}>Rename</button>
         </div>
       )}
 
       {showSettings && selectedGeometry && (
-
         <ZoneSettingsUI
-          zoneName={selectedGeometry.name || "Untitled Zone"}
+          selectedGeometry={selectedGeometry}
           onRename={handleRename}
           onDelete={handleDelete}
           onSave={handleSave}
         />
       )}
 
+      {showFilters && (
+        <FiltersUI
+          apiEndpoint="http://localhost:5000/filters/"
+          onFilterApply={handleFilterApply}
+        />
+      )}
+
+      {showOverlays && (
+        <OverlaysUI
+          onClose={() => setShowOverlays(false)}
+          onToggleWeather={() => console.log("Weather Overlay Toggled")}
+        />
+      )}
     </div>
   );
 }

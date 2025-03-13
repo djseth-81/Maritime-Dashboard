@@ -1,205 +1,67 @@
-from fastapi import FastAPI
-from datetime import datetime
+from fastapi import FastAPI, HTTPException, Query
 from DBOperator import DBOperator
-from json import loads, dumps
 from fastapi.middleware.cors import CORSMiddleware
-from Crypto.Cipher import AES
-import base64
 
-# from kafka import KafkaProducer
-db = 'nyc'
 app = FastAPI()
+
+# CORS Middleware Setup 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # React app origin
+    allow_origins=["http://localhost:5173"],  # Requests from frontend
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all HTTP methods
-    allow_headers=["*"],   # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"], 
 )
 
-# producer = KafkaProducer(bootstrap_servers='localhost:9092')
+db = DBOperator(db='nyc', table='vessels')
 
-# @app.post("/publish/{topic}")
-# def publish(topic: str, message: str):
-#     producer.send(topic, message.encode())
-#     return{"status": "message published successfully"}
+@app.get("/filters/", response_model=dict)
+async def get_filter_options():
+    try:
+        filter_options = db.fetch_filter_options()
+        if not filter_options:
+            raise HTTPException(status_code=404, detail="No filter options found.")
+        return filter_options
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching filter options: {str(e)}")
 
-@app.get("/")
-def welcome():
-    '''
-    Example First Fast API Example
-    '''
-    return {"Message": "Welcome to FastAPI!",
-            "Retrieved": datetime.now(),
-           }
+@app.get("/vessels/", response_model=list)
+async def get_filtered_vessels(
+    type: str = Query(None, description="Filter by vessel type"),
+    origin: str = Query(None, description="Filter by country of origin"),
+    status: str = Query(None, description="Filter by vessel status")
+):
+    """
+    Fetch vessel data filter options.
+    """
+    # Ignore empty filters
+    filters = {key: value for key, value in {
+        "type": type if type else None,
+        "origin": origin if origin else None,
+        "status": status if status else None
+    }.items() if value}
 
-@app.get("/weather/")
-def weather():
-    '''
-    Weather query
-    '''
-    return {"Message": "Weather!",
-            "Retrieved": datetime.now(),
-           }
+    try:
+        # Return all vessels if no filters are provided
+        filtered_vessels = db.fetch_filtered_vessels(filters) if filters else db.get_table()
 
-@app.get("/users/")
-def users():
-    '''
-    Users query
-    '''
-    return {"Message": "Getting users!",
-            "Retrieved": datetime.now(),
-           }
+        if not filtered_vessels:
+            return []  # Return an empty list  
+        return filtered_vessels
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching filtered vessels: {str(e)}")
 
-@app.get("/streets/")
-def query_streets():
-    '''
-    <query_description>
-    '''
 
-    operator = DBOperator(db=db,table='nyc_streets')
+@app.post("/vessels/add/")
+async def add_vessel(data: dict):
+    required_fields = ["id", "name", "type", "country_of_origin", "status", "latitude", "longitude"]
 
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC street data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('id',4))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
+    if not all(field in data for field in required_fields):
+        raise HTTPException(status_code=400, detail=f"Missing required fields. Required fields are: {required_fields}")
 
-@app.get("/census/")
-def query_census():
-    '''
-    <query_description>
-    '''
-
-    operator = DBOperator(db=db,table='nyc_census_blocks')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC street data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('gid',1))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-@app.get("/homicides/")
-def query_homicides():
-    '''
-    <query_description>
-    '''
-    operator = DBOperator(db=db,table='nyc_homicides')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC street data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('gid',1))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-@app.get("/neighborhoods/")
-def query_neighborhoods():
-    '''
-    <query_description>
-    '''
-    operator = DBOperator(db=db,table='nyc_neighborhoods')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC Homicide data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('gid',1))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-@app.get("/subway_stations/")
-def query_subway_stations():
-    '''
-    <query_description>
-    '''
-    operator = DBOperator(db=db,table='nyc_subway_stations')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC Subway Station data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('id',1))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-@app.get("/geometry/")
-def query_geom():
-    '''
-    <query_description>
-    '''
-    operator = DBOperator(db=db,table='geometries')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "NYC geometric data",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.custom_cmd("SELECT * FROM geometries LIMIT 1;", 'r')
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-@app.get("/metadata/")
-def query_metadata():
-    '''
-    <query_description>
-    '''
-    operator = DBOperator(db=db,table='spatial_ref_sys')
-
-    print("### Server: Assembling Payload...")
-    payload = {"Message": "Metadata for NYC dataset",
-            "Retrieved": datetime.now(),
-            "Privileges": operator.get_privileges(),
-            "Total entities": operator.get_count(),
-            "Table attribuets": operator.get_attributes(),
-            "payload": operator.query(('srid',26918))
-           }
-    print("### Server: Payload assembled.")
-    operator.close() # Closes table instance
-    return payload
-
-def decrypt_password(encrypted_password, secret_key):
-    encrypted_data = base64.b64decode(encrypted_password)
-    cipher = AES.new(secret_key.encode('utf-8'), AES.MODE_ECB)
-    decrypted_bytes = cipher.decrypt(encrypted_data)
-    return decrypted_bytes.strip().decode('utf-8')
-
-@app.post("/addUser")
-async def add_user(formData: dict):
-    print(formData)
-    return formData
-
-@app.post("/login")
-async def login(formData: dict):
-    print(formData)
-    # email = formData["email"]
-    # decrypted_password = decrypt_password(formData["password"], secret_key="my-secret-key")
-    return (formData)
+    try:
+        db.add(data)
+        db.commit()
+        return {"status": "success", "message": "Vessel added successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error adding vessel: {str(e)}")

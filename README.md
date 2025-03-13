@@ -67,3 +67,16 @@ Northrop Grumman - Capstone 2025 - Maritime Operations Monitoring Dashboard
 - N/A
 ### Other
 - N/A
+
+# Activate virtual environment
+python -m venv .venv
+.venv\Scripts\activate
+
+# Kafka reciver
+uvicorn backend.main:app --host 0.0.0.0 --port 5000 --reload
+
+# Start Kafka
+bin/kafka-server-start.sh config/kraft/server.properties
+
+
+fast interact with frontend directly
