@@ -18,6 +18,19 @@ app.add_middleware(
     allow_headers=["*"], 
 )
 
+def connect_to_vessels() -> DBOperator:
+    ### Attempt DB connection
+    try:
+        db = DBOperator(table='vessels')
+        print("### Fast Server: Connected to vessels table")
+        return db
+    except Exception as e:
+        print("### Fast Server: Unable connect to Vessels table")
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to connect to database."
+        )
+
 @app.get("/")
 async def welcome():
     '''
@@ -64,18 +77,6 @@ async def login(formData: dict):
     return (formData)
 
 @app.get("/vessels/", response_model=list)
-async def connect_to_vessels() -> DBOperator:
-    ### Attempt DB connection
-    try:
-        db = DBOperator(table='vessels')
-        print("### Fast Server: Connected to vessels table")
-        return db
-    except Exception as e:
-        print("### Fast Server: Unable connect to Vessels table")
-        raise HTTPException(
-            status_code=500,
-            detail="Unable to connect to database."
-        )
 async def get_filtered_vessels(
     type: str = Query(None, description="Filter by vessel type"),
     origin: str = Query(None, description="Filter by country of origin"),
