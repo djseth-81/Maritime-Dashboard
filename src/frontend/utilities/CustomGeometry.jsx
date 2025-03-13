@@ -3,27 +3,13 @@ import { Entity, PolylineGraphics, PolygonGraphics, PointGraphics } from "resium
 import * as Cesium from "cesium";
 
 const CustomGeometry = ({ viewer, viewerReady, isDrawing, shapeType, geometries, setGeometries, setSelectedGeometry, setShowContextMenu, setContextMenuPosition, setShowSettings }) => {
-    // const [showContextMenu, setShowContextMenu] = useState(false);
-    // const [selectedGeometry, setSelectedGeometry] = useState(null);
-    // const [contextMenuPosition, setContextMenuPosition] = useState({x: 0, y: 0});
-    // const viewerRef = useRef(null);
-
-    // const createGeometry = (positions, name) => ({
-    //     id: Date.now().toString(),
-    //     positions,
-    //     name: name || `Zone ${geometries.length + 1}`,
-    //     shapeType,
-    //     completed: false
-    // });
-
     useEffect(() => {
-
         console.log("Zoning tool active:", isDrawing);
         if (!viewerReady || !viewer.current?.cesiumElement) return;
 
         const scene = viewer.current.cesiumElement.scene;
 
-        //disables native browser context menu.
+        // Disables native browser context menu.
         scene.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
         const handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
@@ -58,19 +44,14 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, shapeType, geometries,
         }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
         if (isDrawing) {
-
-            //Two handlers will be active when the Zoning tool is toggled, need to figure out how to disable the select handler
-            // handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_CLICK);
-            //Left click to start geometry 
-            // Implement id attachment to geometry, will simplify deletion, renaming, saving.
+            // Left click to start geometry
             handler.setInputAction((click) => {
                 console.log("Click event detected");
-                // const cartesian = viewer.scene.pickPosition(click.position);
                 let cartesian = scene.pickPosition(click.position);
                 if (!cartesian) {
                     cartesian = scene.camera.pickEllipsoid(click.position, scene.globe.ellipsoid);
                 }
-                console.log("Posititon picked:", cartesian);
+                console.log("Position picked:", cartesian);
                 if (cartesian) {
                     setGeometries((prev) => {
                         console.log("Current geometries: ", prev);
@@ -88,7 +69,7 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, shapeType, geometries,
                 }
             }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-            // double click geometry complete
+            // Double click to complete geometry
             handler.setInputAction(() => {
                 console.log("Left-double-click detected, completing geometry.");
                 setGeometries((prev) => {
@@ -99,37 +80,34 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, shapeType, geometries,
                     return updated;
                 });
             }, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
-        } else {
-            return;
         }
 
-
-        return () => handler.destroy();
-    }, [viewer, isDrawing, geometries, setSelectedGeometry, setShowContextMenu, setShowSettings]);
+        return () => {
+            handler.destroy();
+        };
+    }, [viewer, viewerReady, isDrawing, shapeType, setGeometries, setSelectedGeometry, setShowContextMenu, setContextMenuPosition, setShowSettings]);
 
     return (
         <div>
-
-                {geometries.map((geometry, index) => (
-                    <Entity key={index}>
-                        {geometry.shapeType === "polyline" && (
-                            <PolylineGraphics positions={geometry.positions} material={Cesium.Color.RED} width={3} />
-                        )}
-                        {geometry.shapeType === "polygon" && (
-                            <PolygonGraphics
-                                hierarchy={new Cesium.PolygonHierarchy(geometry.positions)}
-                                material={Cesium.Color.RED.withAlpha(0.5)}
-                            />
-                        )}
-                        {geometry.shapeType === "point" &&
-                            geometry.positions.map((pos, i) => (
-                                <Entity key={i} position={pos}>
-                                    <PointGraphics pixelSize={10} color={Cesium.Color.BLACK} />
-                                </Entity>
-                            ))}
-                    </Entity>
-                ))}
-
+            {geometries.map((geometry, index) => (
+                <Entity key={index}>
+                    {geometry.shapeType === "polyline" && (
+                        <PolylineGraphics positions={geometry.positions} material={Cesium.Color.RED} width={3} />
+                    )}
+                    {geometry.shapeType === "polygon" && (
+                        <PolygonGraphics
+                            hierarchy={new Cesium.PolygonHierarchy(geometry.positions)}
+                            material={Cesium.Color.RED.withAlpha(0.5)}
+                        />
+                    )}
+                    {geometry.shapeType === "point" &&
+                        geometry.positions.map((pos, i) => (
+                            <Entity key={i} position={pos}>
+                                <PointGraphics pixelSize={10} color={Cesium.Color.BLACK} />
+                            </Entity>
+                        ))}
+                </Entity>
+            ))}
         </div>
     );
 };

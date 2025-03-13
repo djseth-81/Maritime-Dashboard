@@ -130,15 +130,15 @@ body,
 
 .ui-controls button {
   padding: 10px;
-  background: #007bff;
-  color: white;
+  background: rgba(255, 255, 255, 0.9);
+  color: black;
   border: none;
   border-radius: 2px;
   cursor: pointer;
 }
 
 .ui-controls button:hover {
-  background: #0056b3;
+  background: grey;
 }
 
 .overlay-panel,
@@ -159,6 +159,21 @@ body,
 
 .tools-panel {
   width: 100px;
+}
+
+.filter-panel {
+  width: 200px;
+}
+
+.overlay-panel {
+  width: 100px;
+}
+
+.vessel-subwindow,
+.status-subwindow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* Make sure entities are visible */

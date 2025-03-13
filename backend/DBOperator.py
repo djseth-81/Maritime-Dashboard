@@ -1,5 +1,5 @@
 from pprint import pprint
-from pgdb import connect # https://www.pygresql.org/contents/pgdb/index.html
+import psycopg2
 
 class DBOperator():
     """
@@ -32,19 +32,86 @@ class DBOperator():
     #     - Retrieved data should already be primed for geospatial/projection
     #         - Look @ the projection/geography modules
     #         - refer to geospatial conversion/modify functions!
-
     def __init__(self, table: str, host='localhost', port='5432', user='',
                  passwd='', schema='public', db='demo') -> None:
         self.table = table
-        self.__host = host # Pretty sure this defines private var
+        self.__host = host
         self.__port = port
         self.__user = user
         self.__passwd = passwd
-        self.__db = connect(database = db)
+        self.__db = psycopg2.connect(
+            dbname='nyc',
+            user="postgres", #!! Replace this with correct username
+            password="1234", #!! Replace with PostgreSQL password
+            host=self.__host,
+            port=self.__port
+        )
+
         self.__cursor = self.__db.cursor()
-
     ### Mutators ###
+    def fetch_filter_options(self):
+        """
+        Fetches distinct filter options for vessel types, origins, and statuses.
+        """
+        query = f"""
+            SELECT DISTINCT type, country_of_origin AS origin, status
+            FROM {self.table};
+        """
+        self.__cursor.execute(query)
+        vessels = self.__cursor.fetchall()
 
+        # Extract unique filter options
+        types = list(set(v[0] for v in vessels if v[0]))
+        origins = list(set(v[1] for v in vessels if v[1]))
+        statuses = list(set(v[2] for v in vessels if v[2]))
+
+        return {
+            "types": types,
+            "origins": origins,
+            "statuses": statuses
+        }
+
+    def fetch_filtered_vessels(self, filters: dict) -> list:
+        """
+        Fetches vessels based on filter options.
+        """
+        conditions = []
+        values = []
+
+        if "type" in filters:
+            conditions.append("type = %s")
+            values.append(filters['type'])
+        if "origin" in filters:
+            conditions.append("country_of_origin = %s")
+            values.append(filters['origin'])
+        if "status" in filters:
+            conditions.append("status = %s")
+            values.append(filters['status'])
+
+        if not conditions:
+            return []
+
+        query = f"""
+            SELECT id, name, type, country_of_origin, status, latitude, longitude
+            FROM {self.table}
+            WHERE {' AND '.join(conditions)}
+        """
+
+        self.__cursor.execute(query, tuple(values))
+        vessels = self.__cursor.fetchall()
+
+        return [
+            {
+                "id": v[0],
+                "name": v[1],
+                "type": v[2],
+                "country_of_origin": v[3],
+                "status": v[4],
+                "latitude": v[5],
+                "longitude": v[6]
+            }
+            for v in vessels
+        ]
     def add(self, entity: dict) -> None:
         """
         Add entry
