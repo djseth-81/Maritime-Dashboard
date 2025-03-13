@@ -33,7 +33,7 @@ class DBOperator():
     #     - Retrieved data should already be primed for geospatial/projection
     #         - Look @ the projection/geography modules
     #         - refer to geospatial conversion/modify functions!
-    def __init__(self, table: str, host='localhost', port='5432', user='',
+    def __init__(self, table: str, host='localhost', port='5432', user='postgres',
                  passwd='', schema='public', db='capstone') -> None:
         self.table = table
         self.__host = host
@@ -42,20 +42,20 @@ class DBOperator():
         self.__passwd = passwd
         self.__db = connect(
             dbname=db,
-            # user="postgres", #!! Replace this with correct username
-            # password="1234", #!! Replace with PostgreSQL password
-            # host=self.__host,
-            # port=self.__port
+            # user=user,
+            # password=passwd,
+            # host=host,
+            # port=port
         )
-
         self.__cursor = self.__db.cursor()
+
     ### Mutators ###
     def fetch_filter_options(self):
         """
         Fetches distinct filter options for vessel types, origins, and statuses.
         """
         query = f"""
-            SELECT DISTINCT type, country_of_origin AS origin, status
+            SELECT DISTINCT src, type, flag, current_status AS origin, status
             FROM {self.table};
         """
         self.__cursor.execute(query)

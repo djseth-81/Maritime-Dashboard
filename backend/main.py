@@ -71,7 +71,7 @@ async def connect_to_vessels() -> DBOperator:
         print("### Fast Server: Connected to vessels table")
         return db
     except Exception as e:
-        print("### Fast Server: Unable connect to Vessels table")
+        print(f"### Fast Server: Unable connect to Vessels table {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="Unable to connect to database."
@@ -84,7 +84,8 @@ async def get_filtered_vessels(
     """
     Fetch vessel data filter options.
     """
-    db = connect_to_vessels()
+    db = await connect_to_vessels()
+    db.get_permissions()
     # Ignore empty filters
     filters = {key: value for key, value in {
         "type": type if type else None,

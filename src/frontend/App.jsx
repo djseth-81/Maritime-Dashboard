@@ -26,7 +26,7 @@ function App() {
   const [viewerReady, setViewerReady] = useState(false);
 
   const viewerRef = useRef(null);
-  const apiEndpoint = "http://localhost:5000/vessels/";
+  const apiEndpoint = "http://localhost:8000/vessels/";
 
   // Fetch vessels from API
   const fetchVessels = async (filters = {}) => {
@@ -209,7 +209,7 @@ function App() {
 
       <ToolsUI
         onToggleFilters={handleToggleFilters}
-        apiEndpoint="http://localhost:5000/filters/"
+        apiEndpoint="http://localhost:8000/filters/"
         onFilterApply={handleFilterApply}
         onToggleDrawing={handleToggleDrawing}
         onUndo={handleUndo}
@@ -240,7 +240,7 @@ function App() {
 
       {showFilters && (
         <FiltersUI
-          apiEndpoint="http://localhost:5000/filters/"
+          apiEndpoint="http://localhost:8000/filters/"
           onFilterApply={handleFilterApply}
         />
       )}

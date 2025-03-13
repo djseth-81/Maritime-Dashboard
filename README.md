@@ -48,7 +48,7 @@ Northrop Grumman - Capstone 2025 - Maritime Operations Monitoring Dashboard
 
 `npm install --save-dev vite @vitejs/plugin-react vite-plugin-cesium`
 
-`npm install react-toastify`
+`npm install react-toastify axios`
 
 ### Run Dev Server
 `npm run dev`
