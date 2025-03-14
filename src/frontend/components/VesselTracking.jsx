@@ -13,21 +13,24 @@ const useVesselTracking = (viewerRef, apiEndpoint) => {
   const [vessels, setVessels] = useState([]);
   const [viewerReady, setViewerReady] = useState(false);
   const [currentSceneMode, setCurrentSceneMode] = useState(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   
   // Fetch vessels from API
-  const fetchVessels = async (filters = {}) => {
+  const fetchVessels = async (filters = {}, showToast = true) => {
     try {
       const response = await axios.get(apiEndpoint, { params: filters });
 
       if (response.data.length === 0) {
-        toast.info("No vessels found matching your filters.", {
-          position: "bottom-right",
-          autoClose: 3000,
-          hideProgressBar: true,
-          closeOnClick: true,
-          pauseOnHover: false,
-          draggable: false,
-        });
+        if (showToast) {
+          toast.info("No vessels found matching your filters.", {
+            position: "bottom-right",
+            autoClose: 3000,
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: false,
+            draggable: false,
+          });
+        }
         setVessels([]);  // Clear vessels
         return;
       }
@@ -53,23 +56,27 @@ const useVesselTracking = (viewerRef, apiEndpoint) => {
 
     } catch (error) {
       if (error.response?.status === 500) {
-        toast.error("Server error occurred. Please try again later.", {
-          position: "bottom-right",
-          autoClose: 3000,
-          hideProgressBar: true,
-          closeOnClick: true,
-          pauseOnHover: false,
-          draggable: false,
-        });
+        if (showToast) {
+          toast.error("Server error occurred. Please try again later.", {
+            position: "bottom-right",
+            autoClose: 3000,
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: false,
+            draggable: false,
+          });
+        }
       } else {
-        toast.info("No vessels found matching your filters.", {
-          position: "bottom-right",
-          autoClose: 3000,
-          hideProgressBar: true,
-          closeOnClick: true,
-          pauseOnHover: false,
-          draggable: false,
-        });
+        if (showToast) {
+          toast.info("No vessels found matching your filters.", {
+            position: "bottom-right",
+            autoClose: 3000,
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: false,
+            draggable: false,
+          });
+        }
       }
 
       console.error("Error fetching vessels:", error.message);
@@ -79,7 +86,7 @@ const useVesselTracking = (viewerRef, apiEndpoint) => {
 
   // Setup viewer and event listeners
   useEffect(() => {
-    fetchVessels();  // Fetch all vessels
+    fetchVessels({}, false);  // Initial fetch without toast notification
 
     if (viewerRef.current && viewerRef.current.cesiumElement) {
       const viewer = viewerRef.current.cesiumElement;
@@ -88,10 +95,24 @@ const useVesselTracking = (viewerRef, apiEndpoint) => {
       // Initialize current scene mode
       setCurrentSceneMode(viewer.scene.mode);
       
-      // Handle scene mode changes (3D, 2D, Columbus)
-      const sceneModeChangeHandler = () => {
+      // Set up event listeners for scene mode transition
+      const sceneModeStartHandler = () => {
+        setIsTransitioning(true);
+        console.log("Scene mode transition starting");
+      };
+      
+      const sceneModeCompleteHandler = () => {
         // Update the current scene mode
-        setCurrentSceneMode(viewer.scene.mode);
+        const newSceneMode = viewer.scene.mode;
+        setCurrentSceneMode(newSceneMode);
+        
+        // Log detailed information about the mode change
+        console.log("Scene Mode Change Detected:");
+        console.log(`  Mode Number: ${newSceneMode}`);
+        console.log(`  Mode Name: ${getSceneModeName(newSceneMode)}`);
+        console.log(`  Is 3D: ${newSceneMode === SceneMode.SCENE3D}`);
+        console.log(`  Is 2D: ${newSceneMode === SceneMode.SCENE2D}`);
+        console.log(`  Is Columbus: ${newSceneMode === SceneMode.COLUMBUS_VIEW}`);
         
         // Handle selected entity
         if (viewer.selectedEntity) {
@@ -102,32 +123,43 @@ const useVesselTracking = (viewerRef, apiEndpoint) => {
           }, 100);
         }
         
-        // Force vessel redraw when view mode changes
+        // Recreate all vessel entities with the new scene mode
         if (vessels.length > 0) {
-          console.log(`View mode changed to ${getSceneModeName(viewer.scene.mode)} - refreshing vessel positions`);
+          console.log(`View mode changed to ${getSceneModeName(newSceneMode)} - recreating vessel entities`);
           
-          // We need to completely recreate the entities with the correct mode-specific coordinates
+          // Use a longer timeout to ensure the mode change is fully complete
           setTimeout(() => {
-            // First remove all existing vessel entities (clean slate)
+            // First remove all existing vessel entities
             const entities = viewer.entities.values.filter(entity => 
               entity.name && entity.name.includes('Vessel:')
             );
             
+            console.log(`Removing ${entities.length} existing vessel entities`);
             entities.forEach(entity => {
               viewer.entities.remove(entity);
             });
             
-            // Then trigger a fresh render with the vessels data
-            setVessels([...vessels]);
-          }, 300);
+            // Force a complete recreation by creating a new array with the current scene mode
+            const vesselsCopy = [...vessels];
+            console.log(`Recreating ${vesselsCopy.length} vessel entities in ${getSceneModeName(newSceneMode)} mode`);
+            setVessels(vesselsCopy);
+            
+            // Reset transition flag after recreation is complete
+            setIsTransitioning(false);
+          }, 700); // Increased timeout for more reliable transition
+        } else {
+          setIsTransitioning(false);
         }
       };
 
-      viewer.scene.morphComplete.addEventListener(sceneModeChangeHandler);
+      // Add listeners for both transition start and completion
+      viewer.scene.morphStart.addEventListener(sceneModeStartHandler);
+      viewer.scene.morphComplete.addEventListener(sceneModeCompleteHandler);
 
       return () => {
         if (viewer && viewer.scene && !viewer.isDestroyed()) {
-          viewer.scene.morphComplete.removeEventListener(sceneModeChangeHandler);
+          viewer.scene.morphStart.removeEventListener(sceneModeStartHandler);
+          viewer.scene.morphComplete.removeEventListener(sceneModeCompleteHandler);
         }
       };
     }
@@ -147,7 +179,9 @@ const useVesselTracking = (viewerRef, apiEndpoint) => {
     vessels,
     viewerReady,
     currentSceneMode,
-    fetchVessels
+    isTransitioning,
+    fetchVessels,
+    getSceneModeName
   };
 };
 
