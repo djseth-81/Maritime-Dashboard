@@ -63,8 +63,7 @@ async def login(formData: dict):
     # decrypted_password = decrypt_password(formData["password"], secret_key="my-secret-key")
     return (formData)
 
-@app.get("/vessels/", response_model=list)
-async def connect_to_vessels() -> DBOperator:
+def connect_to_vessels() -> DBOperator:
     ### Attempt DB connection
     try:
         db = DBOperator(table='vessels')
@@ -76,6 +75,8 @@ async def connect_to_vessels() -> DBOperator:
             status_code=500,
             detail="Unable to connect to database."
         )
+
+@app.get("/vessels/", response_model=list)
 async def get_filtered_vessels(
     type: str = Query(None, description="Filter by vessel type"),
     origin: str = Query(None, description="Filter by country of origin"),
