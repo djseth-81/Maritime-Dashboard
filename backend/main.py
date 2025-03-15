@@ -76,7 +76,7 @@ def connect_to_vessels() -> DBOperator:
             detail="Unable to connect to database."
         )
 
-@app.get("/vessels/", response_model=list)
+@app.get("/vessels/", response_model=dict)
 async def get_filtered_vessels(
     type: str = Query(None, description="Filter by vessel type"),
     origin: str = Query(None, description="Filter by country of origin"),
@@ -86,6 +86,12 @@ async def get_filtered_vessels(
     Fetch vessel data filter options.
     """
     db = connect_to_vessels()
+    payload = {
+        "Retrieved": datetime.now(),
+        "Privileges": db.get_privileges(),
+        "Table attribuets": db.get_attributes(),
+        "payload": []
+    }
     # Ignore empty filters
     filters = {key: value for key, value in {
         "type": type if type else None,
@@ -97,11 +103,9 @@ async def get_filtered_vessels(
     print("### Fast Server: Assembling Payload...")
     try:
         # Return all vessels if no filters are provided
-        filtered_vessels = db.query(filters) if filters else db.get_table()
-
-        if not filtered_vessels:
-            return []  # Return an empty list  
-        return filtered_vessels
+        payload["payload"] = db.query(filters) if filters else db.get_table()
+        payload["size"] = len(payload["payload"])
+        return payload
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching filtered vessels: {str(e)}")
     finally:

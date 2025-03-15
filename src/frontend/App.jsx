@@ -49,6 +49,15 @@ function App() {
       }
 
       const response = await axios.get(apiEndpoint, { params: queryParams });
+      
+      console.log("Table privileges");
+      console.log(response.data.Privileges);
+
+      console.log("Response Timestamp");
+      console.log(response.data.retrieved);
+
+      console.log("Size of payload");
+      console.log(response.data.size);
 
       if (response.data.length === 0) {
         toast.info("No vessels found matching your filters.");
@@ -56,16 +65,16 @@ function App() {
         return;
       }
 
-      const transformedVessels = response.data.map((vessel) =>
+      const transformedVessels = response.data.payload.map((vessel) =>
         Array.isArray(vessel)
           ? {
-            id: vessel[0],
-            name: vessel[1],
-            type: vessel[2],
-            country_of_origin: vessel[3],
-            status: vessel[4],
-            latitude: vessel[5],
-            longitude: vessel[6]
+            id: vessel['mmsi'],
+            name: vessel['vessel_name'],
+            type: vessel['type'],
+            country_of_origin: vessel['flag'],
+            status: vessel['current_status'],
+            latitude: vessel['lat'],
+            longitude: vessel['lon']
           }
           : vessel
       );
@@ -236,12 +245,12 @@ function App() {
 
         {vessels.map((vessel) =>
           placeVessel(
-            vessel.longitude,
-            vessel.latitude,
+            vessel['lon'],
+            vessel['lat'],
             0, //For elevation
-            vessel.type,
-            vessel.name
-          ) || <div key={vessel.id}>Invalid Vessel Data</div>
+            vessel['type'],
+            vessel['name']
+          ) || <div key={vessel['mmsi']}>Invalid Vessel Data</div>
         )}
 
         <CustomGeometry
