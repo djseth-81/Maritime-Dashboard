@@ -9,13 +9,13 @@ from DBOperator import DBOperator
 
 app = FastAPI()
 
-# CORS Middleware Setup 
+# CORS Middleware Setup
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],  # Requests from frontend
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"], 
+    allow_headers=["*"],
 )
 
 @app.get("/")
@@ -86,12 +86,17 @@ async def get_filtered_vessels(
     Fetch vessel data filter options.
     """
     db = connect_to_vessels()
-    payload = {
-        "Retrieved": datetime.now(),
-        "Privileges": db.get_privileges(),
-        "Table attribuets": db.get_attributes(),
-        "payload": []
-    }
+    try:
+        payload = {
+            "Retrieved": datetime.now(),
+            "Privileges": db.get_privileges(),
+            "Table attribuets": db.get_attributes(),
+            "filters": db.fetch_filter_options(),
+            "payload": []
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching metadata for vessels: {str(e)}")
+
     # Ignore empty filters
     filters = {key: value for key, value in {
         "type": type if type else None,
@@ -107,7 +112,7 @@ async def get_filtered_vessels(
         payload["size"] = len(payload["payload"])
         return payload
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching filtered vessels: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching vessels: {str(e)}")
     finally:
         db.close()
 

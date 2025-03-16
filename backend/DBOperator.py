@@ -244,7 +244,6 @@ class DBOperator():
         Querys entities based on a dictionary of provided filters
         returns list of dictionary types
         """
-
         conditions = []
         values = []
 
@@ -320,7 +319,6 @@ class DBOperator():
             }
             for v in vessels
         ]
-        return self.__cursor.fetchall()
 
     def get_count(self) -> int:
         """
