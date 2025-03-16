@@ -4,7 +4,7 @@ import { Cartesian3, DistanceDisplayCondition, NearFarScalar, HeightReference } 
 import ReactDOMServer from 'react-dom/server'
 import BoatIcon from "../../assets/icons/boatIcon"
 
-export function placeVessel(longitude, latitude, elevation = 0, type = "cargo", name = "Vessel") {
+export function placeVessel(longitude, latitude, elevation = 0, type = "other", name = "Unnamed") {
     // Convert values to numbers and validate
     const numLongitude = Number(longitude);
     const numLatitude = Number(latitude);
@@ -35,7 +35,7 @@ export function placeVessel(longitude, latitude, elevation = 0, type = "cargo", 
                 scale: 2.0,
                 distanceDisplayCondition: new DistanceDisplayCondition(0, 20.0e6),
                 scaleByDistance: new NearFarScalar(1.5e5, 1.5, 1.5e6, 0.5),
-                heightReference: HeightReference.CLAMP_TO_GROUND,
+                heightReference: HeightReference.None,
                 verticalOrigin: 1,
                 horizontalOrigin: 0,
                 eyeOffset: new Cartesian3(0, 0, -500),

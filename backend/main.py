@@ -9,13 +9,13 @@ from DBOperator import DBOperator
 
 app = FastAPI()
 
-# CORS Middleware Setup 
+# CORS Middleware Setup
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],  # Requests from frontend
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"], 
+    allow_headers=["*"],
 )
 
 def connect_to_vessels() -> DBOperator:
@@ -76,7 +76,20 @@ async def login(formData: dict):
     # decrypted_password = decrypt_password(formData["password"], secret_key="my-secret-key")
     return (formData)
 
-@app.get("/vessels/", response_model=list)
+def connect_to_vessels() -> DBOperator:
+    ### Attempt DB connection
+    try:
+        db = DBOperator(table='vessels')
+        print("### Fast Server: Connected to vessels table")
+        return db
+    except Exception as e:
+        print("### Fast Server: Unable connect to Vessels table")
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to connect to database."
+        )
+
+@app.get("/vessels/", response_model=dict)
 async def get_filtered_vessels(
     type: str = Query(None, description="Filter by vessel type"),
     origin: str = Query(None, description="Filter by country of origin"),
@@ -86,6 +99,17 @@ async def get_filtered_vessels(
     Fetch vessel data filter options.
     """
     db = connect_to_vessels()
+    try:
+        payload = {
+            "Retrieved": datetime.now(),
+            "Privileges": db.get_privileges(),
+            "Table attribuets": db.get_attributes(),
+            "filters": db.fetch_filter_options(),
+            "payload": []
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching metadata for vessels: {str(e)}")
+
     # Ignore empty filters
     filters = {key: value for key, value in {
         "type": type if type else None,
@@ -97,13 +121,11 @@ async def get_filtered_vessels(
     print("### Fast Server: Assembling Payload...")
     try:
         # Return all vessels if no filters are provided
-        filtered_vessels = db.query(filters) if filters else db.get_table()
-
-        if not filtered_vessels:
-            return []  # Return an empty list  
-        return filtered_vessels
+        payload["payload"] = db.query(filters) if filters else db.get_table()
+        payload["size"] = len(payload["payload"])
+        return payload
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching filtered vessels: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching vessels: {str(e)}")
     finally:
         db.close()
 

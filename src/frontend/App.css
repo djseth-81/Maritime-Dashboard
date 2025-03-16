@@ -176,6 +176,58 @@ body,
   gap: 8px;
 }
 
+/* Confirmation Dialog Styles */
+.confirmation-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  z-index: 1000;
+  min-width: 300px;
+  max-width: 400px;
+}
+
+.confirmation-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+.confirmation-dialog p {
+  margin: 0;
+  font-size: 16px;
+  color: #333;
+  text-align: center;
+}
+
+.confirmation-dialog-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  width: 100%;
+}
+
+.confirmation-dialog button {
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: black;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  flex: 1;
+  text-align: center;
+}
+
+.confirmation-dialog button:hover {
+  background: grey;
+}
+
 /* Make sure entities are visible */
 .cesium-entity-label,
 .cesium-billboard-image {
