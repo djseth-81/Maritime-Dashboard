@@ -29,7 +29,9 @@ function App() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const viewerRef = useRef(null);
-  const apiEndpoint = "http://localhost:8000/vessels/";
+  const URL = window.location.href.split(':');
+  const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
+  const filtersAPI = "http:" + URL[1] + ":8000/filters/";
 
   // Fetch vessels from API
   const fetchVessels = async (filters = {}) => {
@@ -48,7 +50,7 @@ function App() {
         queryParams.status = filters.statuses.join(",");
       }
 
-      const response = await axios.get(apiEndpoint, { params: queryParams });
+      const response = await axios.get(vesselsAPI, { params: queryParams });
       
       console.log("Table privileges");
       console.log(response.data.Privileges);
@@ -218,7 +220,11 @@ function App() {
     setShowSettings(false);
   };
 
-  const handleFilterApply = async (filters) => await fetchVessels(filters);
+  const handleFilterApply = async (filters) => {
+        console.log("Filters selected:");
+        console.log(filters);
+        await fetchVessels(filters);
+    }
 
   // Debug
   console.log("Show Context Menu:", showContextMenu);
@@ -269,7 +275,7 @@ function App() {
 
       <ToolsUI
         onToggleFilters={handleToggleFilters}
-        apiEndpoint="http://localhost:8000/filters/"
+        apiEndpoint={filtersAPI}
         onFilterApply={handleFilterApply}
         onToggleDrawing={handleToggleDrawing}
         onUndo={handleUndo}
@@ -300,7 +306,7 @@ function App() {
 
       {showFilters && (
         <FiltersUI
-          apiEndpoint="http://localhost:8000/filters/"
+          apiEndpoint={filtersAPI}
           onFilterApply={handleFilterApply}
         />
       )}

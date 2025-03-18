@@ -3,6 +3,8 @@ import axios from "axios";
 import { useNavigate } from 'react-router-dom';
 import CryptoJS from "crypto-js";
 
+const URL = window.location.href.split(':');
+const endpoint = "http:" + URL[1] + ":8000/login/";
 export default function Login() {
   useEffect(() => {
     document.title = "Login";
@@ -30,7 +32,7 @@ export default function Login() {
     const secretKey = "my-secret-key"; // should have environment variable instead of having it in the code
     const encryptedPassword = CryptoJS.AES.encrypt(formData.get("password"), secretKey).toString();
 
-    axios.post('http://127.0.0.1:8000/login', {
+    axios.post(endpoint, {
       email: formData.get("email"),
       password: encryptedPassword,
     }).then((response) => {
