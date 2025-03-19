@@ -16,7 +16,7 @@ import OverlaysUI from "./utilities/OverlaysUI";
 function App() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [shapeType, setShapeType] = useState("polygon");
-  const [geometries, setGeometries] = useState([]);
+  const [geometries, setGeometries] = useState([]); // Added state for geometries
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
@@ -159,6 +159,7 @@ function App() {
   };
 
   const handleClearConfirmed = () => {
+    viewerRef.current.cesiumElement.entities.removeAll();
     setGeometries([]);
     setSelectedGeometry(null);
     setShowContextMenu(false);
@@ -194,16 +195,18 @@ function App() {
     Note: Cesium Entities have a __id attribute. 
   */
   const handleDelete = () => {
+    setShowContextMenu(false);
     setShowDeleteDialog(true);
   };
 
   const handleDeleteConfirm = () => {
     if (selectedGeometry) {
       // Remove the selected geometry from the Cesium viewer
-      viewerRef.current.cesiumElement.entities.removeById(selectedGeometry);
+      viewerRef.current.cesiumElement.entities.removeById(selectedGeometry.id);
 
       // Update the state to remove the selected geometry
-      setGeometries((prev) => prev.filter((geo) => geo.id !== selectedGeometry));
+      setGeometries((prev) => prev.filter((geo) => geo.id !== selectedGeometry.id));
+      setSelectedGeometry(null);
     }
     setShowDeleteDialog(false);
   };
@@ -257,9 +260,8 @@ function App() {
           viewer={viewerRef}
           viewerReady={viewerReady}
           isDrawing={isDrawing}
-          shapeType={shapeType}
-          geometries={geometries}
-          setGeometries={setGeometries}
+          geometries={geometries} // Pass geometries state
+          setGeometries={setGeometries} // Pass setGeometries function
           setSelectedGeometry={setSelectedGeometry}
           setShowContextMenu={setShowContextMenu}
           setContextMenuPosition={setContextMenuPosition}
@@ -291,7 +293,8 @@ function App() {
 
       {showSettings && selectedGeometry && (
         <ZoneSettingsUI
-          selectedGeometry={selectedGeometry}
+          zoneName={selectedGeometry.name}
+          positions={selectedGeometry.positions}
           onRename={handleRename}
           onDelete={handleDelete}
           onSave={handleSave}
