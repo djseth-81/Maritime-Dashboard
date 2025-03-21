@@ -117,6 +117,8 @@ async def get_filtered_vessels(
         "status": status if status else None
     }.items() if value}
 
+    print(f"### Websocket: Filters:\n{filters}")
+
     ### IF DB connection successful, attempt assembling payload
     print("### Fast Server: Assembling Payload...")
     try:
