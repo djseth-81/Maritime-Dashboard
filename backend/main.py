@@ -1,4 +1,5 @@
 import base64
+from pprint import pprint
 from Crypto.Cipher import AES
 from json import loads, dumps
 from datetime import datetime
@@ -12,11 +13,24 @@ app = FastAPI()
 # CORS Middleware Setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Requests from frontend
+    allow_origins=["*"],  # Requests from frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def connect_to_vessels() -> DBOperator:
+    ### Attempt DB connection
+    try:
+        db = DBOperator(table='vessels')
+        print("### Fast Server: Connected to vessels table")
+        return db
+    except Exception as e:
+        print("### Fast Server: Unable connect to Vessels table")
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to connect to database."
+        )
 
 @app.get("/")
 async def welcome():
@@ -76,6 +90,25 @@ def connect_to_vessels() -> DBOperator:
             detail="Unable to connect to database."
         )
 
+def filter_parser(p: dict, result: list) -> None:
+    """
+    Quick lil recursion function to create a list of dictionaries that have one
+    query-able value per attribute
+
+    ### WARNING: Creates some duplicate queries when more than one attribute
+    has more than 1 value. Pretty sure its cuz my recursive restraints suck so
+    much ass. Shouldn't affect results since its a UNION query
+    """
+    x = {}
+    for k, v in p.items():
+        val = v.split(',')
+        while len(val) > 1:
+            q = p.copy()
+            q[k] = val.pop(0)
+            filter_parser(q,result)
+        x.update({k: val[0]})
+    result.append(x)
+
 @app.get("/vessels/", response_model=dict)
 async def get_filtered_vessels(
     type: str = Query(None, description="Filter by vessel type"),
@@ -97,24 +130,41 @@ async def get_filtered_vessels(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching metadata for vessels: {str(e)}")
 
+    print("### Fast Server: Assembling Payload...")
     # Ignore empty filters
     filters = {key: value for key, value in {
         "type": type if type else None,
-        "origin": origin if origin else None,
-        "status": status if status else None
+        "flag": origin if origin else None,
+        "current_status": status if status else None
     }.items() if value}
 
-    ### IF DB connection successful, attempt assembling payload
-    print("### Fast Server: Assembling Payload...")
-    try:
-        # Return all vessels if no filters are provided
-        payload["payload"] = db.query(filters) if filters else db.get_table()
+    print(f"### Websocket: Filters:\n{filters}")
+    if len(filters) > 0:
+        queries = []
+        filter_parser(filters,queries)
+
+        # NOTE: Bandaid for BAD RECURSION!
+        # This is because my recursion sucks so there's a chance for duplicates
+        # when more than 1 attribute has multiple values
+        queries = [dict(t) for t in {tuple(d.items()) for d in queries}]
+
+        print(f"### Websocket: query array:")
+        pprint(queries)
+
+        ### IF DB connection successful, attempt assembling payload
+        try:
+            # Return all vessels if no filters are provided
+            payload["payload"] = db.query(queries)
+            payload["size"] = len(payload["payload"])
+            return payload
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error fetching vessels: {str(e)}")
+    # Return all vessels if no filters are provided
+    else:
+        payload['payload'] = db.get_table()
         payload["size"] = len(payload["payload"])
         return payload
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching vessels: {str(e)}")
-    finally:
-        db.close()
+    db.close()
 
 @app.get("/filters/", response_model=dict)
 async def get_filter_options():

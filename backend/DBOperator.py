@@ -47,25 +47,31 @@ class DBOperator():
             - ST_ExteriorRing()
             - ST_Perimeter()
     """
-    def __init__(self, table: str, host='localhost', port='5432', user='postgres',
+    def __init__(self, table: str, host='', port='', user='',
                  passwd='', schema='public', db='capstone') -> None:
         self.table = table
         self.__host = host
         self.__port = port
         self.__user = user
         self.__passwd = passwd
-        self.__db = connect(
-            dbname=db,
-            # user=user,
-            # password=passwd,
-            # host=host,
-            # port=port
-        )
-        print("### DBOperator: Connected to DB")
-        self.__cursor = self.__db.cursor()
+
+        try:
+            self.__db = connect(
+                dbname=db,
+                user=user,
+                password=passwd,
+                host=host,
+                port=port
+            )
+            self.__cursor = self.__db.cursor()
+            if table not in self.__get_tables():
+                raise RuntimeError(f"Table does not exist")
+            print("### DBOperator: Connected to DB")
+        except OperationalError as e:
+            print(f"### DBOperator: Error connecting to database:\n{e}")
+            raise OperationalError
 
     ### Mutators ###
-
     def add(self, entity: dict) -> None:
         """
         Adds entry to connected table
@@ -183,7 +189,6 @@ class DBOperator():
         print("### DBOperator: Connection closed.")
         return ("message", "DB instance closed.")
 
-
     ### Accessors ###
     def get_attributes(self) -> dict:
         """
@@ -193,14 +198,16 @@ class DBOperator():
         return {q[0]:q[1] for q in self.__cursor.fetchall()}
 
     # Fetching tables in DB --> Dev option!
-    def get_tables(self) -> None:
+    def __get_tables(self) -> list:
         """
         Fetching tables in DB
         """
         self.__cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
-        attr = self.__cursor.fetchall()
-        for table in attr:
-            pprint(table)
+        tables = [i[0] for i in self.__cursor.fetchall()]
+        # pprint(type(tables))
+        # for table in tables:
+        #     pprint(table)
+        return tables
 
     def get_privileges(self) -> dict:
         """
@@ -239,54 +246,62 @@ class DBOperator():
         }
 
     # pull data from DB
-    def query(self, entity: dict) -> list:
+    def query(self, queries: list) -> list:
         """
         Querys entities based on a dictionary of provided filters
         returns list of dictionary types
         """
-        conditions = []
+        cmd = []
         values = []
 
-        for attr,value in entity.items():
-            conditions.append(f"{attr} = %s")
-            values.append(value)
+        for entity in queries:
+            conditions = []
+            for attr,value in entity.items():
+                conditions.append(f"{attr} = %s")
+                values.append(value)
 
-        if not conditions:
-            return []
+            if not conditions:
+                return []
 
-        query = f"""
-            SELECT *, ST_AsGeoJson(geom)
-            FROM {self.table}
-            WHERE {' AND '.join(conditions)}
-        """
+            cmd.append(f"""
+                SELECT *, ST_AsGeoJson(geom)
+                FROM {self.table}
+                WHERE {' AND '.join(conditions)}
+            """)
+        print(f"### DBOperator: Query:\n{' UNION '.join(cmd)}")
+        print(f"### DBOperator: Values:")
+        pprint(values)
 
-        self.__cursor.execute(query, tuple(values))
-        vessels = self.__cursor.fetchall()
-
-        return [
-            {
-                "mmsi": v[0],
-                "vessel_name": v[1],
-                "callsign": v[2],
-                "timestamp": v[3],
-                "heading": v[4],
-                "speed": v[5],
-                "current_status": v[6],
-                "src": v[7],
-                "type": v[8],
-                "flag": v[9],
-                "length": v[10],
-                "width": v[11],
-                "draft": v[12],
-                "cargo_weight": v[13],
-                "lat": v[14],
-                "lon": v[15],
-                "dist_from_port": v[16],
-                "dist_from_shore": v[17],
-                "geom": v[-1]
-            }
-            for v in vessels
-        ]
+        try:
+            self.__cursor.execute(" UNION ".join(cmd), tuple(values))
+            vessels = self.__cursor.fetchall()
+            return [
+                    {
+                        "mmsi": v[0],
+                        "vessel_name": v[1],
+                        "callsign": v[2],
+                        "timestamp": v[3],
+                        "heading": v[4],
+                        "speed": v[5],
+                        "current_status": v[6],
+                        "src": v[7],
+                        "type": v[8],
+                        "flag": v[9],
+                        "length": v[10],
+                        "width": v[11],
+                        "draft": v[12],
+                        "cargo_weight": v[13],
+                        "lat": v[14],
+                        "lon": v[15],
+                        "dist_from_port": v[16],
+                        "dist_from_shore": v[17],
+                        "geom": v[-1]
+                    }
+                    for v in vessels
+                ]
+        except UndefinedColumn as e:
+            print(f"### DBOperator: Error occured:\n{e}")
+            # raise UndefinedColumn
 
     def get_table(self) -> list:
         """
