@@ -255,6 +255,7 @@ function App() {
           placeVessel(
             vessel['lon'],
             vessel['lat'],
+            vessel['heading'],
             0, //For elevation
             vessel['type'],
             vessel['name']

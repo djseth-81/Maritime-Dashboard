@@ -4,7 +4,7 @@ import { Cartesian3, DistanceDisplayCondition, NearFarScalar, HeightReference } 
 import ReactDOMServer from 'react-dom/server'
 import BoatIcon from "../../assets/icons/boatIcon"
 
-export function placeVessel(longitude, latitude, elevation = 0, type = "other", name = "Unnamed") {
+export function placeVessel(longitude, latitude, heading, elevation = 0, type = "OTHER", name = "UNKOWN") {
     // Convert values to numbers and validate
     const numLongitude = Number(longitude);
     const numLatitude = Number(latitude);
@@ -20,7 +20,7 @@ export function placeVessel(longitude, latitude, elevation = 0, type = "other", 
     const position = Cartesian3.fromDegrees(numLongitude, numLatitude, numElevation);
 
     const svgString = ReactDOMServer.renderToStaticMarkup(
-        <BoatIcon type={type} size={50} />
+        <BoatIcon type={type} size={25} heading={heading} />
     );
 
     const encodedSvg = encodeURIComponent(svgString);
