@@ -6,7 +6,7 @@ import CryptoJS from "crypto-js";
 import "./Register.css"
 
 const URL = window.location.href.split(':');
-const endpoint = "http:" + URL[1] + ":8000/login/";
+const endpoint = "http:" + URL[1] + ":8000/addUser/";
 export default function Register() {
   useEffect(() => {
     document.title = "Register";
