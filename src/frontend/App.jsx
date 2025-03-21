@@ -16,7 +16,7 @@ import OverlaysUI from "./utilities/OverlaysUI";
 function App() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [shapeType, setShapeType] = useState("polygon");
-  const [geometries, setGeometries] = useState([]);
+  const [geometries, setGeometries] = useState([]); // Added state for geometries
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
@@ -29,7 +29,9 @@ function App() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const viewerRef = useRef(null);
-  const apiEndpoint = "http://localhost:8000/vessels/";
+  const URL = window.location.href.split(':');
+  const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
+  const filtersAPI = "http:" + URL[1] + ":8000/filters/";
 
   // Fetch vessels from API
   const fetchVessels = async (filters = {}) => {
@@ -48,7 +50,7 @@ function App() {
         queryParams.status = filters.statuses.join(",");
       }
 
-      const response = await axios.get(apiEndpoint, { params: queryParams });
+      const response = await axios.get(vesselsAPI, { params: queryParams });
       
       console.log("Table privileges");
       console.log(response.data.Privileges);
@@ -159,6 +161,7 @@ function App() {
   };
 
   const handleClearConfirmed = () => {
+    viewerRef.current.cesiumElement.entities.removeAll();
     setGeometries([]);
     setSelectedGeometry(null);
     setShowContextMenu(false);
@@ -194,16 +197,18 @@ function App() {
     Note: Cesium Entities have a __id attribute. 
   */
   const handleDelete = () => {
+    setShowContextMenu(false);
     setShowDeleteDialog(true);
   };
 
   const handleDeleteConfirm = () => {
     if (selectedGeometry) {
       // Remove the selected geometry from the Cesium viewer
-      viewerRef.current.cesiumElement.entities.removeById(selectedGeometry);
+      viewerRef.current.cesiumElement.entities.removeById(selectedGeometry.id);
 
       // Update the state to remove the selected geometry
-      setGeometries((prev) => prev.filter((geo) => geo.id !== selectedGeometry));
+      setGeometries((prev) => prev.filter((geo) => geo.id !== selectedGeometry.id));
+      setSelectedGeometry(null);
     }
     setShowDeleteDialog(false);
   };
@@ -218,7 +223,11 @@ function App() {
     setShowSettings(false);
   };
 
-  const handleFilterApply = async (filters) => await fetchVessels(filters);
+  const handleFilterApply = async (filters) => {
+        console.log("Filters selected:");
+        console.log(filters);
+        await fetchVessels(filters);
+    }
 
   // Debug
   console.log("Show Context Menu:", showContextMenu);
@@ -257,9 +266,8 @@ function App() {
           viewer={viewerRef}
           viewerReady={viewerReady}
           isDrawing={isDrawing}
-          shapeType={shapeType}
-          geometries={geometries}
-          setGeometries={setGeometries}
+          geometries={geometries} // Pass geometries state
+          setGeometries={setGeometries} // Pass setGeometries function
           setSelectedGeometry={setSelectedGeometry}
           setShowContextMenu={setShowContextMenu}
           setContextMenuPosition={setContextMenuPosition}
@@ -269,7 +277,7 @@ function App() {
 
       <ToolsUI
         onToggleFilters={handleToggleFilters}
-        apiEndpoint="http://localhost:8000/filters/"
+        apiEndpoint={filtersAPI}
         onFilterApply={handleFilterApply}
         onToggleDrawing={handleToggleDrawing}
         onUndo={handleUndo}
@@ -291,7 +299,8 @@ function App() {
 
       {showSettings && selectedGeometry && (
         <ZoneSettingsUI
-          selectedGeometry={selectedGeometry}
+          zoneName={selectedGeometry.name}
+          positions={selectedGeometry.positions}
           onRename={handleRename}
           onDelete={handleDelete}
           onSave={handleSave}
@@ -300,7 +309,7 @@ function App() {
 
       {showFilters && (
         <FiltersUI
-          apiEndpoint="http://localhost:8000/filters/"
+          apiEndpoint={filtersAPI}
           onFilterApply={handleFilterApply}
         />
       )}
