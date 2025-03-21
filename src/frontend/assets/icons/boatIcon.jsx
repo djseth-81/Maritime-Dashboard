@@ -1,15 +1,19 @@
 import React from "react";
 
 export default function BoatIcon({
-  type = "cargo", // Default vessel type
+  type = "OTHER", // Default vessel type
   size = 100, // Default size
+  heading = 0, // Default orientation
 }) {
   // Define color schemes for different vessel types
+  // Could we use the vessel types from get_filters() to populate the keys here?
   const vesselColors = {
-    cargo: "#6B8E23", // Olive green
-    fishing: "#8B4513", // Brown
-    tankers: "#CD5C5C", // Indian red
-    highSpeedCraft: "#4682B4", // Steel blue
+    CARGO: "#6B8E23", // Olive green
+    FISHING: "#8B4513", // Brown
+    TANKER: "#CD5C5C", // Indian red
+    TUG: "#CD5C5C", // Indian red
+    RECREATIONAL: "#4682B4", // Steel blue
+    PASSENGER: "#4682B4", // Steel blue
   };
 
   // Get the color based on the vessel type
@@ -36,6 +40,7 @@ export default function BoatIcon({
       viewBox={`0 0 ${size} ${size}`}
       width={size}
       height={size}
+      transform = {`rotate(${heading} 0 0)`}
     >
       {/* Simple angle shape (like <) */}
       <polygon
