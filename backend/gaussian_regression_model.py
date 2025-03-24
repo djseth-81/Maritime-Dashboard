@@ -42,14 +42,9 @@ for i in range(len(filtered_data) - 1):
     record1 = filtered_data[i]
     record2 = filtered_data[i + 1]
     
-    # time difference between two data points
     delta_time = calculate_time_diff(record1['BaseDateTime'], record2['BaseDateTime'])
-    
-    # calculate position change
     distance, delta_lat, delta_lon = calculate_position_change(record1['LAT'], record1['LON'], record2['LAT'], record2['LON'])
     
-    # print(f"Time Diff: {delta_time} hours | Position Change: ({delta_lat}, {delta_lon})")
-
     # x is features, y is the target
     X_train.append([record1['LAT'], record1['LON'], record1['SOG'], delta_time])
     y_train.append([delta_lat, delta_lon])
@@ -58,8 +53,8 @@ X_train = np.array(X_train)
 y_train = np.array(y_train)
 
 # adding features to model for training, need lat long sog delta_time from json data
-lat_lon_features = X_train[:, :2]  # LAT, LON
-other_features = X_train[:, 2:]  # SOG, delta_time
+lat_lon_features = X_train[:, :2]
+other_features = X_train[:, 2:]  # SOG, delta_time, only ones being used right now, might need to add more tbh
 
 # scale only using SOG and delta_time due to wanting ship data that moves
 scaler = StandardScaler()
@@ -69,41 +64,18 @@ X_train_scaled = np.hstack((lat_lon_features_scaled, other_features_scaled))
 
 # init gaussian process regressor
 kernel = C(1.0, (1e-3, 1e4)) * RBF(1.0, (1e-3, 100.0))
-
 gpr = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=100, optimizer="fmin_l_bfgs_b")
-# gpr = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=100, normalize_y=True)
-
 gpr.fit(X_train_scaled, y_train)
-predicted_hours = 200
+predicted_hours = 24
 new_data = np.array([[34.0600, -118.2500, 0, predicted_hours]])
 new_data_scaled = scaler.transform(new_data[:, 2:])
 new_data_scaled = np.hstack((new_data[:, :2], new_data_scaled))
 
 y_pred, sigma = gpr.predict(new_data_scaled, return_std=True)
 
-# # Check if speed is 0 and handle the prediction accordingly
-# if new_data[0][2] == 0:
-#     predicted_lat = new_data[0][0]
-#     predicted_lon = new_data[0][1]
-#     print(f"Ship is not moving. Predicted coordinates: ({predicted_lat}, {predicted_lon})")
-# else:
-#     y_pred, sigma = gpr.predict(new_data_scaled, return_std=True)
-
-#     current_lat = new_data[0][0]
-#     current_lon = new_data[0][1]
-
-#     delta_lat_pred = y_pred[0][0]
-#     delta_lon_pred = y_pred[0][1]
-
-#     predicted_lat = current_lat + delta_lat_pred
-#     predicted_lon = current_lon + delta_lon_pred
-
-#     print(f"Predicted coordinates after {predicted_hours} hours: LAT:{predicted_lat} LON:{predicted_lon}")
-#     print(f"Prediction Standard Deviation: {sigma}")
-
-# USING TEST DATA WITH MOCK STARTING LAT LONG
-current_lat = 34.0600
-current_lon = -118.2500
+# mock starting coords
+current_lat = 30.12689
+current_lon = -88.47439
 
 # Predicted changes
 delta_lat_pred = y_pred[0][0]
@@ -117,10 +89,6 @@ print()
 print(f"Starting Coordinates: LAT:{current_lat} LON:{current_lon}")
 print(f"Predicted coordinates after {predicted_hours} hours: LAT:{predicted_lat} LON:{predicted_lon}")
 print(f"Prediction Standard Deviation: {sigma}")
-print()
-print("debugging because delta change keeps being 0 for some reason")
-print(f"Raw prediction (delta_lat, delta_lon): {y_pred}")
-
 print()
 distance_diff, x, y = calculate_position_change(current_lat, current_lon, predicted_lat, predicted_lon)
 print(f"Distance: {distance_diff:.2f} km")
