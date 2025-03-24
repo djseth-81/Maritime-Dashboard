@@ -1,6 +1,7 @@
 import { useState } from "react";
+import * as Cesium from "cesium";
 
-const ZoneSettingsUI = ({ zoneName, onSave, onDelete, onRename }) => {
+const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename }) => {
     const [isRenaming, setIsRenaming] = useState(false);
     const [newName, setNewName] = useState(zoneName);
 
@@ -9,6 +10,14 @@ const ZoneSettingsUI = ({ zoneName, onSave, onDelete, onRename }) => {
             onRename(newName);
             setIsRenaming(false);
         }
+    };
+
+    const convertCartesianToDegrees = (cartesian) => {
+        const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+        const latitude = Cesium.Math.toDegrees(cartographic.latitude);
+        const longitude = Cesium.Math.toDegrees(cartographic.longitude);
+        const height = cartographic.height;
+        return { latitude, longitude, height };
     };
 
     return (
@@ -21,7 +30,7 @@ const ZoneSettingsUI = ({ zoneName, onSave, onDelete, onRename }) => {
                         onClick={() => setIsRenaming(true)}
                         title="Renaming Zone"
                     >
-                        📝
+                        Rename
                     </button>
                 </h2>
             </div>
@@ -44,6 +53,15 @@ const ZoneSettingsUI = ({ zoneName, onSave, onDelete, onRename }) => {
             )}
 
             <div className="settings-body">
+                <h3>Coordinates:</h3>
+                <ul>
+                    {positions.map((pos, index) => {
+                        const { latitude, longitude, height } = convertCartesianToDegrees(pos);
+                        return (
+                            <li key={index}>{`Lat: ${latitude.toFixed(6)}, Lon: ${longitude.toFixed(6)}, Alt: ${height.toFixed(2)}`}</li>
+                        );
+                    })}
+                </ul>
                 <button className="save-btn" onClick={onSave}>Save</button>
                 <button className="delete-btn" onClick={onDelete}>Delete</button>
             </div>

@@ -3,6 +3,7 @@ import CustomGeometry from "./utilities/CustomGeometry";
 import ToolsUI from "./utilities/ToolsUI";
 import ZoneSettingsUI from "./utilities/ZoneSettingsUI";
 import FiltersUI from "./utilities/filters/FiltersUI";
+import ConfirmationDialog from "./utilities/ConfirmationDialog";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/ReactToastify.css";
 import './App.css';
@@ -15,19 +16,117 @@ import useVesselTracking from "./components/VesselTracking"; // Import the new h
 function App() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [shapeType, setShapeType] = useState("polygon");
-  const [geometries, setGeometries] = useState([]);
+  const [geometries, setGeometries] = useState([]); // Added state for geometries
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const [showSettings, setShowSettings] = useState(false);
   const [showOverlays, setShowOverlays] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+<<<<<<< HEAD
 
   const viewerRef = useRef(null);
   const apiEndpoint = "http://localhost:5000/vessels/";
   
   // Use the custom hook for vessel tracking
   const { vessels, viewerReady, fetchVessels } = useVesselTracking(viewerRef, apiEndpoint);
+=======
+  const [vessels, setVessels] = useState([]);
+  const [viewerReady, setViewerReady] = useState(false);
+  const [showClearDialog, setShowClearDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const viewerRef = useRef(null);
+  const URL = window.location.href.split(':');
+  const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
+  const filtersAPI = "http:" + URL[1] + ":8000/filters/";
+
+  // Fetch vessels from API
+  const fetchVessels = async (filters = {}) => {
+    try {
+      const queryParams = {};
+
+      if (filters.types && filters.types.length > 0) {
+        queryParams.type = filters.types.join(",");
+      }
+
+      if (filters.origin) {
+        queryParams.origin = filters.origin;
+      }
+
+      if (filters.statuses && filters.statuses.length > 0) {
+        queryParams.status = filters.statuses.join(",");
+      }
+
+      const response = await axios.get(vesselsAPI, { params: queryParams });
+      
+      console.log("Table privileges");
+      console.log(response.data.Privileges);
+
+      console.log("Response Timestamp");
+      console.log(response.data.retrieved);
+
+      console.log("Size of payload");
+      console.log(response.data.size);
+
+      if (response.data.length === 0) {
+        toast.info("No vessels found matching your filters.");
+        setVessels([]);
+        return;
+      }
+
+      const transformedVessels = response.data.payload.map((vessel) =>
+        Array.isArray(vessel)
+          ? {
+            id: vessel['mmsi'],
+            name: vessel['vessel_name'],
+            type: vessel['type'],
+            country_of_origin: vessel['flag'],
+            status: vessel['current_status'],
+            latitude: vessel['lat'],
+            longitude: vessel['lon']
+          }
+          : vessel
+      );
+
+      setVessels(transformedVessels);
+
+    } catch (error) {
+      console.error("Error fetching vessels:", error.message);
+      toast.error("Failed to load vessels.");
+      setVessels([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchVessels();
+    if (viewerRef.current && viewerRef.current.cesiumElement) {
+      const viewer = viewerRef.current.cesiumElement;
+      setViewerReady(true);
+      // Create a scene mode change event handler
+      const sceneModeChangeHandler = () => {
+        // If there's a selected entity, re-select it to update the info box position
+        if (viewer.selectedEntity) {
+          const currentEntity = viewer.selectedEntity;
+          viewer.selectedEntity = undefined; // Deselect
+          setTimeout(() => {
+            viewer.selectedEntity = currentEntity; // Re-select after a brief delay
+          }, 100);
+        }
+      };
+
+      // Add event listener for scene mode changes
+      viewer.scene.morphComplete.addEventListener(sceneModeChangeHandler);
+
+      // Clean up event listener when component unmounts
+      return () => {
+        if (viewer && viewer.scene && !viewer.isDestroyed()) {
+          viewer.scene.morphComplete.removeEventListener(sceneModeChangeHandler);
+        }
+      };
+    }
+  }, [viewerRef.current]);
+>>>>>>> origin/dev
 
   // Handler for ToolUI 'Toggle Zoning'
   const handleToggleDrawing = () => {
@@ -53,10 +152,7 @@ function App() {
     console.log("Overlays toggled:", !showOverlays);
   };
 
-  const handleToggleFilters = () => {
-    setShowFilters((prev) => !prev);
-    console.log("Filters toggled: ", !showFilters);
-  };
+  const handleToggleFilters = () => setShowFilters((prev) => !prev);
 
   // Undos previous point placed, will undo until the stack is empty
   const handleUndo = () => {
@@ -70,30 +166,53 @@ function App() {
 
   // Clears entire cesium viewer of geometries
   const handleClear = () => {
+    setShowClearDialog(true);
+  };
+
+  const handleClearConfirmed = () => {
     setGeometries([]);
     setSelectedGeometry(null);
     setShowContextMenu(false);
+    setShowClearDialog(false);
+  };
+
+  const handleClearCancelled = () => {
+    setShowClearDialog(false);
   };
 
   // Radio buttons selected in ToolsUI
-  const handleSelectShape = (shape) => {
-    setShapeType(shape);
-  };
+  // const handleSelectShape = (shape) => {
+  //   setShapeType(shape);
+  // };
 
   const handleRename = (newName) => {
     setGeometries((prev) =>
       prev.map((geo) =>
-        geo === selectedGeometry ? { ...geo, name: newName } : geo
+        geo.id === selectedGeometry ? { ...geo, name: newName } : geo
       )
     );
     setSelectedGeometry((prev) => ({ ...prev, name: newName }));
   };
 
   const handleDelete = () => {
-    setGeometries((prev) => prev.filter((geo) => geo !== selectedGeometry));
-    setShowSettings(false);
-    setSelectedGeometry(null);
     setShowContextMenu(false);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (selectedGeometry) {
+      // Remove the selected geometry from the Cesium viewer
+      viewerRef.current.cesiumElement.entities.removeById(selectedGeometry.id);
+
+      // Update the state to remove the selected geometry
+      setGeometries((prev) => prev.filter((geo) => geo.id !== selectedGeometry.id));
+      setSelectedGeometry(null);
+    }
+    setShowDeleteDialog(false);
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteDialog(false);
   };
 
   // Placeholder for save functionality
@@ -101,14 +220,29 @@ function App() {
     console.log("Zone settings saved.");
     setShowSettings(false);
   };
-  
+
   const handleFilterApply = async (filters) => {
+<<<<<<< HEAD
     await fetchVessels(filters);
   };
   
+=======
+        console.log("Filters selected:");
+        console.log(filters);
+        await fetchVessels(filters);
+    }
+
+  // Debug
+  console.log("Show Context Menu:", showContextMenu);
+  console.log("Selected Geometry:", selectedGeometry);
+  console.log("Context Menu Position:", contextMenuPosition);
+  console.log("showSettings:", showSettings);
+
+>>>>>>> origin/dev
   return (
     <div className="cesium-viewer">
       <ToastContainer />
+
       <Viewer
         ref={viewerRef}
         full
@@ -123,6 +257,7 @@ function App() {
         selectionIndicator={true}>
 
         {vessels.map((vessel) =>
+<<<<<<< HEAD
           renderVesselEntity(
             vessel.longitude,
             vessel.latitude,
@@ -131,6 +266,16 @@ function App() {
             vessel.name,
             viewerRef.current?.cesiumElement //Pass viewer reference
           ) || <div key={`invalid-${vessel.id}`}>Invalid Vessel Data</div>
+=======
+          placeVessel(
+            vessel['lon'],
+            vessel['lat'],
+            vessel['heading'],
+            0, //For elevation
+            vessel['type'],
+            vessel['name']
+          ) || <div key={vessel['mmsi']}>Invalid Vessel Data</div>
+>>>>>>> origin/dev
         )}
 
 
@@ -139,9 +284,8 @@ function App() {
           viewer={viewerRef}
           viewerReady={viewerReady}
           isDrawing={isDrawing}
-          shapeType={shapeType}
-          geometries={geometries}
-          setGeometries={setGeometries}
+          geometries={geometries} // Pass geometries state
+          setGeometries={setGeometries} // Pass setGeometries function
           setSelectedGeometry={setSelectedGeometry}
           setShowContextMenu={setShowContextMenu}
           setContextMenuPosition={setContextMenuPosition}
@@ -150,13 +294,14 @@ function App() {
       </Viewer>
 
       <ToolsUI
+        onToggleFilters={handleToggleFilters}
+        apiEndpoint={filtersAPI}
+        onFilterApply={handleFilterApply}
         onToggleDrawing={handleToggleDrawing}
         onUndo={handleUndo}
         onClear={handleClear}
-        onSelectShape={handleSelectShape}
+        // onSelectShape={handleSelectShape}
         onToggleOverlays={handleToggleOverlays}
-        onToggleFilters={handleToggleFilters}
-        onFilterApply={handleFilterApply}
       />
 
       {showContextMenu && selectedGeometry && (
@@ -172,7 +317,8 @@ function App() {
 
       {showSettings && selectedGeometry && (
         <ZoneSettingsUI
-          selectedGeometry={selectedGeometry}
+          zoneName={selectedGeometry.name}
+          positions={selectedGeometry.positions}
           onRename={handleRename}
           onDelete={handleDelete}
           onSave={handleSave}
@@ -181,7 +327,7 @@ function App() {
 
       {showFilters && (
         <FiltersUI
-          apiEndpoint="http://localhost:5000/filters/"
+          apiEndpoint={filtersAPI}
           onFilterApply={handleFilterApply}
         />
       )}
@@ -190,6 +336,22 @@ function App() {
         <OverlaysUI
           onClose={() => setShowOverlays(false)}
           onToggleWeather={() => console.log("Weather Overlay Toggled")}
+        />
+      )}
+
+      {showClearDialog && (
+        <ConfirmationDialog
+          message="Are you sure you want to clear all geometries?"
+          onConfirm={handleClearConfirmed}
+          onCancel={handleClearCancelled}
+        />
+      )}
+
+      {showDeleteDialog && (
+        <ConfirmationDialog
+          message="Are you sure you want to delete the selected geometry?"
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
         />
       )}
     </div>

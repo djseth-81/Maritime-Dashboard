@@ -4,6 +4,7 @@ import { Cartesian3, DistanceDisplayCondition, NearFarScalar, HeightReference, S
 import ReactDOMServer from 'react-dom/server'
 import BoatIcon from "../../assets/icons/boatIcon"
 
+<<<<<<< HEAD
 /**
  * Places a vessel entity on the map with proper handling for different view modes
  * @param {number|string} longitude - Vessel longitude
@@ -15,6 +16,9 @@ import BoatIcon from "../../assets/icons/boatIcon"
  * @returns {React.Element} - Resium Entity component
  */
 export function renderVesselEntity(longitude, latitude, elevation = 0, type = "cargo", name = "Vessel", viewer = null) {
+=======
+export function placeVessel(longitude, latitude, heading, elevation = 0, type = "OTHER", name = "UNKOWN") {
+>>>>>>> origin/dev
     // Convert values to numbers and validate
     const numLongitude = Number(longitude);
     const numLatitude = Number(latitude);
@@ -63,7 +67,7 @@ export function renderVesselEntity(longitude, latitude, elevation = 0, type = "c
     
     // Generate the SVG icon
     const svgString = ReactDOMServer.renderToStaticMarkup(
-        <BoatIcon type={type} size={50} />
+        <BoatIcon type={type} size={25} heading={heading} />
     );
 
     const encodedSvg = encodeURIComponent(svgString);
@@ -87,7 +91,21 @@ export function renderVesselEntity(longitude, latitude, elevation = 0, type = "c
         <Entity
             key={entityKey}
             position={position}
+<<<<<<< HEAD
             billboard={billboardProps}
+=======
+            billboard={{
+                image: dataUrl,
+                scale: 2.0,
+                distanceDisplayCondition: new DistanceDisplayCondition(0, 20.0e6),
+                scaleByDistance: new NearFarScalar(1.5e5, 1.5, 1.5e6, 0.5),
+                heightReference: HeightReference.None,
+                verticalOrigin: 1,
+                horizontalOrigin: 0,
+                eyeOffset: new Cartesian3(0, 0, -500),
+                pixelOffset: new Cartesian3(0, 0, 0),
+            }}
+>>>>>>> origin/dev
             name={`${type.charAt(0).toUpperCase() + type.slice(1)} Vessel: ${name}`}
             description={`This is a ${type} vessel named "${name}" at position ${numLongitude.toFixed(4)}, ${numLatitude.toFixed(4)}`}
         />

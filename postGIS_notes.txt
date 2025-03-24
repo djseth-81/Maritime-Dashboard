@@ -121,6 +121,9 @@ pip install PyGreSQL
 
 - Spatial Indexing: https://postgis.net/workshops/postgis-intro/indexing.html
 
+### Migrating DB to new location:
+- Config file: /var/lib/pgsql/data/postgresql.conf
+- data directory: /var/lib/pgsql/data
 
 
 

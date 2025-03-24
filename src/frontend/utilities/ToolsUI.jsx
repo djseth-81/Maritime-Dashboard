@@ -41,7 +41,8 @@ const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape, apiEndpoint,
                     <button onClick={onUndo}>Undo</button>
                     <button onClick={onClear}>Clear</button>
 
-                    <h4>Select Shape</h4>
+                    {/* non-functional buttons */}
+                    {/* <h4>Select Shape</h4>
                     <label>
                         <input
                             type="radio"
@@ -68,7 +69,7 @@ const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape, apiEndpoint,
                             onChange={handleShapeChange}
                         />
                         Point
-                    </label>
+                    </label> */}
                 </div>
             )}
 
