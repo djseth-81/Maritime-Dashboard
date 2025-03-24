@@ -53,6 +53,19 @@ Northrop Grumman - Capstone 2025 - Maritime Operations Monitoring Dashboard
 ### Run Dev Server
 `npm run dev`
 
+# Activate virtual environment
+python -m venv .venv
+.venv\Scripts\activate
+
+# Kafka reciver
+uvicorn backend.main:app --host 0.0.0.0 --port 5000 --reload
+
+# Start Kafka
+bin/kafka-server-start.sh config/kraft/server.properties
+
+
+fast interact with frontend directly
+
 <br />
 
 # Release Notes
@@ -68,15 +81,16 @@ Northrop Grumman - Capstone 2025 - Maritime Operations Monitoring Dashboard
 ### Other
 - N/A
 
-# Activate virtual environment
-python -m venv .venv
-.venv\Scripts\activate
+## v2.0
+### Features
+- Improved filter component to be more efficient and useful
+- Setup local database and a centralized SQL database server for data management
+- Setup Kafka server alonside database server
+- Initial path prediction models have been setup
 
-# Kafka reciver
-uvicorn backend.main:app --host 0.0.0.0 --port 5000 --reload
-
-# Start Kafka
-bin/kafka-server-start.sh config/kraft/server.properties
-
-
-fast interact with frontend directly
+### Bug Fixes
+- Fixed issue with vessel positions not converting coordinates correctly between 2D and 3D maps
+- Fixed issue with shapes weren't being displayed on the map as intended
+  
+### Other
+- N/A
