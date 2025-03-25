@@ -1,41 +1,31 @@
-import { useEffect } from "react";
-import { Entity, PolylineGraphics, PolygonGraphics, PointGraphics } from "resium";
+import { useEffect, useRef, useState } from "react";
 import * as Cesium from "cesium";
 
-const CustomGeometry = ({ viewer, viewerReady, isDrawing, shapeType, geometries, setGeometries, setSelectedGeometry, setShowContextMenu, setContextMenuPosition, setShowSettings }) => {
-    // const [showContextMenu, setShowContextMenu] = useState(false);
-    // const [selectedGeometry, setSelectedGeometry] = useState(null);
-    // const [contextMenuPosition, setContextMenuPosition] = useState({x: 0, y: 0});
-    // const viewerRef = useRef(null);
-
-    // const createGeometry = (positions, name) => ({
-    //     id: Date.now().toString(),
-    //     positions,
-    //     name: name || `Zone ${geometries.length + 1}`,
-    //     shapeType,
-    //     completed: false
-    // });
+const CustomGeometry = ({ viewer, viewerReady, isDrawing, setSelectedGeometry, setShowContextMenu, setContextMenuPosition, setShowSettings, geometries, setGeometries }) => {
+    const [positions, setPositions] = useState([]);
+    const handlerRef = useRef(null);
+    const lastClickTimeRef = useRef(0);
+    const doubleClickDetectedRef = useRef(false);
 
     useEffect(() => {
+        console.log("useEffect executed", { viewerReady, isDrawing });
 
-        console.log("Zoning tool active:", isDrawing);
-        if (!viewerReady || !viewer.current?.cesiumElement) return;
+        if (!viewerReady || !viewer?.current.cesiumElement) return;
 
         const scene = viewer.current.cesiumElement.scene;
 
-        //disables native browser context menu.
         scene.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
         const handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+        handlerRef.current = handler;
 
-        // Right-click context menu
+        // Right-click to open context menu
         handler.setInputAction((click) => {
-            console.log("Right-click detected");
-
+            console.log("Right-click registered at position:", click.position);
             const pickedEntity = scene.pick(click.position);
-            console.log("Right Click: Entity selected", pickedEntity);
             if (Cesium.defined(pickedEntity)) {
-                setSelectedGeometry(pickedEntity);
+                console.log("Right-click on entity:", pickedEntity);
+                setSelectedGeometry(pickedEntity.id);
                 setContextMenuPosition({ x: click.position.x, y: click.position.y });
                 setShowContextMenu(true);
             } else {
@@ -43,14 +33,14 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, shapeType, geometries,
             }
         }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
 
-        // Left-click to select entities (geometries ATM)
+        // Left-click to select polygons
         handler.setInputAction((click) => {
+            console.log("Left-click registered at position:", click.position);
             const pickedEntity = scene.pick(click.position);
-            console.log("Left-click: Entity selected.", pickedEntity);
             if (Cesium.defined(pickedEntity)) {
-                setSelectedGeometry(pickedEntity);
+                console.log("Left-click on entity:", pickedEntity);
+                setSelectedGeometry(pickedEntity.id);
             } else {
-                console.log("Deselected geometry");
                 setShowContextMenu(false);
                 setShowSettings(false);
                 setSelectedGeometry(null);
@@ -58,80 +48,187 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, shapeType, geometries,
         }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
         if (isDrawing) {
-
-            //Two handlers will be active when the Zoning tool is toggled, need to figure out how to disable the select handler
-            // handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_CLICK);
-            //Left click to start geometry 
-            // Implement id attachment to geometry, will simplify deletion, renaming, saving.
+            // Left-click to start geometry
             handler.setInputAction((click) => {
-                console.log("Click event detected");
-                // const cartesian = viewer.scene.pickPosition(click.position);
-                let cartesian = scene.pickPosition(click.position);
-                if (!cartesian) {
-                    cartesian = scene.camera.pickEllipsoid(click.position, scene.globe.ellipsoid);
+                const currentTime = Date.now();
+
+                if (currentTime - lastClickTimeRef.current < 300) {
+                    // double left-click detected
+                    doubleClickDetectedRef.current = true;
+                    return;
                 }
-                console.log("Posititon picked:", cartesian);
-                if (cartesian) {
-                    setGeometries((prev) => {
-                        console.log("Current geometries: ", prev);
-                        if (prev.length === 0 || prev[prev.length - 1].completed) {
-                            const newZoneName = `Zone ${prev.length + 1}`;
-                            console.log("Creating new geometry");
-                            return [...prev, { shapeType, positions: [cartesian], completed: false, name: newZoneName }];
-                        } else {
-                            console.log("Adding point to existing geometry");
-                            const updated = [...prev];
-                            updated[updated.length - 1].positions.push(cartesian);
-                            return updated;
+
+                doubleClickDetectedRef.current = false;
+                lastClickTimeRef.current = currentTime;
+
+                setTimeout(() => {
+                    if (!doubleClickDetectedRef.current) {
+                        let cartesian = scene.pickPosition(click.position);
+                        if (!cartesian) {
+                            cartesian = scene.camera.pickEllipsoid(click.position, scene.globe.ellipsoid);
                         }
-                    });
-                }
+                        console.log("Drawing left-click registered at position:", click.position, "Cartesian:", cartesian);
+                        if (cartesian) {
+                            setPositions((prevPositions) => [...prevPositions, cartesian]);
+                        }
+                    }
+                }, 300);
             }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-            // double click geometry complete
+            // Double-click to complete geometry
             handler.setInputAction(() => {
-                console.log("Left-double-click detected, completing geometry.");
-                setGeometries((prev) => {
-                    if (prev.length === 0) return prev;
-                    const updated = [...prev];
-                    updated[updated.length - 1].completed = true;
-                    console.log("Updated geometries after completion:", updated);
-                    return updated;
-                });
+                console.log("Double-click registered to complete geometry");
+                if (positions.length > 2) {
+                    const newPolygon = viewer.current.cesiumElement.entities.add({
+                        polygon: {
+                            hierarchy: new Cesium.PolygonHierarchy(positions),
+                            material: Cesium.Color.RED.withAlpha(0.5),
+                        },
+                        name: `Zone ${geometries.length + 1}`,
+                    });
+
+                    setGeometries((prevGeometries) => [
+                        ...prevGeometries,
+                        { id: newPolygon.id, positions: positions },
+                    ]);
+
+                    setPositions([]); // Resets positions for next polygon
+                }
+
+                // Reset the double-click flag after handling the double-click
+                setTimeout(() => {
+                    doubleClickDetectedRef.current = false;
+                }, 300);
             }, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
-        } else {
-            return;
         }
 
+        return () => {
+            if (handlerRef.current) {
+                handlerRef.current.destroy();
+                handlerRef.current = null;
+            }
+        };
+    }, [viewerReady, isDrawing, positions, viewer, setGeometries, setSelectedGeometry, setShowContextMenu, setContextMenuPosition, setShowSettings]);
 
-        return () => handler.destroy();
-    }, [viewer, isDrawing, geometries, setSelectedGeometry, setShowContextMenu, setShowSettings]);
-
-    return (
-        <div>
-
-            {geometries.map((geometry, index) => (
-                <Entity key={index}>
-                    {geometry.shapeType === "polyline" && (
-                        <PolylineGraphics positions={geometry.positions} material={Cesium.Color.RED} width={3} />
-                    )}
-                    {geometry.shapeType === "polygon" && (
-                        <PolygonGraphics
-                            hierarchy={new Cesium.PolygonHierarchy(geometry.positions)}
-                            material={Cesium.Color.RED.withAlpha(0.5)}
-                        />
-                    )}
-                    {geometry.shapeType === "point" &&
-                        geometry.positions.map((pos, i) => (
-                            <Entity key={i} position={pos}>
-                                <PointGraphics pixelSize={10} color={Cesium.Color.BLACK} />
-                            </Entity>
-                        ))}
-                </Entity>
-            ))}
-
-        </div>
-    );
+    return null;
 };
 
 export default CustomGeometry;
+
+// Previous implementation, KEEP!! (for now) 
+// import { useEffect } from "react";
+
+// import { Entity, PolylineGraphics, PolygonGraphics, PointGraphics, pick } from "resium";
+// import * as Cesium from "cesium";
+
+// const CustomGeometry = ({ viewer, viewerReady, isDrawing, shapeType, geometries, setGeometries, setSelectedGeometry, setShowContextMenu, setContextMenuPosition, setShowSettings }) => {
+//     useEffect(() => {
+//         if (!viewerReady || !viewer.current?.cesiumElement) return;
+
+//         const scene = viewer.current.cesiumElement.scene;
+
+//         // Disables native browser context menu.
+//         scene.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+//         const handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+
+//         // Right-click context menu
+//         handler.setInputAction((click) => {
+//             const pickedEntity = scene.pick(click.position);
+//             console.log("Right-click registered at position:", click.position);
+//             if (Cesium.defined(pickedEntity)) {
+//                 console.log("Right-click on entity:", pickedEntity);
+//                 // const selectedGeo = geometries.find(geo => geo === pickedEntity);
+//                 setSelectedGeometry(pickedEntity);
+//                 setContextMenuPosition({ x: click.position.x, y: click.position.y });
+//                 setShowContextMenu(true);
+//                 console.log("Context menu should be displayed");
+//             } else {
+//                 setShowContextMenu(false);
+//             }
+//         }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+
+//         // Left-click to select entities (geometries ATM)
+//         handler.setInputAction((click) => {
+//             const pickedEntity = scene.pick(click.position);
+//             console.log("Left-click registered at position:", click.position);
+//             if (Cesium.defined(pickedEntity)) {
+//                 console.log("Left-click on entity:", pickedEntity);
+//                 // const selectedGeo = geometries.find(geo => geo === pickedEntity);
+//                 setSelectedGeometry(pickedEntity);
+//             } else {
+//                 setShowContextMenu(false);
+//                 setShowSettings(false);
+//                 setSelectedGeometry(null);
+//             }
+//         }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+//         if (isDrawing) {
+//             // Left click to start geometry
+//             handler.setInputAction((click) => {
+//                 let cartesian = scene.pickPosition(click.position);
+//                 if (!cartesian) {
+//                     cartesian = scene.camera.pickEllipsoid(click.position, scene.globe.ellipsoid);
+//                 }
+//                 console.log("Drawing left-click registered at position:", click.position, "Cartesian:", cartesian);
+//                 if (cartesian) {
+//                     setGeometries((prev) => {
+//                         if (prev.length === 0 || prev[prev.length - 1].completed) {
+//                             const newZoneId = `zone-${Date.now()}`;
+//                             const newZoneName = `Zone ${prev.length + 1}`;
+//                             console.log("Starting new geometry:", newZoneName);
+//                             return [...prev, { id: newZoneId, shapeType, positions: [cartesian], completed: false, name: newZoneName }];
+//                         } else {
+//                             const updated = [...prev];
+//                             updated[updated.length - 1].positions.push(cartesian);
+//                             console.log("Adding point to existing geometry:", updated[updated.length - 1]);
+//                             return updated;
+//                         }
+//                     });
+//                 }
+//             }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+//             // Double click to complete geometry
+//             handler.setInputAction(() => {
+//                 console.log("Double-click registered to complete geometry");
+//                 setGeometries((prev) => {
+//                     if (prev.length === 0) return prev;
+//                     const updated = [...prev];
+//                     updated[updated.length - 1].completed = true;
+//                     console.log("Completed geometry:", updated[updated.length - 1]);
+//                     return updated;
+//                 });
+//             }, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+//         }
+
+//         return () => {
+//             handler.destroy();
+//         };
+//     }, [viewer, viewerReady, isDrawing, shapeType, geometries, setGeometries, setSelectedGeometry, setShowContextMenu, setContextMenuPosition, setShowSettings]);
+
+//     return (
+//         <div>
+//             {geometries.map((geometry) => (
+//                 <Entity key={geometry.id} name={geometry.name}>
+//                     {geometry.shapeType === "polyline" && (
+//                         <PolylineGraphics positions={geometry.positions} material={Cesium.Color.RED} width={3} />
+//                     )}
+//                     {geometry.shapeType === "polygon" && (
+//                         <PolygonGraphics
+//                             hierarchy={new Cesium.PolygonHierarchy(geometry.positions)}
+//                             material={Cesium.Color.RED.withAlpha(0.5)}
+//                         />
+//                     )}
+//                     {geometry.shapeType === "point" &&
+//                         geometry.positions.map((pos, i) => (
+//                             <Entity key={`${geometry.id}-${i}`} position={pos}>
+//                                 <PointGraphics pixelSize={10} color={Cesium.Color.BLACK} />
+//                             </Entity>
+//                         ))}
+//                 </Entity>
+//             ))}
+//         </div>
+//     );
+// };
+
+// export default CustomGeometry;

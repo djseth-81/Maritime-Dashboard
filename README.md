@@ -48,10 +48,23 @@ Northrop Grumman - Capstone 2025 - Maritime Operations Monitoring Dashboard
 
 `npm install --save-dev vite @vitejs/plugin-react vite-plugin-cesium`
 
-`npm install react-toastify`
+`npm install react-toastify axios`
 
 ### Run Dev Server
 `npm run dev`
+
+# Activate virtual environment
+python -m venv .venv
+.venv\Scripts\activate
+
+# Kafka reciver
+uvicorn backend.main:app --host 0.0.0.0 --port 5000 --reload
+
+# Start Kafka
+bin/kafka-server-start.sh config/kraft/server.properties
+
+
+fast interact with frontend directly
 
 <br />
 
@@ -65,5 +78,20 @@ Northrop Grumman - Capstone 2025 - Maritime Operations Monitoring Dashboard
 
 ### Bug Fixes
 - N/A
+### Other
+- N/A
+
+## v2.0
+### Features
+- Improved filter component to be more efficient and useful
+- Setup local database and a centralized SQL database server for data management
+- Setup Kafka server alonside database server
+- Initial path prediction models have been setup
+
+### Bug Fixes
+- Fixed issue with vessel positions not converting coordinates correctly between 2D and 3D maps
+- Fixed issue with shapes weren't being displayed on the map as intended
+- Fixed issue where providing multple values for filters returned no ships
+  
 ### Other
 - N/A

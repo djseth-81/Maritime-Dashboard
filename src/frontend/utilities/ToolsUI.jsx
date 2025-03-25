@@ -1,14 +1,12 @@
 import { useState } from "react";
 import Overlays from "./OverlaysUI";
-import Filters from "./FiltersUI";
+import FiltersUI from "./filters/FiltersUI";
+import useFetchFilters from "./filters/Filters";
 
-const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
+const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape, apiEndpoint, onFilterApply }) => {
     const [openPanel, setOpenPanel] = useState(false);
     const [selectedShape, setSelectedShape] = useState("polygon");
-    const [showVesselTypes, setShowVesselTypes] = useState(false);
-    const [showOrigin, setShowOrigin] = useState(false);
-    const [showStatus, setShowStatus] = useState(false);
-    const [showOverlays, setShowOverlays] = useState(false);
+    const { loading, error } = useFetchFilters(apiEndpoint);
 
     const handleShapeChange = (event) => {
         setSelectedShape(event.target.value);
@@ -43,7 +41,8 @@ const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
                     <button onClick={onUndo}>Undo</button>
                     <button onClick={onClear}>Clear</button>
 
-                    <h4>Select Shape</h4>
+                    {/* non-functional buttons */}
+                    {/* <h4>Select Shape</h4>
                     <label>
                         <input
                             type="radio"
@@ -70,7 +69,7 @@ const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
                             onChange={handleShapeChange}
                         />
                         Point
-                    </label>
+                    </label> */}
                 </div>
             )}
 
@@ -87,15 +86,15 @@ const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape }) => {
             {openPanel === "filters" && (
                 <div className="filter-panel">
                     <h3>Filters</h3>
-                    <button onClick={() => setShowVesselTypes(!showVesselTypes)}>Vessel types</button>
-                    <Filters showVesselTypes={showVesselTypes} />
-                    <button onClick={() => setShowOrigin(!showOrigin)}>Flag</button>
-                    <Filters showOrigin={showOrigin} />
-                    <button onClick={() => setShowStatus(!showStatus)}>Status</button>
-                    <Filters showStatus={showStatus} />
+                    {loading && <div>Loading...</div>}
+                    {error && <div>{error}</div>}
+                    {!loading && !error && (
+                        <FiltersUI
+                            apiEndpoint={apiEndpoint}
+                            onFilterApply={onFilterApply}
+                        />
+                    )}
                     <button onClick={() => handleToggle(null)}>Close</button>
-                    <Filters onClose={() => handleToggle(null)} />
-
                 </div>
             )}
         </div>

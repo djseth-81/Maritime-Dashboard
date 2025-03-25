@@ -1,38 +1,97 @@
-import { useState, useRef, useEffect, useReducer } from "react";
+import { useState, useRef, useEffect } from "react";
 import CustomGeometry from "./utilities/CustomGeometry";
 import ToolsUI from "./utilities/ToolsUI";
 import ZoneSettingsUI from "./utilities/ZoneSettingsUI";
+import FiltersUI from "./utilities/filters/FiltersUI";
+import ConfirmationDialog from "./utilities/ConfirmationDialog";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/ReactToastify.css";
 import './App.css';
 import { placeVessel } from "./utilities/shippingVessels/Vessels";
 import { Viewer } from "resium";
 import { SceneMode } from "cesium";
-/*
-  TODO: Add Filters.jsx and Overlays.jsx
-  -> Filters: Ship types
-        -> Vessel types
-        -> Country of origin
-        -> 
-  -> Overlays: Weather, ocean conditions, exclusion zones, traffic heatmap
-*/
-
+import axios from "axios";
+import OverlaysUI from "./utilities/OverlaysUI";
 
 function App() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [shapeType, setShapeType] = useState("polygon");
-  const [geometries, setGeometries] = useState([]);
+  const [geometries, setGeometries] = useState([]); // Added state for geometries
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const [showSettings, setShowSettings] = useState(false);
   const [showOverlays, setShowOverlays] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [vessels, setVessels] = useState([]);
   const [viewerReady, setViewerReady] = useState(false);
+  const [showClearDialog, setShowClearDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const viewerRef = useRef(null);
-  // Add an effect to handle scene mode changes
+  const URL = window.location.href.split(':');
+  const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
+  const filtersAPI = "http:" + URL[1] + ":8000/filters/";
+
+  // Fetch vessels from API
+  const fetchVessels = async (filters = {}) => {
+    try {
+      const queryParams = {};
+
+      if (filters.types && filters.types.length > 0) {
+        queryParams.type = filters.types.join(",");
+      }
+
+      if (filters.origin) {
+        queryParams.origin = filters.origin;
+      }
+
+      if (filters.statuses && filters.statuses.length > 0) {
+        queryParams.status = filters.statuses.join(",");
+      }
+
+      const response = await axios.get(vesselsAPI, { params: queryParams });
+      
+      console.log("Table privileges");
+      console.log(response.data.Privileges);
+
+      console.log("Response Timestamp");
+      console.log(response.data.retrieved);
+
+      console.log("Size of payload");
+      console.log(response.data.size);
+
+      if (response.data.length === 0) {
+        toast.info("No vessels found matching your filters.");
+        setVessels([]);
+        return;
+      }
+
+      const transformedVessels = response.data.payload.map((vessel) =>
+        Array.isArray(vessel)
+          ? {
+            id: vessel['mmsi'],
+            name: vessel['vessel_name'],
+            type: vessel['type'],
+            country_of_origin: vessel['flag'],
+            status: vessel['current_status'],
+            latitude: vessel['lat'],
+            longitude: vessel['lon']
+          }
+          : vessel
+      );
+
+      setVessels(transformedVessels);
+
+    } catch (error) {
+      console.error("Error fetching vessels:", error.message);
+      toast.error("Failed to load vessels.");
+      setVessels([]);
+    }
+  };
+
   useEffect(() => {
+    fetchVessels();
     if (viewerRef.current && viewerRef.current.cesiumElement) {
       const viewer = viewerRef.current.cesiumElement;
       setViewerReady(true);
@@ -60,7 +119,7 @@ function App() {
     }
   }, [viewerRef.current]);
 
-  // Handler for ToolUI 'Toggle ZOne
+  // Handler for ToolUI 'Toggle Zoning'
   const handleToggleDrawing = () => {
     console.log("Toggled Zoning:", !isDrawing);
     setIsDrawing((prev) => {
@@ -75,7 +134,7 @@ function App() {
         pauseOnHover: false,
         draggable: false,
       });
-      return newState
+      return newState;
     });
   };
 
@@ -84,10 +143,7 @@ function App() {
     console.log("Overlays toggled:", !showOverlays);
   };
 
-  const handleToggleFilters = () => {
-    setShowFilters((prev) => !prev);
-    console.log("Filters toggled: ", !showFilters);
-  };
+  const handleToggleFilters = () => setShowFilters((prev) => !prev);
 
   // Undos previous point placed, will undo until the stack is empty
   const handleUndo = () => {
@@ -101,15 +157,24 @@ function App() {
 
   // Clears entire cesium viewer of geometries
   const handleClear = () => {
+    setShowClearDialog(true);
+  };
+
+  const handleClearConfirmed = () => {
     setGeometries([]);
     setSelectedGeometry(null);
     setShowContextMenu(false);
+    setShowClearDialog(false);
+  };
+
+  const handleClearCancelled = () => {
+    setShowClearDialog(false);
   };
 
   // Radio buttons selected in ToolsUI
-  const handleSelectShape = (shape) => {
-    setShapeType(shape);
-  };
+  // const handleSelectShape = (shape) => {
+  //   setShapeType(shape);
+  // };
 
   /*
     Should rename the selected geometry. Currently non-functional.
@@ -119,7 +184,7 @@ function App() {
   const handleRename = (newName) => {
     setGeometries((prev) =>
       prev.map((geo) =>
-        geo === selectedGeometry ? { ...geo, name: newName } : geo
+        geo.id === selectedGeometry ? { ...geo, name: newName } : geo
       )
     );
     setSelectedGeometry((prev) => ({ ...prev, name: newName }));
@@ -131,10 +196,24 @@ function App() {
     Note: Cesium Entities have a __id attribute. 
   */
   const handleDelete = () => {
-    setGeometries((prev) => prev.filter((geo) => geo !== selectedGeometry));
-    setShowSettings(false);
-    setSelectedGeometry(null);
     setShowContextMenu(false);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (selectedGeometry) {
+      // Remove the selected geometry from the Cesium viewer
+      viewerRef.current.cesiumElement.entities.removeById(selectedGeometry.id);
+
+      // Update the state to remove the selected geometry
+      setGeometries((prev) => prev.filter((geo) => geo.id !== selectedGeometry.id));
+      setSelectedGeometry(null);
+    }
+    setShowDeleteDialog(false);
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteDialog(false);
   };
 
   // Placeholder for save functionality
@@ -142,6 +221,12 @@ function App() {
     console.log("Zone settings saved.");
     setShowSettings(false);
   };
+
+  const handleFilterApply = async (filters) => {
+        console.log("Filters selected:");
+        console.log(filters);
+        await fetchVessels(filters);
+    }
 
   // Debug
   console.log("Show Context Menu:", showContextMenu);
@@ -152,6 +237,7 @@ function App() {
   return (
     <div className="cesium-viewer">
       <ToastContainer />
+
       <Viewer
         ref={viewerRef}
         full
@@ -162,67 +248,94 @@ function App() {
         navigationHelpButton={false}
         sceneModePicker={true}
         geocoder={true}
-        infoBox={true} // Important for seeing vessel descriptions
+        infoBox={true}
         selectionIndicator={true}>
 
-        {/* Place a cargo vessel */}
-        {placeVessel(-122.4194, 37.7749, 1000, "cargo", "Cargo Ship 1")}
-
-        {/* Place a fishing vessel */}
-        {placeVessel(-74.0060, 40.7128, 0, "fishing", "Fishing Boat 1")}
+        {vessels.map((vessel) =>
+          placeVessel(
+            vessel['lon'],
+            vessel['lat'],
+            vessel['heading'],
+            0, //For elevation
+            vessel['type'],
+            vessel['name']
+          ) || <div key={vessel['mmsi']}>Invalid Vessel Data</div>
+        )}
 
         <CustomGeometry
           viewer={viewerRef}
           viewerReady={viewerReady}
           isDrawing={isDrawing}
-          shapeType={shapeType}
-          geometries={geometries}
-          setGeometries={setGeometries}
+          geometries={geometries} // Pass geometries state
+          setGeometries={setGeometries} // Pass setGeometries function
           setSelectedGeometry={setSelectedGeometry}
           setShowContextMenu={setShowContextMenu}
           setContextMenuPosition={setContextMenuPosition}
           setShowSettings={setShowSettings}
         />
-
       </Viewer>
+
       <ToolsUI
+        onToggleFilters={handleToggleFilters}
+        apiEndpoint={filtersAPI}
+        onFilterApply={handleFilterApply}
         onToggleDrawing={handleToggleDrawing}
         onUndo={handleUndo}
         onClear={handleClear}
-        onSelectShape={handleSelectShape}
+        // onSelectShape={handleSelectShape}
         onToggleOverlays={handleToggleOverlays}
-        onToggleFilters={handleToggleFilters}
       />
 
       {showContextMenu && selectedGeometry && (
-
         <div
           className="context-menu"
-          style={{
-
-            top: contextMenuPosition.y,
-            left: contextMenuPosition.x,
-
-          }}
+          style={{ top: contextMenuPosition.y, left: contextMenuPosition.x }}
         >
           <button onClick={() => setShowSettings(true)}>Settings</button>
           <button onClick={handleDelete}>Delete</button>
-          <button onClick={() => setShowSettings(true)}>
-            Rename
-          </button>
+          <button onClick={() => setShowSettings(true)}>Rename</button>
         </div>
       )}
 
       {showSettings && selectedGeometry && (
-
         <ZoneSettingsUI
-          zoneName={selectedGeometry.name || "Untitled Zone"}
+          zoneName={selectedGeometry.name}
+          positions={selectedGeometry.positions}
           onRename={handleRename}
           onDelete={handleDelete}
           onSave={handleSave}
         />
       )}
 
+      {showFilters && (
+        <FiltersUI
+          apiEndpoint={filtersAPI}
+          onFilterApply={handleFilterApply}
+        />
+      )}
+
+      {showOverlays && (
+        <OverlaysUI
+          onClose={() => setShowOverlays(false)}
+          onToggleWeather={() => console.log("Weather Overlay Toggled")}
+        />
+      )}
+
+      {showClearDialog && (
+        <ConfirmationDialog
+          message="Are you sure you want to clear all geometries?"
+          onConfirm={handleClearConfirmed}
+          onCancel={handleClearCancelled}
+        />
+      )}
+
+      {showDeleteDialog && (
+        <ConfirmationDialog
+          message="Are you sure you want to delete the selected geometry?"
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
+        />
+      )}
     </div>
   );
 }
