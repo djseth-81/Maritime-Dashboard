@@ -293,6 +293,11 @@ class DBOperator():
         cmd = []
         values = []
 
+        if not queries:
+            print("### DBOperator: No filters provided → Returning empty result.")
+            return []
+
+
         if len(queries) == 0:
             raise AttributeError("### DBOperator: Cannot query an empty array...")
 

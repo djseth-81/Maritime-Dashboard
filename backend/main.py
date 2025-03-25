@@ -101,7 +101,7 @@ def filter_parser(p: dict, result: list) -> None:
     """
     x = {}
     for k, v in p.items():
-        val = v.split(',')
+        val = v if isinstance(v, list) else v.split(',')
         while len(val) > 1:
             q = p.copy()
             q[k] = val.pop(0)
@@ -111,7 +111,7 @@ def filter_parser(p: dict, result: list) -> None:
 
 @app.get("/vessels/", response_model=dict)
 async def get_filtered_vessels(
-    type: str = Query(None, description="Filter by vessel type"),
+    type: str = Query("", description="Filter by vessel type"),
     origin: str = Query(None, description="Filter by country of origin"),
     status: str = Query(None, description="Filter by vessel status")
 ):
@@ -130,13 +130,33 @@ async def get_filtered_vessels(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching metadata for vessels: {str(e)}")
 
+
+    types_list = type.split(',') if type else []
+    filters = {}
+
+    if types_list:
+        filters["type"] = types_list
+
+    if origin:
+        filters["flag"] = origin
+
+    if status:
+        filters["current_status"] = status
+
+    if not types_list:
+        print("### Fast Server: All vessel types unchecked → Returning empty payload.")
+        payload['payload'] = []
+        payload["size"] = 0
+        return payload
+
     print("### Fast Server: Assembling Payload...")
     # Ignore empty filters
     filters = {key: value for key, value in {
-        "type": type if type else None,
+        "type": types_list,
         "flag": origin if origin else None,
         "current_status": status if status else None
     }.items() if value}
+
 
     print(f"### Websocket: Filters:\n{filters}")
     if len(filters) > 0:

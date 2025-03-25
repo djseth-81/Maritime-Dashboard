@@ -1,22 +1,30 @@
-import { useState } from 'react';
 import useFetchFilters from './Filters';
 
 const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
-    const { filterOptions, loading, error } = useFetchFilters(apiEndpoint);
-    const [selectedFilters, setSelectedFilters] = useState({
-        types: [],
-        origin: "",
-        statuses: []
-    });
+    const {
+        filterOptions,
+        selectedFilters,
+        setSelectedFilters,
+        loading,
+        error
+    } = useFetchFilters(apiEndpoint);
 
     const handleTypeChange = (event) => {
         const { value, checked } = event.target;
+
+        const updatedFilters = checked
+            ? [...selectedFilters.types, value]
+            : selectedFilters.types.filter((type) => type !== value);
+
         setSelectedFilters((prev) => ({
             ...prev,
-            types: checked
-                ? [...prev.types, value]
-                : prev.types.filter((type) => type !== value)
+            types: updatedFilters
         }));
+
+        onFilterApply({
+            ...selectedFilters,
+            types: updatedFilters
+        });
     };
 
     const handleOriginChange = (event) => {
@@ -29,24 +37,28 @@ const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
 
     const handleStatusChange = (event) => {
         const { value, checked } = event.target;
+        const updatedStatuses = checked
+            ? [...selectedFilters.statuses, value]
+            : selectedFilters.statuses.filter((status) => status !== value);
+
         setSelectedFilters((prev) => ({
             ...prev,
-            statuses: checked
-                ? [...prev.statuses, value]
-                : prev.statuses.filter((status) => status !== value)
+            statuses: updatedStatuses
         }));
+
+        onFilterApply({
+            ...selectedFilters,
+            statuses: updatedStatuses
+        });
     };
 
-    // const handleFilterChange = (event) => {
-    //     const { name, value } = event.target;
-    //     setSelectedFilters((prev) => ({
-    //         ...prev,
-    //         [name]: value
-    //     }));
-    // };
-
     const handleApplyFilters = () => {
-        onFilterApply(selectedFilters);
+        const typesToSend = selectedFilters.types.length ? selectedFilters.types : ["NONE"];
+
+        onFilterApply({
+            ...selectedFilters,
+            types: typesToSend
+        });
     };
 
     if (loading) return <div>Loading...</div>;
