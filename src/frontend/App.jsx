@@ -161,7 +161,6 @@ function App() {
   };
 
   const handleClearConfirmed = () => {
-    viewerRef.current.cesiumElement.entities.removeAll();
     setGeometries([]);
     setSelectedGeometry(null);
     setShowContextMenu(false);
@@ -173,9 +172,9 @@ function App() {
   };
 
   // Radio buttons selected in ToolsUI
-  const handleSelectShape = (shape) => {
-    setShapeType(shape);
-  };
+  // const handleSelectShape = (shape) => {
+  //   setShapeType(shape);
+  // };
 
   /*
     Should rename the selected geometry. Currently non-functional.
@@ -283,7 +282,7 @@ function App() {
         onToggleDrawing={handleToggleDrawing}
         onUndo={handleUndo}
         onClear={handleClear}
-        onSelectShape={handleSelectShape}
+        // onSelectShape={handleSelectShape}
         onToggleOverlays={handleToggleOverlays}
       />
 
