@@ -91,6 +91,7 @@ fast interact with frontend directly
 ### Bug Fixes
 - Fixed issue with vessel positions not converting coordinates correctly between 2D and 3D maps
 - Fixed issue with shapes weren't being displayed on the map as intended
+- Fixed issue where providing multple values for filters returned no ships
   
 ### Other
 - N/A
