@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useFetchFilters from './Filters';
 
 const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
@@ -8,6 +8,15 @@ const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
         origin: "",
         statuses: []
     });
+
+    useEffect(() => {
+        if (filterOptions?.types) {
+            setSelectedFilters((prev) => ({
+                ...prev,
+                types: filterOptions.types
+            }));
+        }
+    }, [filterOptions]);
 
     const handleTypeChange = (event) => {
         const { value, checked } = event.target;
@@ -36,14 +45,6 @@ const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
                 : prev.statuses.filter((status) => status !== value)
         }));
     };
-
-    // const handleFilterChange = (event) => {
-    //     const { name, value } = event.target;
-    //     setSelectedFilters((prev) => ({
-    //         ...prev,
-    //         [name]: value
-    //     }));
-    // };
 
     const handleApplyFilters = () => {
         onFilterApply(selectedFilters);

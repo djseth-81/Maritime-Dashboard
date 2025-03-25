@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as Cesium from "cesium";
 
 const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename }) => {
     const [isRenaming, setIsRenaming] = useState(false);
     const [newName, setNewName] = useState(zoneName);
+
+    useEffect(() => {
+        setNewName(zoneName);
+    }, [zoneName]);
 
     const handleKeyPress = (e) => {
         if (e.key === "Enter") {
@@ -23,7 +27,7 @@ const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename }
     return (
         <div className="zone-settings-ui">
             <div className="settings-header">
-                <h2>
+                <h5>
                     Settings for zone '{zoneName}'
                     <button
                         className="rename-button"
@@ -32,7 +36,7 @@ const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename }
                     >
                         Rename
                     </button>
-                </h2>
+                </h5>
             </div>
 
             {isRenaming && (

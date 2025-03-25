@@ -1,3 +1,11 @@
+/* 
+    Consider: Creating hook files for current handlers and logic
+    - useEventHandler.js
+    - useSelectGeometry.js
+    - useDoubleClickToComplete.js
+    - useRightClickContextMenu.js
+*/
+
 import { useEffect, useRef, useState } from "react";
 import * as Cesium from "cesium";
 
@@ -10,7 +18,7 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, setSelectedGeometry, s
     useEffect(() => {
         console.log("useEffect executed", { viewerReady, isDrawing });
 
-        if (!viewerReady || !viewer?.current.cesiumElement) return;
+        if (!viewerReady || !viewer?.current.cesiumElement) return; // -> !viewer?.current.cesiumElement -> useEventHandler.js
 
         const scene = viewer.current.cesiumElement.scene;
 
@@ -19,7 +27,7 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, setSelectedGeometry, s
         const handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
         handlerRef.current = handler;
 
-        // Right-click to open context menu
+        // Right-click to open context menu -> useRightClickContextMenu.js
         handler.setInputAction((click) => {
             console.log("Right-click registered at position:", click.position);
             const pickedEntity = scene.pick(click.position);
@@ -33,7 +41,7 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, setSelectedGeometry, s
             }
         }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
 
-        // Left-click to select polygons
+        // Left-click to select polygons -> useSelectGeometry.js
         handler.setInputAction((click) => {
             console.log("Left-click registered at position:", click.position);
             const pickedEntity = scene.pick(click.position);
@@ -85,6 +93,7 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, setSelectedGeometry, s
                             material: Cesium.Color.RED.withAlpha(0.5),
                         },
                         name: `Zone ${geometries.length + 1}`,
+                        isGeometry: true, // Add custom property to identify geometry
                     });
 
                     setGeometries((prevGeometries) => [
