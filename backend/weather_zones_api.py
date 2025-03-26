@@ -72,8 +72,6 @@ for zone in data:
     finally:
         sleep(0.1)
 
-    # input("### API Script: Continue?")
-
 print(f'{len(data)} zones identified')
 print(f"{dubs} zones added to DB")
 print(f"{els} zones failed were not added to DB")
