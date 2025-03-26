@@ -37,7 +37,7 @@ body,
   border-radius: 5px;
   padding: 10px;
   z-index: 1000;
-  width: 300px; /* Ensure consistent width */
+  width: 400px; /* Ensure consistent width */
   color: black;
 }
 

@@ -98,7 +98,7 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, setSelectedGeometry, s
 
                     setGeometries((prevGeometries) => [
                         ...prevGeometries,
-                        { id: newPolygon.id, positions: positions },
+                        { id: newPolygon.id, positions: [...positions] },
                     ]);
 
                     setPositions([]); // Resets positions for next polygon

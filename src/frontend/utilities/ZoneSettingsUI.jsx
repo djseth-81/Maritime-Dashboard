@@ -57,7 +57,7 @@ const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename }
             )}
 
             <div className="settings-body">
-                <h3>Coordinates:</h3>
+                <h5>Coordinates:</h5>
                 <ul>
                     {positions.map((pos, index) => {
                         const { latitude, longitude, height } = convertCartesianToDegrees(pos);

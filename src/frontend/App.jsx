@@ -226,8 +226,13 @@ function App() {
   }
 
   // Debug
-  console.log("Show Context Menu:", showContextMenu);
   console.log("Selected Geometry:", selectedGeometry);
+  console.log("selectedGeometry Name: ", selectedGeometry?.name);
+  const selectedGeometryData = geometries.find((geo) => geo.id === selectedGeometry?.id);
+  console.log("selectedGeometry Data: ", selectedGeometryData);
+  console.log("selectedGeometry Positions: ", selectedGeometryData?.positions);
+  
+  console.log("Show Context Menu:", showContextMenu);
   console.log("Context Menu Position:", contextMenuPosition);
   console.log("showSettings:", showSettings);
 
@@ -296,7 +301,7 @@ function App() {
       {showSettings && selectedGeometry && (
         <ZoneSettingsUI
           zoneName={selectedGeometry.name}
-          positions={selectedGeometry.positions}
+          positions={geometries.find((geo) => geo.id === selectedGeometry.id)?.positions}
           onRename={handleRename}
           onDelete={handleDelete}
           onSave={handleSave}
