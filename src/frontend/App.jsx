@@ -15,7 +15,6 @@ import OverlaysUI from "./utilities/OverlaysUI";
 
 function App() {
   const [isDrawing, setIsDrawing] = useState(false);
-  const [shapeType, setShapeType] = useState("polygon");
   const [geometries, setGeometries] = useState([]); // Added state for geometries
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   const [showContextMenu, setShowContextMenu] = useState(false);
@@ -51,7 +50,7 @@ function App() {
       }
 
       const response = await axios.get(vesselsAPI, { params: queryParams });
-      
+
       console.log("Table privileges");
       console.log(response.data.Privileges);
 
@@ -161,6 +160,12 @@ function App() {
   };
 
   const handleClearConfirmed = () => {
+    const entities = viewerRef.current.cesiumElement.entities.values;
+    for (let i = entities.length - 1; i >= 0; i--) {
+      if (entities[i].isGeometry) {
+        viewerRef.current.cesiumElement.entities.remove(entities[i]);
+      }
+    }
     setGeometries([]);
     setSelectedGeometry(null);
     setShowContextMenu(false);
@@ -171,30 +176,22 @@ function App() {
     setShowClearDialog(false);
   };
 
-  // Radio buttons selected in ToolsUI
-  // const handleSelectShape = (shape) => {
-  //   setShapeType(shape);
-  // };
-
-  /*
-    Should rename the selected geometry. Currently non-functional.
-    Implementation may depend on information stored in the database.
-    Note: Cesium Entities have a __name attribute. 
-  */
   const handleRename = (newName) => {
+    // Update the name in the Cesium viewer
+    const entity = viewerRef.current.cesiumElement.entities.getById(selectedGeometry.id);
+    if (entity) {
+        entity.name = newName;
+    }
+
+    // Update the name in the state
     setGeometries((prev) =>
       prev.map((geo) =>
-        geo.id === selectedGeometry ? { ...geo, name: newName } : geo
+        geo.id === selectedGeometry.id ? { ...geo, name: newName } : geo
       )
     );
     setSelectedGeometry((prev) => ({ ...prev, name: newName }));
   };
 
-  /* 
-    Should delete a selected geometry, but is currently non-functional.
-    Implementation may depend on information stored in the database.
-    Note: Cesium Entities have a __id attribute. 
-  */
   const handleDelete = () => {
     setShowContextMenu(false);
     setShowDeleteDialog(true);
@@ -223,14 +220,19 @@ function App() {
   };
 
   const handleFilterApply = async (filters) => {
-        console.log("Filters selected:");
-        console.log(filters);
-        await fetchVessels(filters);
-    }
+    console.log("Filters selected:");
+    console.log(filters);
+    await fetchVessels(filters);
+  }
 
   // Debug
-  console.log("Show Context Menu:", showContextMenu);
   console.log("Selected Geometry:", selectedGeometry);
+  console.log("selectedGeometry Name: ", selectedGeometry?.name);
+  const selectedGeometryData = geometries.find((geo) => geo.id === selectedGeometry?.id);
+  console.log("selectedGeometry Data: ", selectedGeometryData);
+  console.log("selectedGeometry Positions: ", selectedGeometryData?.positions);
+  
+  console.log("Show Context Menu:", showContextMenu);
   console.log("Context Menu Position:", contextMenuPosition);
   console.log("showSettings:", showSettings);
 
@@ -282,7 +284,6 @@ function App() {
         onToggleDrawing={handleToggleDrawing}
         onUndo={handleUndo}
         onClear={handleClear}
-        // onSelectShape={handleSelectShape}
         onToggleOverlays={handleToggleOverlays}
       />
 
@@ -300,7 +301,7 @@ function App() {
       {showSettings && selectedGeometry && (
         <ZoneSettingsUI
           zoneName={selectedGeometry.name}
-          positions={selectedGeometry.positions}
+          positions={geometries.find((geo) => geo.id === selectedGeometry.id)?.positions}
           onRename={handleRename}
           onDelete={handleDelete}
           onSave={handleSave}

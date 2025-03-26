@@ -41,6 +41,14 @@ class DBOperator():
             - ST_ExteriorRing()
             - ST_Perimeter()
     """
+    
+    ''' For Yolvin :) 
+    def __init__(self, table: str, host='localhost', port='5432', user='postgres',
+                 passwd='1234', schema='public', db='capstone') -> None:
+    '''
+
+
+
     def __init__(self, table: str, host='', port='', user='',
                  passwd='', schema='public', db='capstone') -> None:
         self.table = table
@@ -299,6 +307,11 @@ class DBOperator():
         # Assume value exists and just returns an empty array.
         cmd = []
         values = []
+
+        if not queries:
+            print("### DBOperator: No filters provided → Returning empty result.")
+            return []
+
 
         if len(queries) == 0:
             raise AttributeError("### DBOperator: Cannot query an empty array...")
