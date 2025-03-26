@@ -1,6 +1,7 @@
 from pprint import pprint
 from psycopg2 import *
 from psycopg2.errors import *
+from json import loads, dumps
 
 class DBOperator():
     """
@@ -67,6 +68,7 @@ class DBOperator():
             raise OperationalError
 
     ### Mutators ###
+    # FIXME: Assumes Geometry comes in as Well-known text, had to modify to accept GeoJSON
     def add(self, entity: dict) -> None:
         """
         Adds entry to connected table
@@ -108,6 +110,7 @@ class DBOperator():
 
         if geom != None: # if geom was popped, append value to values array
             values += [geom]
+            # values += [dumps(geom)] # NOTE: USING to convert GeoJSON into PostGIS Geography
 
         # NOW we convert values into tuples
         values = tuple(values)
@@ -116,6 +119,7 @@ class DBOperator():
         #   Otherwise, just add a ')'
         if geom != None:
             cmd += 'ST_GeographyFromText(%s))'
+            # cmd += 'ST_GeogFromWKB(ST_GeomFromGeoJSON(%s)))' # NOTE: USING to convert GeoJSON into PostGIS Geography
         else:
             cmd = cmd[:-1] + ')'
 
@@ -126,6 +130,7 @@ class DBOperator():
             print(f"### DBOperator ERROR: Unable to add entity: {e}")
             raise UniqueViolation
 
+    # FIXME: Assumes Geometry comes in as Well-known text, had to modify to accept GeoJSON
     def modify(self, entity: tuple, data: dict) -> None:
         """
         Modifys a singular exisitng entity
@@ -260,6 +265,7 @@ class DBOperator():
 
         return result
 
+    # FIXME: Assumes tuple size is CONSTANT. NOT GOOD for ambiguous tables!!
     def fetch_filter_options(self) -> dict:
         """
         Fetches distinct filter options for vessel types, origins, and statuses.
@@ -283,6 +289,7 @@ class DBOperator():
         }
 
     # pull data from DB
+    # FIXME: Assumes tuple size is CONSTANT. NOT GOOD for ambiguous tables!!
     def query(self, queries: list) -> list:
         """
         Querys entities based on a dictionary of provided filters
@@ -315,31 +322,32 @@ class DBOperator():
 
         try:
             self.__cursor.execute(" UNION ".join(cmd), tuple(values))
-            vessels = self.__cursor.fetchall()
-            return [
-                    {
-                        "mmsi": v[0],
-                        "vessel_name": v[1],
-                        "callsign": v[2],
-                        "timestamp": v[3],
-                        "heading": v[4],
-                        "speed": v[5],
-                        "current_status": v[6],
-                        "src": v[7],
-                        "type": v[8],
-                        "flag": v[9],
-                        "length": v[10],
-                        "width": v[11],
-                        "draft": v[12],
-                        "cargo_weight": v[13],
-                        "lat": v[14],
-                        "lon": v[15],
-                        "dist_from_port": v[16],
-                        "dist_from_shore": v[17],
-                        "geom": v[-1]
-                    }
-                    for v in vessels
-                ]
+            results = self.__cursor.fetchall()
+            return results
+            # return [
+            #         {
+            #             "mmsi": v[0],
+            #             "vessel_name": v[1],
+            #             "callsign": v[2],
+            #             "timestamp": v[3],
+            #             "heading": v[4],
+            #             "speed": v[5],
+            #             "current_status": v[6],
+            #             "src": v[7],
+            #             "type": v[8],
+            #             "flag": v[9],
+            #             "length": v[10],
+            #             "width": v[11],
+            #             "draft": v[12],
+            #             "cargo_weight": v[13],
+            #             "lat": v[14],
+            #             "lon": v[15],
+            #             "dist_from_port": v[16],
+            #             "dist_from_shore": v[17],
+            #             "geom": v[-1]
+            #         }
+            #         for v in results
+            #     ]
         except UndefinedColumn as e:
             print(f"### DBOperator: Error occured:\n{e}")
             raise UndefinedColumn
@@ -347,37 +355,39 @@ class DBOperator():
             print(f"{e}\n### DBOperator: Error executing query. Did you forget to rollback an invalid edit-like command?")
             raise InFailedSqlTransaction
 
+    # FIXME: Assumes tuple size is CONSTANT. NOT GOOD for ambiguous tables!!
     def get_table(self) -> list:
         """
         Returns all entries in a table as a list of dictionary datatypes
         """
         self.__cursor.execute(f"SELECT *,ST_AsGeoJson(geom) FROM {self.table}")
-        vessels = self.__cursor.fetchall()
+        results = self.__cursor.fetchall()
 
-        return [
-            {
-                "mmsi": v[0],
-                "vessel_name": v[1],
-                "callsign": v[2],
-                "timestamp": v[3],
-                "heading": v[4],
-                "speed": v[5],
-                "current_status": v[6],
-                "src": v[7],
-                "type": v[8],
-                "flag": v[9],
-                "length": v[10],
-                "width": v[11],
-                "draft": v[12],
-                "cargo_weight": v[13],
-                "lat": v[14],
-                "lon": v[15],
-                "dist_from_port": v[16],
-                "dist_from_shore": v[17],
-                "geom": v[-1]
-            }
-            for v in vessels
-        ]
+        return results
+        # return [
+        #     {
+        #         "mmsi": v[0],
+        #         "vessel_name": v[1],
+        #         "callsign": v[2],
+        #         "timestamp": v[3],
+        #         "heading": v[4],
+        #         "speed": v[5],
+        #         "current_status": v[6],
+        #         "src": v[7],
+        #         "type": v[8],
+        #         "flag": v[9],
+        #         "length": v[10],
+        #         "width": v[11],
+        #         "draft": v[12],
+        #         "cargo_weight": v[13],
+        #         "lat": v[14],
+        #         "lon": v[15],
+        #         "dist_from_port": v[16],
+        #         "dist_from_shore": v[17],
+        #         "geom": v[-1]
+        #     }
+        #     for v in vessels
+        # ]
 
     def get_count(self) -> int:
         """
@@ -391,6 +401,7 @@ class DBOperator():
     ### geom-ship relationships!
     """
     # These are ideally supposed to take advantage of the PostGIS stuff
+    # FIXME: Assumes tuple size is CONSTANT. NOT GOOD for ambiguous tables!!
     def proximity(self, var, range=5000.0):
         """
         Gets vessels witihin a specified range of a geometry
@@ -413,24 +424,25 @@ class DBOperator():
         # input()
 
         self.__cursor.execute(query)
-        vessels = [i for i in self.__cursor.fetchall()]
-        return [
-            {
-                "mmsi": v[0],
-                "vessel_name": v[1],
-                "callsign": v[2],
-                "heading": v[3],
-                "speed": v[4],
-                "current_status": v[5],
-                "src": v[6],
-                "type": v[7],
-                "flag": v[8],
-                "lat": v[9],
-                "lon": v[10],
-                "geom": v[11]
-            }
-            for v in vessels
-        ]
+        results = [i for i in self.__cursor.fetchall()]
+        results
+        # return [
+        #     {
+        #         "mmsi": v[0],
+        #         "vessel_name": v[1],
+        #         "callsign": v[2],
+        #         "heading": v[3],
+        #         "speed": v[4],
+        #         "current_status": v[5],
+        #         "src": v[6],
+        #         "type": v[7],
+        #         "flag": v[8],
+        #         "lat": v[9],
+        #         "lon": v[10],
+        #         "geom": v[11]
+        #     }
+        #     for v in vessels
+        # ]
 
     def inside(self, var):
         """
@@ -470,13 +482,35 @@ if __name__ == "__main__":
         'width': 23.0
     }
 
-    operator = DBOperator(table='vessels')
-    # print(operator.permissions)
-    # input()
-    print(operator.attr_types)
+    entity2 = {
+        'mmsi':367702270,
+        'vessel_name':'MS. JENIFER TRETTER',
+        'callsign':'WDI4813',
+        'timestamp':'2024-09-30T00:00:00',
+        'heading':334.5,
+        'speed':6.6,
+        'current_status':'12',
+        'src':'MarineCadastre-AIS',
+        'type':'TUG',
+        'flag':'USA',
+        'length':113,
+        'width':34,
+        'draft':3.1,
+        'cargo_weight':57,
+        'geom':'Point(-97.21 26.1)',
+        'lat':26.1,
+        'lon':-97.21,
+        'dist_from_shore':0.0,
+        'dist_from_port':0.0,
 
-    ### TODO: NEW OPERATION
-    pprint(operator.proximity('Point(-91.02 30.13)', 1000))
+    }
+
+    # operator = DBOperator(table='vessels')
+    # print(operator.permissions)
+    # print(operator.attrs)
+    # input()
+
+    # pprint(operator.proximity('Point(-91.02 30.13)', 1000))
     ### Get filterable items
     # pprint(operator.fetch_filter_options())
     # input()
@@ -490,7 +524,7 @@ if __name__ == "__main__":
     # input()
 
     ### Add
-    # operator.add(entity)
+    # operator.add(entity2)
     # operator.commit()
 
     ### Query
@@ -512,25 +546,6 @@ if __name__ == "__main__":
     # operator.commit()
     # pprint(operator.query([{"mmsi":368261120}]))
 
+    # operator = DBOperator(table='zones')
+    # pprint(operator.query([{'id':'AKC013'}]))
     operator.close()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
