@@ -27,28 +27,21 @@ for zone in data:
     entity = {}
     # print(f"ZoneID: {zone['properties']['id']}")
     entity['id'] = zone['properties']['id']
-
     # print(f"Zone Name: {zone['properties']['name']}")
     entity['name'] = zone['properties']['name']
-
     # print(f"Timezone: {zone['properties']['timeZone'][0]}")
-    entity['timezone'] = zone['properties']['timeZone'][0]
-
+    # entity['timezone'] = zone['properties']['timeZone'][0]
     # print(f"Region: US-{zone['properties']['state']}")
     entity['region'] = f"USA-{zone['properties']['state']}"
-
     # print(f"Zone type: {zone['properties']['type'].upper()}")
     if zone['properties']['type'].upper() not in zone_types:
         zone_types.append(zone['properties']['type'].upper())
     entity['type'] = zone['properties']['type'].upper()
-
     # print(f"Source ID: {zone['properties']['gridIdentifier']}")
     entity['src_id'] = zone['properties']['gridIdentifier']
-
     forecast_url = zone['properties']['forecastOffice']
     # print(f"Forecast office URI: {forecast_url}")
     # print()
-
     # Retrieving zone geometry
     # print("Geometry:") # TODO: How to format into GeogFromText(Polygon())
     zone = requests.get(zone['properties']['@id'])
@@ -76,3 +69,22 @@ print(f'{len(data)} zones identified')
 print(f"{dubs} zones added to DB")
 print(f"{els} zones failed were not added to DB")
 table.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

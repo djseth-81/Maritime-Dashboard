@@ -5,6 +5,11 @@ import requests
 from pprint import pprint
 from json import loads, dumps
 
+"""
+// TODO
+- Parse for vessels and updates!
+    - MATCH WHAT IS IN DB
+"""
 GFW_TOKEN = os.environ.get("TOKEN")
 
 if GFW_TOKEN == None:
@@ -93,7 +98,7 @@ Events
 ['vessel']
 - flag
 - name
-- ssvid
+- ssvid => events.src_id
 - type
 ['position']  = lat/lon
 ['type'] = current_status

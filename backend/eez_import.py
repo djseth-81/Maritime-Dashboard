@@ -10,6 +10,7 @@ els = 0
 """
 EEZs
 """
+
 # pprint(eez.attrs)
 # input()
 eez_arr = eez.get_table()
@@ -29,8 +30,6 @@ for thingy in eez_arr:
     entity['type'] = "EEZ"
     # print(f"geoname: {thingy[2]}") # Another name ???
     entity['name'] = thingy[2]
-    # print(f'timezone: NULL')
-    entity['timezone'] = "" # TODO: How to do for zones spanning multiple timezones?
     # print(f"fid: {thingy[0]}")
     # print(f"mrgid_eez: {thingy[21]}")
     # print(f"mrgid_ter1: {thingy[3]}")

@@ -18,12 +18,19 @@ for wfo in "AKQ, ALY, BGM, BOX, BTV, BUF, CAE, CAR, CHS, CLE, CTP, GSP, GYX, ILM
     forecast_zones = [i.split('/')[-1] for i in station.json()['responsibleForecastZones']]
     # responsible_zones = station.json()['responsibleCounties']
 
+    """
+
+    """
+
     print(f"Station ID: {station_id}")
     print(f"Station Name: {station_name}")
     print(f"Region: USA-{address['addressRegion']}")
-    print("Timezone:") # TODO: Dunno how to retrieve
+    print("Timezone: ???") # TODO: Dunno how to retrieve
     print("Type: NOAA-MET")
-    print("Responsible forecast zones:") # datums
+    print("Geometry: ???") # TODO: How to retrieve?
+    print(f"Datums: {['Events', 'Meteorology']}")
+    # Do I save ???
+    print("Responsible forecast zones:") # datums ???
     pprint(forecast_zones)
 
     # Do I save the following?
@@ -37,3 +44,27 @@ for wfo in "AKQ, ALY, BGM, BOX, BTV, BUF, CAE, CAR, CHS, CLE, CTP, GSP, GYX, ILM
     # pprint(observation_stations)
 
     input("### API Script: Continue?")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

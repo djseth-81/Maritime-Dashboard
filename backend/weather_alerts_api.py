@@ -17,6 +17,21 @@ print("Data:")
 print()
 
 # TODO: Format and import into events
+"""
+id = Alert ID (??)
+src_id ??? <- Reprots Source name, but I'd prefer source CWA
+timestamp = sent time
+effective = Effective time
+end_time = End time
+active = '{if effective <= current_time < end_time}'
+type = '{Category}-{messageType}'
+description = Description
+expires = Alert Expiration time
+instructions = Instructions
+urgency = Urgency
+severity = Severity
+headline = Headline
+"""
 
 for alert in payload:
     # Do I want to use this, or auto generate an ID?
@@ -62,6 +77,7 @@ for alert in payload:
         print("Nothing to replace")
     print()
 
+    # NOTE: Should I save this? GFW Vessel Events also apparently reports some "region"
     print("Affected Zones:") # Should I store an array of impacted Zones, or should I have zones store active alerts for their region?
     pprint(alert['properties']['geocode']['UGC'])
     pprint(alert['properties']['areaDesc'])
@@ -105,3 +121,32 @@ for alert in payload:
     print()
 
     input("### API Script: Continue?")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

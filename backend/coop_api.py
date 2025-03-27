@@ -57,13 +57,12 @@ for station in data['stations']:
     entity = {
         "id": station['id'],
         "name": station['name'],
-        "type": f"NOAA-{station['affiliations']}",
-        "lat": station['lat'],
-        "lon": station['lng'],
-        "APIS": apis,
         "region": "USA",
+        "type": f"NOAA-{station['affiliations']}", # Cannot be "API"
+        "datums": apis, # Check if URI returns 200 or not
+        # Following CANNOT BE NULL
         "timezone": f"{station['timezone']} (GMT {station['timezonecorr']})",
-        "geom": "NULL"
+        "geom": f"Point({station['lng']} {station['lat']})",
     }
 
     pprint(entity)
