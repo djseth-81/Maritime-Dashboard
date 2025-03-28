@@ -11,14 +11,14 @@ class DBOperator():
     DBOperator will implicitly connect to 'capstone' database unless specified
     otherwise
     """
-    # TODO:
-    # - push multiple entries to DB (?)
-    # - PostGIS related stuff
-    #     - Take advantage of geometric functions in PostGIS (See postGIS_notes.txt)
-    #         - There's also the geography/projection stuff, definitely gonna use those
-    #     - Retrieved data should already be primed for geospatial/projection
-    #         - Look @ the projection/geography modules
-    #         - refer to geospatial conversion/modify functions!
+    # FIXME: All queries assume tables have geometry, and some will not have them!
+    #   - expected fix: take table's attr.keys() and replace the 'SELECT *' with SELECT {attrs}
+    #       - If geom is in attr.keys(), append with ST_GeomAsJson()
+    # FIXME: add() accepts WKT, but doesn't like GeoJSON
+    #   - Just threw in a couple lines to convert the geom as needed.
+    #   - Want a better fix than that^ !!!
+    # WARN: Expecting fetch_filter_options() to not work with tables other than vessels
+
     """
     // POSTGIS
         - Storing as Geography, likely will have to conver to geography
@@ -41,14 +41,11 @@ class DBOperator():
             - ST_ExteriorRing()
             - ST_Perimeter()
     """
-    
+
     ''' For Yolvin :) 
     def __init__(self, table: str, host='localhost', port='5432', user='postgres',
                  passwd='1234', schema='public', db='capstone') -> None:
     '''
-
-
-
     def __init__(self, table: str, host='', port='', user='',
                  passwd='', schema='public', db='capstone') -> None:
         self.table = table
@@ -76,7 +73,6 @@ class DBOperator():
             raise OperationalError
 
     ### Mutators ###
-    # FIXME: Assumes Geometry comes in as Well-known text, had to modify to accept GeoJSON
     def add(self, entity: dict) -> None:
         """
         Adds entry to connected table
@@ -138,7 +134,6 @@ class DBOperator():
             print(f"### DBOperator ERROR: Unable to add entity: {e}")
             raise UniqueViolation
 
-    # FIXME: Assumes Geometry comes in as Well-known text, had to modify to accept GeoJSON
     def modify(self, entity: tuple, data: dict) -> None:
         """
         Modifys a singular exisitng entity
@@ -273,7 +268,6 @@ class DBOperator():
 
         return result
 
-    # FIXME: Assumes attrs is for vessels. NOT GOOD for ambiguous tables!!
     def fetch_filter_options(self) -> dict:
         """
         Fetches distinct filter options for vessel types, origins, and statuses.
@@ -297,7 +291,6 @@ class DBOperator():
         }
 
     # pull data from DB
-    # FIXME: Assumes tuple size is CONSTANT. NOT GOOD for ambiguous tables!!
     def query(self, queries: list) -> list:
         """
         Querys entities based on a dictionary of provided filters
@@ -307,11 +300,6 @@ class DBOperator():
         # Assume value exists and just returns an empty array.
         cmd = []
         values = []
-
-        if not queries:
-            print("### DBOperator: No filters provided → Returning empty result.")
-            return []
-
 
         if len(queries) == 0:
             raise AttributeError("### DBOperator: Cannot query an empty array...")
@@ -334,33 +322,14 @@ class DBOperator():
             """)
 
         try:
-            self.__cursor.execute(" UNION ".join(cmd), tuple(values))
-            results = self.__cursor.fetchall()
+            self.__cursor.execute(f"SELECT row_to_json(data) FROM ({' UNION '.join(cmd)}) data", tuple(values))
+            results = [i[0] for i in self.__cursor.fetchall()]
+
+            for r in results: # quick formatting to remove binary Geom data
+                tmp = r.pop('st_asgeojson')
+                r['geom'] = tmp
+
             return results
-            # return [
-            #         {
-            #             "mmsi": v[0],
-            #             "vessel_name": v[1],
-            #             "callsign": v[2],
-            #             "timestamp": v[3],
-            #             "heading": v[4],
-            #             "speed": v[5],
-            #             "current_status": v[6],
-            #             "src": v[7],
-            #             "type": v[8],
-            #             "flag": v[9],
-            #             "length": v[10],
-            #             "width": v[11],
-            #             "draft": v[12],
-            #             "cargo_weight": v[13],
-            #             "lat": v[14],
-            #             "lon": v[15],
-            #             "dist_from_port": v[16],
-            #             "dist_from_shore": v[17],
-            #             "geom": v[-1]
-            #         }
-            #         for v in results
-            #     ]
         except UndefinedColumn as e:
             print(f"### DBOperator: Error occured:\n{e}")
             raise UndefinedColumn
@@ -368,39 +337,19 @@ class DBOperator():
             print(f"{e}\n### DBOperator: Error executing query. Did you forget to rollback an invalid edit-like command?")
             raise InFailedSqlTransaction
 
-    # FIXME: Assumes tuple size is CONSTANT. NOT GOOD for ambiguous tables!!
     def get_table(self) -> list:
         """
         Returns all entries in a table as a list of dictionary datatypes
         """
-        self.__cursor.execute(f"SELECT *,ST_AsGeoJson(geom) FROM {self.table}")
-        results = self.__cursor.fetchall()
+        self.__cursor.execute(f"select row_to_json(data) FROM (SELECT *,ST_AsGeoJson(geom) FROM {self.table}) data")
+
+        results = [i[0] for i in self.__cursor.fetchall()]
+
+        for r in results: # quick formatting to remove binary Geom data
+            tmp = r.pop('st_asgeojson')
+            r['geom'] = tmp
 
         return results
-        # return [
-        #     {
-        #         "mmsi": v[0],
-        #         "vessel_name": v[1],
-        #         "callsign": v[2],
-        #         "timestamp": v[3],
-        #         "heading": v[4],
-        #         "speed": v[5],
-        #         "current_status": v[6],
-        #         "src": v[7],
-        #         "type": v[8],
-        #         "flag": v[9],
-        #         "length": v[10],
-        #         "width": v[11],
-        #         "draft": v[12],
-        #         "cargo_weight": v[13],
-        #         "lat": v[14],
-        #         "lon": v[15],
-        #         "dist_from_port": v[16],
-        #         "dist_from_shore": v[17],
-        #         "geom": v[-1]
-        #     }
-        #     for v in vessels
-        # ]
 
     def get_count(self) -> int:
         """
@@ -414,7 +363,6 @@ class DBOperator():
     ### geom-ship relationships!
     """
     # These are ideally supposed to take advantage of the PostGIS stuff
-    # FIXME: Assumes tuple size is CONSTANT. NOT GOOD for ambiguous tables!!
     def proximity(self, var, range=5000.0):
         """
         Gets vessels witihin a specified range of a geometry
@@ -436,26 +384,15 @@ class DBOperator():
 
         # input()
 
-        self.__cursor.execute(query)
-        results = [i for i in self.__cursor.fetchall()]
-        results
-        # return [
-        #     {
-        #         "mmsi": v[0],
-        #         "vessel_name": v[1],
-        #         "callsign": v[2],
-        #         "heading": v[3],
-        #         "speed": v[4],
-        #         "current_status": v[5],
-        #         "src": v[6],
-        #         "type": v[7],
-        #         "flag": v[8],
-        #         "lat": v[9],
-        #         "lon": v[10],
-        #         "geom": v[11]
-        #     }
-        #     for v in vessels
-        # ]
+        self.__cursor.execute(f"SELECT row_to_json(data) FROM ({query}) data")
+        
+        results = [i[0] for i in self.__cursor.fetchall()]
+
+        for r in results: # quick formatting to remove binary Geom data
+            tmp = r.pop('st_asgeojson')
+            r['geom'] = tmp
+
+        return results
 
     def inside(self, var):
         """
@@ -515,7 +452,6 @@ if __name__ == "__main__":
         'lon':-97.21,
         'dist_from_shore':0.0,
         'dist_from_port':0.0,
-
     }
 
     # operator = DBOperator(table='vessels')
