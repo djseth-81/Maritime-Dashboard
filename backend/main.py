@@ -6,7 +6,7 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from backend.DBOperator import DBOperator
+from DBOperator import DBOperator
 
 app = FastAPI()
 
@@ -121,9 +121,9 @@ async def get_filtered_vessels(
     db = connect_to_vessels()
     try:
         payload = {
-            "Retrieved": datetime.now(),
-            "Privileges": db.permissions,
-            "Table attribuets": db.attrs,
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attribuets": db.attrs,
             "filters": db.fetch_filter_options(),
             "payload": []
         }

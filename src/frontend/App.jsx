@@ -9,7 +9,7 @@ import "react-toastify/ReactToastify.css";
 import './App.css';
 import { placeVessel } from "./utilities/shippingVessels/Vessels";
 import { Viewer } from "resium";
-import { SceneMode } from "cesium";
+import { SceneMode, Cartographic, Math } from "cesium";
 import axios from "axios";
 import OverlaysUI from "./utilities/OverlaysUI";
 
@@ -52,13 +52,16 @@ function App() {
       const response = await axios.get(vesselsAPI, { params: queryParams });
 
       console.log("Table privileges");
-      console.log(response.data.Privileges);
+      console.log(response.data.privileges);
 
       console.log("Response Timestamp");
       console.log(response.data.retrieved);
 
       console.log("Size of payload");
       console.log(response.data.size);
+
+      console.log("Payload:");
+      console.log(response.data.payload);
 
       if (response.data.length === 0) {
         toast.info("No vessels found matching your filters.");
@@ -224,13 +227,24 @@ function App() {
     console.log(filters);
     await fetchVessels(filters);
   }
-
-  // Debug
+// Debug
   console.log("Selected Geometry:", selectedGeometry);
   console.log("selectedGeometry Name: ", selectedGeometry?.name);
   const selectedGeometryData = geometries.find((geo) => geo.id === selectedGeometry?.id);
   console.log("selectedGeometry Data: ", selectedGeometryData);
   console.log("selectedGeometry Positions: ", selectedGeometryData?.positions);
+
+  let geom = selectedGeometryData?.positions.map((point) => 
+        Cartographic.fromCartesian(point)
+  );
+  console.log("Vertecies:");
+  console.log(geom);
+
+    geom?.map((i) => {
+        console.log("Vertex Coordinates");
+        console.log('Lat: ' + Math.toDegrees(i.longitude));
+        console.log('Lon: ' + Math.toDegrees(i.latitude));
+    });
   
   console.log("Show Context Menu:", showContextMenu);
   console.log("Context Menu Position:", contextMenuPosition);
@@ -260,7 +274,7 @@ function App() {
             vessel['heading'],
             0, //For elevation
             vessel['type'],
-            vessel['name']
+            vessel['vessel_name']
           ) || <div key={vessel['mmsi']}>Invalid Vessel Data</div>
         )}
 
