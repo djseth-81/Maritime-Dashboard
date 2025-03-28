@@ -275,18 +275,17 @@ function App() {
         sceneModePicker={true}
         geocoder={true}
         infoBox={true}
-        selectionIndicator={true}
-      >
-        {vessels.map(
-          (vessel) =>
-            placeVessel(
-              vessel["lon"],
-              vessel["lat"],
-              vessel["heading"],
-              0, //For elevation
-              vessel["type"],
-              vessel["vessel_name"],
-            ) || <div key={vessel["mmsi"]}>Invalid Vessel Data</div>,
+        selectionIndicator={true}>
+
+        {vessels.map((vessel) =>
+          placeVessel(
+            vessel['lon'],
+            vessel['lat'],
+            vessel['heading'],
+            0, //For elevation
+            vessel['type'],
+            vessel['vessel_name']
+          ) || <div key={vessel['mmsi']}>Invalid Vessel Data</div>
         )}
 
         <CustomGeometry
