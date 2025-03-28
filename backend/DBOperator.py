@@ -273,7 +273,7 @@ class DBOperator():
 
         return result
 
-    # FIXME: Assumes tuple size is CONSTANT. NOT GOOD for ambiguous tables!!
+    # FIXME: Assumes attrs is for vessels. NOT GOOD for ambiguous tables!!
     def fetch_filter_options(self) -> dict:
         """
         Fetches distinct filter options for vessel types, origins, and statuses.

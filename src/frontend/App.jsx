@@ -6,7 +6,7 @@ import FiltersUI from "./utilities/filters/FiltersUI";
 import ConfirmationDialog from "./utilities/ConfirmationDialog";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/ReactToastify.css";
-import './App.css';
+import "./App.css";
 import { placeVessel } from "./utilities/shippingVessels/Vessels";
 import { Viewer } from "resium";
 import { SceneMode, Cartographic, Math } from "cesium";
@@ -18,7 +18,10 @@ function App() {
   const [geometries, setGeometries] = useState([]); // Added state for geometries
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   const [showContextMenu, setShowContextMenu] = useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+  const [contextMenuPosition, setContextMenuPosition] = useState({
+    x: 0,
+    y: 0,
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [showOverlays, setShowOverlays] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -28,7 +31,7 @@ function App() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const viewerRef = useRef(null);
-  const URL = window.location.href.split(':');
+  const URL = window.location.href.split(":");
   const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
   const filtersAPI = "http:" + URL[1] + ":8000/filters/";
 
@@ -72,19 +75,18 @@ function App() {
       const transformedVessels = response.data.payload.map((vessel) =>
         Array.isArray(vessel)
           ? {
-            id: vessel['mmsi'],
-            name: vessel['vessel_name'],
-            type: vessel['type'],
-            country_of_origin: vessel['flag'],
-            status: vessel['current_status'],
-            latitude: vessel['lat'],
-            longitude: vessel['lon']
-          }
-          : vessel
+              id: vessel["mmsi"],
+              name: vessel["vessel_name"],
+              type: vessel["type"],
+              country_of_origin: vessel["flag"],
+              status: vessel["current_status"],
+              latitude: vessel["lat"],
+              longitude: vessel["lon"],
+            }
+          : vessel,
       );
 
       setVessels(transformedVessels);
-
     } catch (error) {
       console.error("Error fetching vessels:", error.message);
       toast.error("Failed to load vessels.");
@@ -115,7 +117,9 @@ function App() {
       // Clean up event listener when component unmounts
       return () => {
         if (viewer && viewer.scene && !viewer.isDestroyed()) {
-          viewer.scene.morphComplete.removeEventListener(sceneModeChangeHandler);
+          viewer.scene.morphComplete.removeEventListener(
+            sceneModeChangeHandler,
+          );
         }
       };
     }
@@ -181,16 +185,18 @@ function App() {
 
   const handleRename = (newName) => {
     // Update the name in the Cesium viewer
-    const entity = viewerRef.current.cesiumElement.entities.getById(selectedGeometry.id);
+    const entity = viewerRef.current.cesiumElement.entities.getById(
+      selectedGeometry.id,
+    );
     if (entity) {
-        entity.name = newName;
+      entity.name = newName;
     }
 
     // Update the name in the state
     setGeometries((prev) =>
       prev.map((geo) =>
-        geo.id === selectedGeometry.id ? { ...geo, name: newName } : geo
-      )
+        geo.id === selectedGeometry.id ? { ...geo, name: newName } : geo,
+      ),
     );
     setSelectedGeometry((prev) => ({ ...prev, name: newName }));
   };
@@ -206,7 +212,9 @@ function App() {
       viewerRef.current.cesiumElement.entities.removeById(selectedGeometry.id);
 
       // Update the state to remove the selected geometry
-      setGeometries((prev) => prev.filter((geo) => geo.id !== selectedGeometry.id));
+      setGeometries((prev) =>
+        prev.filter((geo) => geo.id !== selectedGeometry.id),
+      );
       setSelectedGeometry(null);
     }
     setShowDeleteDialog(false);
@@ -226,26 +234,28 @@ function App() {
     console.log("Filters selected:");
     console.log(filters);
     await fetchVessels(filters);
-  }
-// Debug
+  };
+  // Debug
   console.log("Selected Geometry:", selectedGeometry);
   console.log("selectedGeometry Name: ", selectedGeometry?.name);
-  const selectedGeometryData = geometries.find((geo) => geo.id === selectedGeometry?.id);
+  const selectedGeometryData = geometries.find(
+    (geo) => geo.id === selectedGeometry?.id,
+  );
   console.log("selectedGeometry Data: ", selectedGeometryData);
   console.log("selectedGeometry Positions: ", selectedGeometryData?.positions);
 
-  let geom = selectedGeometryData?.positions.map((point) => 
-        Cartographic.fromCartesian(point)
+  let geom = selectedGeometryData?.positions.map((point) =>
+    Cartographic.fromCartesian(point),
   );
   console.log("Vertecies:");
   console.log(geom);
 
-    geom?.map((i) => {
-        console.log("Vertex Coordinates");
-        console.log('Lat: ' + Math.toDegrees(i.longitude));
-        console.log('Lon: ' + Math.toDegrees(i.latitude));
-    });
-  
+  geom?.map((i) => {
+    console.log("Vertex Coordinates");
+    console.log("Lat: " + Math.toDegrees(i.longitude));
+    console.log("Lon: " + Math.toDegrees(i.latitude));
+  });
+
   console.log("Show Context Menu:", showContextMenu);
   console.log("Context Menu Position:", contextMenuPosition);
   console.log("showSettings:", showSettings);
@@ -265,17 +275,18 @@ function App() {
         sceneModePicker={true}
         geocoder={true}
         infoBox={true}
-        selectionIndicator={true}>
-
-        {vessels.map((vessel) =>
-          placeVessel(
-            vessel['lon'],
-            vessel['lat'],
-            vessel['heading'],
-            0, //For elevation
-            vessel['type'],
-            vessel['vessel_name']
-          ) || <div key={vessel['mmsi']}>Invalid Vessel Data</div>
+        selectionIndicator={true}
+      >
+        {vessels.map(
+          (vessel) =>
+            placeVessel(
+              vessel["lon"],
+              vessel["lat"],
+              vessel["heading"],
+              0, //For elevation
+              vessel["type"],
+              vessel["vessel_name"],
+            ) || <div key={vessel["mmsi"]}>Invalid Vessel Data</div>,
         )}
 
         <CustomGeometry
@@ -315,7 +326,9 @@ function App() {
       {showSettings && selectedGeometry && (
         <ZoneSettingsUI
           zoneName={selectedGeometry.name}
-          positions={geometries.find((geo) => geo.id === selectedGeometry.id)?.positions}
+          positions={
+            geometries.find((geo) => geo.id === selectedGeometry.id)?.positions
+          }
           onRename={handleRename}
           onDelete={handleDelete}
           onSave={handleSave}
@@ -323,10 +336,7 @@ function App() {
       )}
 
       {showFilters && (
-        <FiltersUI
-          apiEndpoint={filtersAPI}
-          onFilterApply={handleFilterApply}
-        />
+        <FiltersUI apiEndpoint={filtersAPI} onFilterApply={handleFilterApply} />
       )}
 
       {showOverlays && (
