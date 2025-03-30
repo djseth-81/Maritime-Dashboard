@@ -52,13 +52,16 @@ function App() {
       const response = await axios.get(vesselsAPI, { params: queryParams });
 
       console.log("Table privileges");
-      console.log(response.data.Privileges);
+      console.log(response.data.privileges);
 
       console.log("Response Timestamp");
       console.log(response.data.retrieved);
 
       console.log("Size of payload");
       console.log(response.data.size);
+
+      console.log("payload:");
+      console.log(response.data.payload);
 
       if (response.data.length === 0) {
         toast.info("No vessels found matching your filters.");
@@ -231,7 +234,7 @@ function App() {
   const selectedGeometryData = geometries.find((geo) => geo.id === selectedGeometry?.id);
   console.log("selectedGeometry Data: ", selectedGeometryData);
   console.log("selectedGeometry Positions: ", selectedGeometryData?.positions);
-  
+
   console.log("Show Context Menu:", showContextMenu);
   console.log("Context Menu Position:", contextMenuPosition);
   console.log("showSettings:", showSettings);
@@ -260,7 +263,7 @@ function App() {
             vessel['heading'],
             0, //For elevation
             vessel['type'],
-            vessel['name']
+            vessel['vessel_name']
           ) || <div key={vessel['mmsi']}>Invalid Vessel Data</div>
         )}
 

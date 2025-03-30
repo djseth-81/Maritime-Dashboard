@@ -121,9 +121,9 @@ async def get_filtered_vessels(
     db = connect_to_vessels()
     try:
         payload = {
-            "Retrieved": datetime.now(),
-            "Privileges": db.permissions,
-            "Table attribuets": db.attrs,
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attribuets": db.attrs,
             "filters": db.fetch_filter_options(),
             "payload": []
         }

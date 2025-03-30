@@ -1,6 +1,7 @@
 from pprint import pprint
 from psycopg2 import *
 from psycopg2.errors import *
+from json import loads, dumps
 
 class DBOperator():
     """
@@ -14,17 +15,14 @@ class DBOperator():
     DBOperator will implicitly connect to 'capstone' database unless specified
     otherwise
     """
-    # TODO:
-    # - push multiple entries to DB (?)
-    # - Parsing (Geo)JSON to enter as SQL commands
-    #     - Package as JSON
+    # FIXME: All queries assume tables have geometry, and some will not have them!
+    #   - expected fix: take table's attr.keys() and replace the 'SELECT *' with SELECT {attrs}
+    #       - If geom is in attr.keys(), append with ST_GeomAsJson()
+    # FIXME: add() accepts WKT, but doesn't like GeoJSON
+    #   - Just threw in a couple lines to convert the geom as needed.
+    #   - Want a better fix than that^ !!!
+    # WARN: Expecting fetch_filter_options() to not work with tables other than vessels
 
-    # - PostGIS related stuff
-    #     - Take advantage of geometric functions in PostGIS (See postGIS_notes.txt)
-    #         - There's also the geography/projection stuff, definitely gonna use those
-    #     - Retrieved data should already be primed for geospatial/projection
-    #         - Look @ the projection/geography modules
-    #         - refer to geospatial conversion/modify functions!
     """
     // POSTGIS
         - Storing as Geography, likely will have to conver to geography
@@ -47,6 +45,11 @@ class DBOperator():
             - ST_ExteriorRing()
             - ST_Perimeter()
     """
+
+    ''' For Yolvin :) 
+    def __init__(self, table: str, host='localhost', port='5432', user='postgres',
+                 passwd='1234', schema='public', db='capstone') -> None:
+    '''
     def __init__(self, table: str, host='', port='', user='',
                  passwd='', schema='public', db='capstone') -> None:
         self.table = table
@@ -109,6 +112,7 @@ class DBOperator():
 
         if geom != None: # if geom was popped, append value to values array
             values += [geom]
+            # values += [dumps(geom)] # NOTE: USING to convert GeoJSON into PostGIS Geography
 
         # NOW we convert values into tuples
         values = tuple(values)
@@ -117,6 +121,7 @@ class DBOperator():
         #   Otherwise, just add a ')'
         if geom != None:
             cmd += 'ST_GeographyFromText(%s))'
+            # cmd += 'ST_GeogFromWKB(ST_GeomFromGeoJSON(%s)))' # NOTE: USING to convert GeoJSON into PostGIS Geography
         else:
             cmd = cmd[:-1] + ')'
 
@@ -254,6 +259,9 @@ class DBOperator():
         cmd = []
         values = []
 
+        if len(queries) == 0:
+            raise AttributeError("### DBOperator: Cannot query an empty array...")
+
         for entity in queries:
             conditions = []
             for attr,value in entity.items():
@@ -273,32 +281,14 @@ class DBOperator():
         pprint(values)
 
         try:
-            self.__cursor.execute(" UNION ".join(cmd), tuple(values))
-            vessels = self.__cursor.fetchall()
-            return [
-                    {
-                        "mmsi": v[0],
-                        "vessel_name": v[1],
-                        "callsign": v[2],
-                        "timestamp": v[3],
-                        "heading": v[4],
-                        "speed": v[5],
-                        "current_status": v[6],
-                        "src": v[7],
-                        "type": v[8],
-                        "flag": v[9],
-                        "length": v[10],
-                        "width": v[11],
-                        "draft": v[12],
-                        "cargo_weight": v[13],
-                        "lat": v[14],
-                        "lon": v[15],
-                        "dist_from_port": v[16],
-                        "dist_from_shore": v[17],
-                        "geom": v[-1]
-                    }
-                    for v in vessels
-                ]
+            self.__cursor.execute(f"SELECT row_to_json(data) FROM ({' UNION '.join(cmd)}) data", tuple(values))
+            results = [i[0] for i in self.__cursor.fetchall()]
+
+            for r in results: # quick formatting to remove binary Geom data
+                tmp = r.pop('st_asgeojson')
+                r['geom'] = tmp
+
+            return results
         except UndefinedColumn as e:
             print(f"### DBOperator: Error occured:\n{e}")
             # raise UndefinedColumn
@@ -307,33 +297,15 @@ class DBOperator():
         """
         Returns all entries in a table as a list of dictionary datatypes
         """
-        self.__cursor.execute(f"SELECT *,ST_AsGeoJson(geom) FROM {self.table}")
-        vessels = self.__cursor.fetchall()
+        self.__cursor.execute(f"select row_to_json(data) FROM (SELECT *,ST_AsGeoJson(geom) FROM {self.table}) data")
 
-        return [
-            {
-                "mmsi": v[0],
-                "vessel_name": v[1],
-                "callsign": v[2],
-                "timestamp": v[3],
-                "heading": v[4],
-                "speed": v[5],
-                "current_status": v[6],
-                "src": v[7],
-                "type": v[8],
-                "flag": v[9],
-                "length": v[10],
-                "width": v[11],
-                "draft": v[12],
-                "cargo_weight": v[13],
-                "lat": v[14],
-                "lon": v[15],
-                "dist_from_port": v[16],
-                "dist_from_shore": v[17],
-                "geom": v[-1]
-            }
-            for v in vessels
-        ]
+        results = [i[0] for i in self.__cursor.fetchall()]
+
+        for r in results: # quick formatting to remove binary Geom data
+            tmp = r.pop('st_asgeojson')
+            r['geom'] = tmp
+
+        return results
 
     def get_count(self) -> int:
         """
@@ -346,7 +318,39 @@ class DBOperator():
     # These are ideally supposed to take advantage of the PostGIS stuff
     def get_within(self, geom):
         """
-        Gets data within region
+        Gets vessels witihin a specified range of a geometry
+        ST_DWithin(geom, var, range)
+        """
+
+        query = f"""
+                SELECT mmsi,vessel_name,callsign,heading,speed,current_status,src,type,flag,lat,lon,ST_AsGeoJson(geom)
+                FROM {self.table}
+                WHERE ST_DWithin(geom, ST_GeogFromText('{var}'),{range})
+            """
+
+        """
+        select mmsi 
+        from vessels 
+        where ST_DWithin(geom, St_GeogFromText('Point(-91.02 30.13)'), 5000)
+        """
+        print(query)
+
+        # input()
+
+        self.__cursor.execute(f"SELECT row_to_json(data) FROM ({query}) data")
+        
+        results = [i[0] for i in self.__cursor.fetchall()]
+
+        for r in results: # quick formatting to remove binary Geom data
+            tmp = r.pop('st_asgeojson')
+            r['geom'] = tmp
+
+        return results
+
+    def inside(self, var):
+        """
+        Gets vessels within a specified geometry
+        ST_Contains(var, geom)
         """
         pass
 
@@ -379,9 +383,34 @@ if __name__ == "__main__":
         'width': 23.0
     }
 
-    operator = DBOperator(table='vessels')
+    entity2 = {
+        'mmsi':367702270,
+        'vessel_name':'MS. JENIFER TRETTER',
+        'callsign':'WDI4813',
+        'timestamp':'2024-09-30T00:00:00',
+        'heading':334.5,
+        'speed':6.6,
+        'current_status':'12',
+        'src':'MarineCadastre-AIS',
+        'type':'TUG',
+        'flag':'USA',
+        'length':113,
+        'width':34,
+        'draft':3.1,
+        'cargo_weight':57,
+        'geom':'Point(-97.21 26.1)',
+        'lat':26.1,
+        'lon':-97.21,
+        'dist_from_shore':0.0,
+        'dist_from_port':0.0,
+    }
+
+    # operator = DBOperator(table='vessels')
+    # print(operator.permissions)
+    # print(operator.attrs)
     # input()
 
+    # pprint(operator.proximity('Point(-91.02 30.13)', 1000))
     ### Get filterable items
     # pprint(operator.fetch_filter_options())
     # input()
@@ -395,7 +424,7 @@ if __name__ == "__main__":
     # input()
 
     ### Add
-    # operator.add(entity)
+    # operator.add(entity2)
     # operator.commit()
 
     ### Query
@@ -414,4 +443,6 @@ if __name__ == "__main__":
     # operator.commit()
     # pprint(operator.query(("mmsi",368261120)))
 
+    # operator = DBOperator(table='zones')
+    # pprint(operator.query([{'id':'AKC013'}]))
     operator.close()
