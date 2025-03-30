@@ -7,6 +7,7 @@
 */
 
 import { useEffect, useRef, useState } from "react";
+import { convertCartesianToDegrees } from "./coordUtils";
 import * as Cesium from "cesium";
 
 const CustomGeometry = ({ viewer, viewerReady, isDrawing, setSelectedGeometry, setShowContextMenu, setContextMenuPosition, setShowSettings, geometries, setGeometries }) => {
@@ -77,6 +78,8 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, setSelectedGeometry, s
                         }
                         console.log("Drawing left-click registered at position:", click.position, "Cartesian:", cartesian);
                         if (cartesian) {
+                            const { latitude, longitude } = convertCartesianToDegrees(cartesian);
+                            console.log("Converted coordinates:", { latitude, longitude });
                             setPositions((prevPositions) => [...prevPositions, cartesian]);
                         }
                     }
@@ -124,7 +127,7 @@ const CustomGeometry = ({ viewer, viewerReady, isDrawing, setSelectedGeometry, s
 
 export default CustomGeometry;
 
-// Previous implementation, KEEP!! (for now) 
+// Previous implementation, KEEP!! (for now)
 // import { useEffect } from "react";
 
 // import { Entity, PolylineGraphics, PolygonGraphics, PointGraphics, pick } from "resium";
