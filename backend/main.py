@@ -6,7 +6,7 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from backend.DBOperator import DBOperator
+from DBOperator import DBOperator
 
 app = FastAPI()
 
