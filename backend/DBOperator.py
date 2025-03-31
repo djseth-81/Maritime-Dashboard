@@ -8,10 +8,6 @@ class DBOperator():
     A basic Class that will directly interface with a PostGIS database on
     behalf of the Maritime Dashboard
 
-    psycopg2 is DB-API 2.0 Compliant with different geospatial DBs
-    (https://peps.python.org/pep-0249/)
-    - Enables things like threadsafety too???
-
     DBOperator will implicitly connect to 'capstone' database unless specified
     otherwise
     """
@@ -70,6 +66,8 @@ class DBOperator():
             if table not in self.__get_tables():
                 raise RuntimeError(f"Table does not exist")
             print("### DBOperator: Connected to DB")
+            self.permissions = self.__get_privileges()
+            self.attrs = self.__get_attributes()
         except OperationalError as e:
             print(f"### DBOperator: Error connecting to database:\n{e}")
             raise OperationalError
@@ -79,6 +77,10 @@ class DBOperator():
         """
         Adds entry to connected table
         Expects a dict = {key: value} to enter as attribute and value
+        Expects keys to match attrs. If attr is missing from key, ''/0/0.0 is provided.
+        Unnacceptable Missing Attrs:
+            ID reference values (vessels.mmsi, user.id, user.hash, zone.id, event.id, report.id)
+            Geometry
         """
         # TODO: Handle multiple entities for bulk additions
         # I might want to track relations, and organize entity values based off of it.
@@ -128,8 +130,9 @@ class DBOperator():
         try:
             self.__cursor.execute(cmd,(values))
             print("### DBOperator: Entry added to commands queue")
-        except Exception as e:
+        except UniqueViolation as e:
             print(f"### DBOperator ERROR: Unable to add entity: {e}")
+            raise UniqueViolation
 
     def modify(self, entity: tuple, data: dict) -> None:
         """
@@ -144,13 +147,50 @@ class DBOperator():
 
         self.__cursor.execute(cmd + f" WHERE {entity[0]} = %s", (entity[1],))
 
-    def delete(self, entity: tuple) -> None:
+    def delete(self, entity: dict) -> None:
         """
-        deletes entry that has matching attribute
+        deletes entry that has matching attributes ONLY.
         ONLY deletes from connected table, tables inheriting from connected are NOT processed
             - I'm highly tempted to have it wipe inherited entries as well, but that defeats the purpose of this object
         """
-        self.__cursor.execute(f"DELETE FROM ONLY {self.table} WHERE {entity[0]} = %s", (entity[1],))
+        # NOTE: NO indication that delete is called on non-existent values.
+        # Assumes value exists, and just deletes nothing
+
+        if len(entity) == 0:
+            raise AttributeError("### DBOperator: Error. Provided entity is empty.")
+
+        print(f"### DBOperator: Deleting {entity}")
+
+        conditions = []
+        values = []
+
+        for attr,value in entity.items():
+            if attr == 'geom':
+                print(f"Geom provided: {attr}:{value}")
+                conditions.append(f"{attr} = ST_GeographyFromText(%s)")
+            else:
+                conditions.append(f"{attr} = %s")
+            values.append(value)
+
+        if not conditions:
+            return []
+
+        query = f"""
+            DELETE FROM ONLY {self.table}
+            WHERE {' AND '.join(conditions)}
+        """
+        print(f"### DBOperator: Query:\n{query}")
+        print(f"### DBOperator: Values: {tuple(values)}")
+
+        # input()
+
+        try: 
+            self.__cursor.execute(query, tuple(values))
+            print("### DBOperator: Deletion reqeust added to queue.")
+        except UndefinedColumn as e:
+            print(f"{e}\n### DBOperator: Error deleting item.")
+            self.rollback() # Uhm... Why are you necessary so other commands don't break?
+            raise UndefinedColumn
 
     def clear(self) -> tuple:
         """
@@ -195,7 +235,7 @@ class DBOperator():
         return ("message", "DB instance closed.")
 
     ### Accessors ###
-    def get_attributes(self) -> dict:
+    def __get_attributes(self) -> dict:
         """
         Fetches table attributes
         """
@@ -214,7 +254,7 @@ class DBOperator():
         #     pprint(table)
         return tables
 
-    def get_privileges(self) -> dict:
+    def __get_privileges(self) -> dict:
         """
         Lists the privileges assigned to user per a given operation
         """
@@ -246,8 +286,8 @@ class DBOperator():
 
         return {
             "types": types,
-            "origins": origins,
-            "statuses": statuses
+            "flag": origins,
+            "current_status": statuses
         }
 
     # pull data from DB
@@ -256,6 +296,8 @@ class DBOperator():
         Querys entities based on a dictionary of provided filters
         returns list of dictionary types
         """
+        # NOTE: NO indication for query on non-existent values.
+        # Assume value exists and just returns an empty array.
         cmd = []
         values = []
 
@@ -263,6 +305,8 @@ class DBOperator():
             raise AttributeError("### DBOperator: Cannot query an empty array...")
 
         for entity in queries:
+            if len(entity) == 0:
+                raise AttributeError("### DBOperator: Cannot query an empty dictionary...")
             conditions = []
             for attr,value in entity.items():
                 conditions.append(f"{attr} = %s")
@@ -276,9 +320,6 @@ class DBOperator():
                 FROM {self.table}
                 WHERE {' AND '.join(conditions)}
             """)
-        print(f"### DBOperator: Query:\n{' UNION '.join(cmd)}")
-        print(f"### DBOperator: Values:")
-        pprint(values)
 
         try:
             self.__cursor.execute(f"SELECT row_to_json(data) FROM ({' UNION '.join(cmd)}) data", tuple(values))
@@ -291,7 +332,10 @@ class DBOperator():
             return results
         except UndefinedColumn as e:
             print(f"### DBOperator: Error occured:\n{e}")
-            # raise UndefinedColumn
+            raise UndefinedColumn
+        except InFailedSqlTransaction as e:
+            print(f"{e}\n### DBOperator: Error executing query. Did you forget to rollback an invalid edit-like command?")
+            raise InFailedSqlTransaction
 
     def get_table(self) -> list:
         """
@@ -315,8 +359,11 @@ class DBOperator():
         self.__cursor.execute(f"SELECT Count(*) FROM {self.table}")
         return self.__cursor.fetchone()[0]
 
+    """
+    ### geom-ship relationships!
+    """
     # These are ideally supposed to take advantage of the PostGIS stuff
-    def get_within(self, geom):
+    def proximity(self, var, range=5000.0):
         """
         Gets vessels witihin a specified range of a geometry
         ST_DWithin(geom, var, range)
@@ -354,11 +401,13 @@ class DBOperator():
         """
         pass
 
-    def get_surrounding(self, geom):
+
+    def borders(self, var):
         """
-        Gets data within region
+        Gets vessels that border/touches a specified geometry
         """
         pass
+    
 
 if __name__ == "__main__":
     entity = {
@@ -428,7 +477,9 @@ if __name__ == "__main__":
     # operator.commit()
 
     ### Query
-    pprint(operator.query({"mmsi":368261120})) # Table should have new entity
+    # pprint(operator.query([{"mmsi":368261120}])) # Table should have new entity
+    # pprint(operator.query([]))
+    # pprint(operator.query([{}]))
     # input()
     
     ### Modify
@@ -439,9 +490,10 @@ if __name__ == "__main__":
     # input()
 
     ### Delete
-    # operator.delete(("mmsi",368261120))
+    # operator.delete(entity)
+    # operator.delete({'mmsi':1234})
     # operator.commit()
-    # pprint(operator.query(("mmsi",368261120)))
+    # pprint(operator.query([{"mmsi":368261120}]))
 
     # operator = DBOperator(table='zones')
     # pprint(operator.query([{'id':'AKC013'}]))
