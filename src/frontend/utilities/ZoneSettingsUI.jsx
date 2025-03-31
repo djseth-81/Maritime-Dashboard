@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import * as Cesium from "cesium";
+import { convertCartesianToDegrees } from "./coordUtils";
 
 const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename }) => {
     const [isRenaming, setIsRenaming] = useState(false);
@@ -14,14 +14,6 @@ const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename }
             onRename(newName);
             setIsRenaming(false);
         }
-    };
-
-    const convertCartesianToDegrees = (cartesian) => {
-        const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
-        const latitude = Cesium.Math.toDegrees(cartographic.latitude);
-        const longitude = Cesium.Math.toDegrees(cartographic.longitude);
-        const height = cartographic.height;
-        return { latitude, longitude, height };
     };
 
     return (
@@ -60,9 +52,9 @@ const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename }
                 <h5>Coordinates:</h5>
                 <ul>
                     {positions.map((pos, index) => {
-                        const { latitude, longitude, height } = convertCartesianToDegrees(pos);
+                        const { latitude, longitude } = convertCartesianToDegrees(pos);
                         return (
-                            <li key={index}>{`Lat: ${latitude.toFixed(6)}, Lon: ${longitude.toFixed(6)}, Alt: ${height.toFixed(2)}`}</li>
+                            <li key={index}>{`Lat: ${latitude.toFixed(6)}, Lon: ${longitude.toFixed(6)}`}</li>
                         );
                     })}
                 </ul>
