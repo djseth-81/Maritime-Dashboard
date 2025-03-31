@@ -6,19 +6,23 @@ import FiltersUI from "./utilities/filters/FiltersUI";
 import ConfirmationDialog from "./utilities/ConfirmationDialog";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/ReactToastify.css";
-import './App.css';
+import "./App.css";
 import { placeVessel } from "./utilities/shippingVessels/Vessels";
 import { Viewer } from "resium";
-import { SceneMode } from "cesium";
+import { SceneMode, Cartographic, Math } from "cesium";
 import axios from "axios";
 import OverlaysUI from "./utilities/overlays/OverlaysUI";
+import { convertCartesianToDegrees } from "./utilities/coordUtils";
 
 function App() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [geometries, setGeometries] = useState([]); // Added state for geometries
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   const [showContextMenu, setShowContextMenu] = useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+  const [contextMenuPosition, setContextMenuPosition] = useState({
+    x: 0,
+    y: 0,
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [showOverlays, setShowOverlays] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -28,27 +32,46 @@ function App() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const viewerRef = useRef(null);
-  const URL = window.location.href.split(':');
+  const URL = window.location.href.split(":");
   const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
   const filtersAPI = "http:" + URL[1] + ":8000/filters/";
 
   // Fetch vessels from API
-  const fetchVessels = async (filters = {}) => {
+  const fetchVessels = async (filters = {}, zone = selectedGeometry) => {
+    const queryParams = {};
+
+    // If zone is selected, apply geospatial filtering
+    if (zone != null) {
+            console.log("ZONE SELECTED:")
+            const polygonData = geometries.find(
+                (geo) => geo.id === selectedGeometry?.id,
+            );
+            let polygonVerticies = polygonData?.positions.map((point) =>
+                convertCartesianToDegrees(point) // This is sick tho
+            );
+
+            let zoneGeo = { 'type' : "Polygon",
+                "coordinates": polygonVerticies?.map((point) => [point.longitude, point.latitude]),
+            }
+
+            console.log("Zone GeoJSON:");
+            console.log(zoneGeo);
+            queryParams.geom = zoneGeo;
+
+    } else {console.log("NO ZONE SELECTED.");}
+
+    // Apply filters to query
+    if (filters.types && filters.types.length > 0) {
+      queryParams.type = filters.types.join(",");
+    }
+    if (filters.origin) {
+      queryParams.origin = filters.origin;
+    }
+    if (filters.statuses && filters.statuses.length > 0) {
+      queryParams.status = filters.statuses.join(",");
+    }
+
     try {
-      const queryParams = {};
-
-      if (filters.types && filters.types.length > 0) {
-        queryParams.type = filters.types.join(",");
-      }
-
-      if (filters.origin) {
-        queryParams.origin = filters.origin;
-      }
-
-      if (filters.statuses && filters.statuses.length > 0) {
-        queryParams.status = filters.statuses.join(",");
-      }
-
       const response = await axios.get(vesselsAPI, { params: queryParams });
 
       console.log("Table privileges");
@@ -60,7 +83,7 @@ function App() {
       console.log("Size of payload");
       console.log(response.data.size);
 
-      console.log("payload:");
+      console.log("Payload:");
       console.log(response.data.payload);
 
       if (response.data.length === 0) {
@@ -72,19 +95,18 @@ function App() {
       const transformedVessels = response.data.payload.map((vessel) =>
         Array.isArray(vessel)
           ? {
-            id: vessel['mmsi'],
-            name: vessel['vessel_name'],
-            type: vessel['type'],
-            country_of_origin: vessel['flag'],
-            status: vessel['current_status'],
-            latitude: vessel['lat'],
-            longitude: vessel['lon']
-          }
-          : vessel
+              id: vessel["mmsi"],
+              name: vessel["vessel_name"],
+              type: vessel["type"],
+              country_of_origin: vessel["flag"],
+              status: vessel["current_status"],
+              latitude: vessel["lat"],
+              longitude: vessel["lon"],
+            }
+          : vessel,
       );
 
       setVessels(transformedVessels);
-
     } catch (error) {
       console.error("Error fetching vessels:", error.message);
       toast.error("Failed to load vessels.");
@@ -115,7 +137,9 @@ function App() {
       // Clean up event listener when component unmounts
       return () => {
         if (viewer && viewer.scene && !viewer.isDestroyed()) {
-          viewer.scene.morphComplete.removeEventListener(sceneModeChangeHandler);
+          viewer.scene.morphComplete.removeEventListener(
+            sceneModeChangeHandler,
+          );
         }
       };
     }
@@ -181,16 +205,18 @@ function App() {
 
   const handleRename = (newName) => {
     // Update the name in the Cesium viewer
-    const entity = viewerRef.current.cesiumElement.entities.getById(selectedGeometry.id);
+    const entity = viewerRef.current.cesiumElement.entities.getById(
+      selectedGeometry.id,
+    );
     if (entity) {
-        entity.name = newName;
+      entity.name = newName;
     }
 
     // Update the name in the state
     setGeometries((prev) =>
       prev.map((geo) =>
-        geo.id === selectedGeometry.id ? { ...geo, name: newName } : geo
-      )
+        geo.id === selectedGeometry.id ? { ...geo, name: newName } : geo,
+      ),
     );
     setSelectedGeometry((prev) => ({ ...prev, name: newName }));
   };
@@ -206,7 +232,9 @@ function App() {
       viewerRef.current.cesiumElement.entities.removeById(selectedGeometry.id);
 
       // Update the state to remove the selected geometry
-      setGeometries((prev) => prev.filter((geo) => geo.id !== selectedGeometry.id));
+      setGeometries((prev) =>
+        prev.filter((geo) => geo.id !== selectedGeometry.id),
+      );
       setSelectedGeometry(null);
     }
     setShowDeleteDialog(false);
@@ -226,18 +254,34 @@ function App() {
     console.log("Filters selected:");
     console.log(filters);
     await fetchVessels(filters);
-  }
+  };
 
-  // Debug
-  console.log("Selected Geometry:", selectedGeometry);
-  console.log("selectedGeometry Name: ", selectedGeometry?.name);
-  const selectedGeometryData = geometries.find((geo) => geo.id === selectedGeometry?.id);
-  console.log("selectedGeometry Data: ", selectedGeometryData);
-  console.log("selectedGeometry Positions: ", selectedGeometryData?.positions);
+  // // Debug
+  // console.log("Show Context Menu:", showContextMenu);
+  // console.log("Context Menu Position:", contextMenuPosition);
+  // console.log("showSettings:", showSettings);
 
-  console.log("Show Context Menu:", showContextMenu);
-  console.log("Context Menu Position:", contextMenuPosition);
-  console.log("showSettings:", showSettings);
+  // console.log("Selected Geometry:", selectedGeometry);
+  // console.log("selectedGeometry Name: ", selectedGeometry?.name);
+  // 
+  // // ZONE DATA
+
+
+  // // SHIP DATA
+  //  console.log("SHIP DATA:") 
+
+  //   console.log(vessels);
+
+  //   console.log("SHIP NAME:");
+  //   console.log(selectedGeometry?.name.split(": ")[1]);
+  //   const vesselData = vessels.find((vessel) => 
+  //       vessel.vessel_name === selectedGeometry?.name.split(": ")[1]
+  //   );
+
+  //   console.log("Selected Ship data: ", vesselData);
+  //   console.log("Selected ship position:");
+  //   console.log(vesselData?.geom);
+ 
 
   return (
     <div className="cesium-viewer">
@@ -304,7 +348,9 @@ function App() {
       {showSettings && selectedGeometry && (
         <ZoneSettingsUI
           zoneName={selectedGeometry.name}
-          positions={geometries.find((geo) => geo.id === selectedGeometry.id)?.positions}
+          positions={
+            geometries.find((geo) => geo.id === selectedGeometry.id)?.positions
+          }
           onRename={handleRename}
           onDelete={handleDelete}
           onSave={handleSave}
@@ -312,10 +358,7 @@ function App() {
       )}
 
       {showFilters && (
-        <FiltersUI
-          apiEndpoint={filtersAPI}
-          onFilterApply={handleFilterApply}
-        />
+        <FiltersUI apiEndpoint={filtersAPI} onFilterApply={handleFilterApply} />
       )}
 
       {showOverlays && (
