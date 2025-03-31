@@ -497,4 +497,4 @@ if __name__ == "__main__":
 
     # operator = DBOperator(table='zones')
     # pprint(operator.query([{'id':'AKC013'}]))
-    operator.close()
+    # operator.close()
