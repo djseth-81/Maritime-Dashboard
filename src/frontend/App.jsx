@@ -11,7 +11,7 @@ import { placeVessel } from "./utilities/shippingVessels/Vessels";
 import { Viewer } from "resium";
 import { SceneMode } from "cesium";
 import axios from "axios";
-import OverlaysUI from "./utilities/OverlaysUI";
+import OverlaysUI from "./utilities/overlays/OverlaysUI";
 
 function App() {
   const [isDrawing, setIsDrawing] = useState(false);
