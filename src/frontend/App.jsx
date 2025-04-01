@@ -37,28 +37,8 @@ function App() {
   const filtersAPI = "http:" + URL[1] + ":8000/filters/";
 
   // Fetch vessels from API
-  const fetchVessels = async (filters = {}, zone = selectedGeometry) => {
+  const fetchVessels = async (filters = {}) => {
     const queryParams = {};
-
-    // If zone is selected, apply geospatial filtering
-    if (zone != null) {
-            console.log("ZONE SELECTED:")
-            const polygonData = geometries.find(
-                (geo) => geo.id === selectedGeometry?.id,
-            );
-            let polygonVerticies = polygonData?.positions.map((point) =>
-                convertCartesianToDegrees(point) // This is sick tho
-            );
-
-            let zoneGeo = { 'type' : "Polygon",
-                "coordinates": polygonVerticies?.map((point) => [point.longitude, point.latitude]),
-            }
-
-            console.log("Zone GeoJSON:");
-            console.log(zoneGeo);
-            queryParams.geom = zoneGeo;
-
-    } else {console.log("NO ZONE SELECTED.");}
 
     // Apply filters to query
     if (filters.types && filters.types.length > 0) {
@@ -73,6 +53,87 @@ function App() {
 
     try {
       const response = await axios.get(vesselsAPI, { params: queryParams });
+
+      console.log("Table privileges");
+      console.log(response.data.privileges);
+
+      console.log("Response Timestamp");
+      console.log(response.data.retrieved);
+
+      console.log("Size of payload");
+      console.log(response.data.size);
+
+      console.log("Filterable items:");
+      console.log(response.data.filters);
+
+      console.log("Payload:");
+      console.log(response.data.payload);
+
+      if (response.data.length === 0) {
+        toast.info("No vessels found matching your filters.");
+        setVessels([]);
+        return;
+      }
+
+      const transformedVessels = response.data.payload.map((vessel) =>
+        Array.isArray(vessel)
+          ? {
+              id: vessel["mmsi"],
+              name: vessel["vessel_name"],
+              type: vessel["type"],
+              country_of_origin: vessel["flag"],
+              status: vessel["current_status"],
+              latitude: vessel["lat"],
+              longitude: vessel["lon"],
+            }
+          : vessel,
+      );
+
+      setVessels(transformedVessels);
+    } catch (error) {
+      console.error("Error fetching vessels:", error.message);
+      toast.error("Failed to load vessels.");
+      setVessels([]);
+    }
+  };
+
+  const zoning = async (filters = {}) => {
+    const payload = {};
+
+    // If zone is selected, apply geospatial filtering
+    console.log("ZONE SELECTED:")
+    const polygonData = geometries.find(
+        (geo) => geo.id === selectedGeometry?.id,
+    );
+    let polygonVerticies = polygonData?.positions.map((point) =>
+        convertCartesianToDegrees(point) // This is sick tho
+    );
+
+    let geom = { 'type' : "Polygon",
+        "coordinates": polygonVerticies?.map((point) => [point.longitude, point.latitude]),
+    }
+
+    console.log("Zone GeoJSON:");
+    console.log(geom);
+    payload.geom = geom;
+    const zoneAPI = "http:" + URL[1] + ":8000/zoning/";
+
+    // Apply filters to query
+    if (filters.types && filters.types.length > 0) {
+      payload.type = filters.types.join(",");
+    }
+    if (filters.origin) {
+      payload.origin = filters.origin;
+    }
+    if (filters.statuses && filters.statuses.length > 0) {
+      payload.status = filters.statuses.join(",");
+    }
+
+    try {
+      const response = await axios.post(zoneAPI, payload);
+
+      console.log("Zoning response:");
+      console.log(response);
 
       console.log("Table privileges");
       console.log(response.data.privileges);
@@ -116,6 +177,8 @@ function App() {
 
   useEffect(() => {
     fetchVessels();
+    selectedGeometry ? zoning() : console.log("NO ZONE SELECTED"); // Dunno whether or not this actually does anything...
+
     if (viewerRef.current && viewerRef.current.cesiumElement) {
       const viewer = viewerRef.current.cesiumElement;
       setViewerReady(true);
@@ -254,33 +317,31 @@ function App() {
     console.log("Filters selected:");
     console.log(filters);
     await fetchVessels(filters);
+    await selectedGeometry ? zoning(filters) : console.log("NO ZONE SELECTED");
   };
 
-  // // Debug
-  // console.log("Show Context Menu:", showContextMenu);
-  // console.log("Context Menu Position:", contextMenuPosition);
-  // console.log("showSettings:", showSettings);
+  // Debug
+  console.log("Show Context Menu:", showContextMenu);
+  console.log("Context Menu Position:", contextMenuPosition);
+  console.log("showSettings:", showSettings);
 
-  // console.log("Selected Geometry:", selectedGeometry);
-  // console.log("selectedGeometry Name: ", selectedGeometry?.name);
-  // 
-  // // ZONE DATA
+  console.log("Selected Geometry:", selectedGeometry);
+  console.log("selectedGeometry Name: ", selectedGeometry?.name);
 
+  // SHIP DATA
+  console.log("SHIP DATA:");
 
-  // // SHIP DATA
-  //  console.log("SHIP DATA:") 
+  console.log(vessels);
 
-  //   console.log(vessels);
+  console.log("SHIP NAME:");
+  console.log(selectedGeometry?.name.split(": ")[1]);
+  const vesselData = vessels.find((vessel) => 
+      vessel.vessel_name === selectedGeometry?.name.split(": ")[1]
+  );
 
-  //   console.log("SHIP NAME:");
-  //   console.log(selectedGeometry?.name.split(": ")[1]);
-  //   const vesselData = vessels.find((vessel) => 
-  //       vessel.vessel_name === selectedGeometry?.name.split(": ")[1]
-  //   );
-
-  //   console.log("Selected Ship data: ", vesselData);
-  //   console.log("Selected ship position:");
-  //   console.log(vesselData?.geom);
+  console.log("Selected Ship data: ", vesselData);
+  console.log("Selected ship position:");
+  console.log(vesselData?.geom);
  
 
   return (

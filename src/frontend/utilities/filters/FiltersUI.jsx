@@ -103,7 +103,7 @@ const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
 
             <div className='status-subwindow'>
                 <label>Status:</label>
-                {filterOptions?.statuses?.map((status) => (
+                {filterOptions?.current_status?.map((status) => (
                     <label key={status}>
                         <input
                             type="checkbox"

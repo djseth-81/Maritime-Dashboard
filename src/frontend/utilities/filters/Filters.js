@@ -29,7 +29,8 @@ const useFetchFilters = (apiEndpoint) => {
 
                     setSelectedFilters({
                         ...selectedFilters,
-                        types: data.types
+                        types: data.types,
+                        statuses: data.current_status
                     });
                 }
             })

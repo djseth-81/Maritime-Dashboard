@@ -101,6 +101,7 @@ def filter_parser(p: dict, result: list) -> None:
     """
     x = {}
     for k, v in p.items():
+        # Still gonna parse, even though I think it's unecessary
         val = v if isinstance(v, list) else v.split(',')
         while len(val) > 1:
             q = p.copy()
@@ -130,18 +131,17 @@ async def get_filtered_vessels(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching metadata for vessels: {str(e)}")
 
-
+    # I'm confused here... we split types, but then we apply types in the
+    # filters later to ignore emtpy filters?
     types_list = type.split(',') if type else []
     filters = {}
 
     if types_list:
-        filters["type"] = types_list
-
+        filters["type"] = type.split(',') if type else []
     if origin:
         filters["flag"] = origin
-
     if status:
-        filters["current_status"] = status
+        filters["current_status"] = status.split(',') if status else []
 
     if not types_list:
         print("### Fast Server: All vessel types unchecked → Returning empty payload.")
@@ -156,7 +156,6 @@ async def get_filtered_vessels(
         "flag": origin if origin else None,
         "current_status": status if status else None
     }.items() if value}
-
 
     print(f"### Websocket: Filters:\n{filters}")
     if len(filters) > 0:
@@ -185,6 +184,37 @@ async def get_filtered_vessels(
         payload["size"] = len(payload["payload"])
         return payload
     db.close()
+
+@app.post("/zoning/")
+async def zone_vessels(data: dict):
+    vessels = connect_to_vessels()
+    try:
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": vessels.permissions,
+            "attribuets": vessels.attrs,
+            "filters": vessels.fetch_filter_options(),
+            "payload": []
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching metadata for vessels: {str(e)}")
+
+    try:
+        # vessels.within(data)
+        # db.commit()
+        pprint(data['geom'])
+
+        # TODO:
+        # Perform Spatial query
+        # Dunno if I want to use filters to pick from vessels queried spatially
+        # or if I wanna add it to the spatial query itself
+
+        payload['size'] = len(payload['payload'])
+        return payload
+    except Exception as e:
+        raise HTTPException(status_code=501, detail=f"Zoning not implemeneted")
+    finally:
+        vessels.close()
 
 @app.get("/filters/", response_model=dict)
 async def get_filter_options():
