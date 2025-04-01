@@ -375,26 +375,19 @@ class DBOperator():
     """
     # These are ideally supposed to take advantage of the PostGIS stuff
 
-    def proximity(self, var, range=5000.0):
+    def proximity(self, var: str, range=5000.0):
         """
         Gets vessels witihin a specified range of a geometry
         ST_DWithin(geom, var, range)
         """
 
         query = f"""
-                SELECT mmsi,vessel_name,callsign,heading,speed,current_status,src,type,flag,lat,lon,ST_AsGeoJson(geom)
+                SELECT mmsi,vessel_name,callsign,heading,speed,current_status,src,type,flag,lat,lon,dist_from_shore,dist_from_port,ST_AsGeoJson(geom)
                 FROM {self.table}
                 WHERE ST_DWithin(geom, ST_GeogFromText('{var}'),{range})
             """
 
-        """
-        select mmsi 
-        from vessels 
-        where ST_DWithin(geom, St_GeogFromText('Point(-91.02 30.13)'), 5000)
-        """
         print(query)
-
-        # input()
 
         self.__cursor.execute(f"SELECT row_to_json(data) FROM ({query}) data")
 
@@ -406,12 +399,29 @@ class DBOperator():
 
         return results
 
-    def inside(self, var):
+    def within(self, var: dict) -> list:
         """
         Gets vessels within a specified geometry
         ST_Contains(var, geom)
         """
-        pass
+        print(dumps(var))
+
+        query = f"""
+                SELECT mmsi,vessel_name,callsign,heading,speed,current_status,src,type,flag,lat,lon,dist_from_shore,dist_from_port,ST_AsGeoJson(geom)
+                FROM {self.table}
+                WHERE ST_Within(geom::geometry, ST_GeomFromGeoJSON(%s))
+            """
+        print(query)
+
+        self.__cursor.execute(f"SELECT row_to_json(data) FROM ({query}) AS data",(dumps(var),))
+
+        results = [i[0] for i in self.__cursor.fetchall()]
+
+        for r in results:  # quick formatting to remove binary Geom data
+            tmp = r.pop('st_asgeojson')
+            r['geom'] = tmp
+
+        return results
 
     def borders(self, var):
         """
@@ -474,6 +484,20 @@ if __name__ == "__main__":
     # input()
 
     # pprint(operator.proximity('Point(-91.02 30.13)', 1000))
+    # input()
+
+    # geom = {'coordinates': [[['-84.4296', '29.6962'],
+    #                          ['-80.9127', '31.0080'],
+    #                          ['-79.0213', '25.4102'],
+    #                          ['-82.6333', '23.7645'],
+    #                          ['-85.1153', '29.2929']]],
+    #         'type': 'Polygon'}
+
+    # query = operator.within(geom)
+
+    # print(len(query)) # expect to pull 5 vessels
+    # pprint(query)
+
     # Get filterable items
     # pprint(operator.fetch_filter_options())
     # input()

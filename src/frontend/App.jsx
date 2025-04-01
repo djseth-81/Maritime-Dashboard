@@ -97,6 +97,7 @@ function App() {
     }
   };
 
+  // FIXME: Weird bug where selecting a vessel and then selecting apply filters assumes zoning
   const zoning = async (filters = {}) => {
     const payload = {};
 
@@ -110,7 +111,7 @@ function App() {
     );
 
     let geom = { 'type' : "Polygon",
-        "coordinates": polygonVerticies?.map((point) => [point.longitude, point.latitude]),
+        "coordinates": [polygonVerticies?.map((point) => [point.longitude, point.latitude])],
     }
 
     console.log("Zone GeoJSON:");

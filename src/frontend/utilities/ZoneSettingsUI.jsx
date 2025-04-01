@@ -54,7 +54,7 @@ const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename }
                     {positions.map((pos, index) => {
                         const { latitude, longitude } = convertCartesianToDegrees(pos);
                         return (
-                            <li key={index}>{`Lat: ${latitude.toFixed(6)}, Lon: ${longitude.toFixed(6)}`}</li>
+                            <li key={index}>{`Lat: ${latitude}, Lon: ${longitude}`}</li>
                         );
                     })}
                 </ul>

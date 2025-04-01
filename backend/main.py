@@ -1,12 +1,10 @@
-import base64
 from pprint import pprint
-from Crypto.Cipher import AES
 from json import loads, dumps
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from DBOperator import DBOperator
+from utils import connect, decrypt_password, filter_parser
 
 app = FastAPI()
 
@@ -18,19 +16,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-def connect_to_vessels() -> DBOperator:
-    ### Attempt DB connection
-    try:
-        db = DBOperator(table='vessels')
-        print("### Fast Server: Connected to vessels table")
-        return db
-    except Exception as e:
-        print("### Fast Server: Unable connect to Vessels table")
-        raise HTTPException(
-            status_code=500,
-            detail="Unable to connect to database."
-        )
 
 @app.get("/")
 async def welcome():
@@ -59,12 +44,6 @@ async def users():
             "Retrieved": datetime.now(),
            }
 
-def decrypt_password(encrypted_password, secret_key):
-    encrypted_data = base64.b64decode(encrypted_password)
-    cipher = AES.new(secret_key.encode('utf-8'), AES.MODE_ECB)
-    decrypted_bytes = cipher.decrypt(encrypted_data)
-    return decrypted_bytes.strip().decode('utf-8')
-
 @app.post("/addUser")
 async def add_user(formData: dict):
     print(formData)
@@ -77,38 +56,6 @@ async def login(formData: dict):
     # decrypted_password = decrypt_password(formData["password"], secret_key="my-secret-key")
     return (formData)
 
-def connect_to_vessels() -> DBOperator:
-    ### Attempt DB connection
-    try:
-        db = DBOperator(table='vessels')
-        print("### Fast Server: Connected to vessels table")
-        return db
-    except Exception as e:
-        print("### Fast Server: Unable connect to Vessels table")
-        raise HTTPException(
-            status_code=500,
-            detail="Unable to connect to database."
-        )
-
-def filter_parser(p: dict, result: list) -> None:
-    """
-    Quick lil recursion function to create a list of dictionaries that have one
-    query-able value per attribute
-
-    ### WARNING: Creates some duplicate queries when more than one attribute
-    has more than 1 value. Pretty sure its cuz my recursive restraints suck so
-    much ass. Shouldn't affect results since its a UNION query
-    """
-    x = {}
-    for k, v in p.items():
-        # Still gonna parse, even though I think it's unecessary
-        val = v if isinstance(v, list) else v.split(',')
-        while len(val) > 1:
-            q = p.copy()
-            q[k] = val.pop(0)
-            filter_parser(q,result)
-        x.update({k: val[0]})
-    result.append(x)
 
 @app.get("/vessels/", response_model=dict)
 async def get_filtered_vessels(
@@ -119,7 +66,7 @@ async def get_filtered_vessels(
     """
     Fetch vessel data filter options.
     """
-    db = connect_to_vessels()
+    db = connect('vessels')
     try:
         payload = {
             "retrieved": datetime.now(),
@@ -185,29 +132,38 @@ async def get_filtered_vessels(
         return payload
     db.close()
 
+# FIXME: Weird bug where selecting a vessel and then selecting apply filters assumes zoning
 @app.post("/zoning/")
 async def zone_vessels(data: dict):
-    vessels = connect_to_vessels()
+    vessels = connect('vessels')
+    met = connect('meteorology')
+    oce = connect('oceanography')
+    events = connect('events')
     try:
         payload = {
             "retrieved": datetime.now(),
             "privileges": vessels.permissions,
             "attribuets": vessels.attrs,
-            "filters": vessels.fetch_filter_options(),
             "payload": []
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching metadata for vessels: {str(e)}")
 
-    try:
-        # vessels.within(data)
-        # db.commit()
-        pprint(data['geom'])
+    geom = data['geom']
+    types = data['type'].split(',') if 'type' in data.keys() else []
+    status = data['origin'].split(',') if 'origin' in data.keys() else []
+    flags = data['flag'].split(',') if 'flag' in data.keys() else []
 
-        # TODO:
-        # Perform Spatial query
-        # Dunno if I want to use filters to pick from vessels queried spatially
-        # or if I wanna add it to the spatial query itself
+    try:
+
+        # NOTE: I HATE this implemenetation.
+        # Would like to pop FROM query instead of append to results
+        # but it does some weird shit rn
+        query = vessels.within(geom)
+
+        for i in query:
+            if (i['type'] in types) or (i['flag'] in flags) or (i['current_status'] in status):
+                payload['payload'].append(i)
 
         payload['size'] = len(payload['payload'])
         return payload
@@ -218,7 +174,7 @@ async def zone_vessels(data: dict):
 
 @app.get("/filters/", response_model=dict)
 async def get_filter_options():
-    db = connect_to_vessels()
+    db = connect('vessels')
     try:
         filter_options = db.fetch_filter_options()
         if not filter_options:
@@ -231,7 +187,7 @@ async def get_filter_options():
 
 @app.post("/vessels/add/")
 async def add_vessel(data: dict):
-    db = connect_to_vessels()
+    db = connect('vessels')
     required_fields = ["id", "name", "type", "country_of_origin", "status", "latitude", "longitude"]
 
     if not all(field in data for field in required_fields):
@@ -252,14 +208,7 @@ async def query_metadata():
     <query_description>
     '''
     ### Attempt DB connection
-    try:
-        operator = DBOperator(table='spatial_ref_sys')
-    except:
-        print("### Fast Server: Unable connect to spatial_ref_sys table")
-        return JSONResponse(
-            status_code=500,
-            content={"Error": "Unable to establish database connection"}
-        )
+    operator = connect('spatial_ref_sys')
 
     ### IF DB connection successful, attempt assembling payload
     print("### Server: Assembling Payload...")
