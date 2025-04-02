@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import CustomGeometry from "./utilities/CustomGeometry";
 import ToolsUI from "./utilities/ToolsUI";
 import ZoneSettingsUI from "./utilities/ZoneSettingsUI";
@@ -7,11 +7,11 @@ import ConfirmationDialog from "./utilities/ConfirmationDialog";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/ReactToastify.css";
 import './App.css';
-import { renderVesselEntity } from "./utilities/shippingVessels/Vessels";
+import { placeVessel } from "./utilities/shippingVessels/Vessels";
 import { Viewer } from "resium";
-import OverlaysUI from "./utilities/OverlaysUI";
-import useVesselTracking from "./components/VesselTracking"; // Import the new hook
-
+import { SceneMode } from "cesium";
+import axios from "axios";
+import OverlaysUI from "./utilities/overlays/OverlaysUI";
 
 function App() {
   const [isDrawing, setIsDrawing] = useState(false);
@@ -23,14 +23,6 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showOverlays, setShowOverlays] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-<<<<<<< HEAD
-
-  const viewerRef = useRef(null);
-  const apiEndpoint = "http://localhost:5000/vessels/";
-  
-  // Use the custom hook for vessel tracking
-  const { vessels, viewerReady, fetchVessels } = useVesselTracking(viewerRef, apiEndpoint);
-=======
   const [vessels, setVessels] = useState([]);
   const [viewerReady, setViewerReady] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
@@ -126,7 +118,6 @@ function App() {
       };
     }
   }, [viewerRef.current]);
->>>>>>> origin/dev
 
   // Handler for ToolUI 'Toggle Zoning'
   const handleToggleDrawing = () => {
@@ -185,6 +176,11 @@ function App() {
   //   setShapeType(shape);
   // };
 
+  /*
+    Should rename the selected geometry. Currently non-functional.
+    Implementation may depend on information stored in the database.
+    Note: Cesium Entities have a __name attribute. 
+  */
   const handleRename = (newName) => {
     setGeometries((prev) =>
       prev.map((geo) =>
@@ -194,6 +190,11 @@ function App() {
     setSelectedGeometry((prev) => ({ ...prev, name: newName }));
   };
 
+  /* 
+    Should delete a selected geometry, but is currently non-functional.
+    Implementation may depend on information stored in the database.
+    Note: Cesium Entities have a __id attribute. 
+  */
   const handleDelete = () => {
     setShowContextMenu(false);
     setShowDeleteDialog(true);
@@ -222,11 +223,6 @@ function App() {
   };
 
   const handleFilterApply = async (filters) => {
-<<<<<<< HEAD
-    await fetchVessels(filters);
-  };
-  
-=======
         console.log("Filters selected:");
         console.log(filters);
         await fetchVessels(filters);
@@ -238,7 +234,6 @@ function App() {
   console.log("Context Menu Position:", contextMenuPosition);
   console.log("showSettings:", showSettings);
 
->>>>>>> origin/dev
   return (
     <div className="cesium-viewer">
       <ToastContainer />
@@ -257,16 +252,6 @@ function App() {
         selectionIndicator={true}>
 
         {vessels.map((vessel) =>
-<<<<<<< HEAD
-          renderVesselEntity(
-            vessel.longitude,
-            vessel.latitude,
-            0, //For elevation
-            vessel.type,
-            vessel.name,
-            viewerRef.current?.cesiumElement //Pass viewer reference
-          ) || <div key={`invalid-${vessel.id}`}>Invalid Vessel Data</div>
-=======
           placeVessel(
             vessel['lon'],
             vessel['lat'],
@@ -275,10 +260,7 @@ function App() {
             vessel['type'],
             vessel['name']
           ) || <div key={vessel['mmsi']}>Invalid Vessel Data</div>
->>>>>>> origin/dev
         )}
-
-
 
         <CustomGeometry
           viewer={viewerRef}

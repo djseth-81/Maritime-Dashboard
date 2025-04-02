@@ -4,21 +4,7 @@ import { Cartesian3, DistanceDisplayCondition, NearFarScalar, HeightReference, S
 import ReactDOMServer from 'react-dom/server'
 import BoatIcon from "../../assets/icons/boatIcon"
 
-<<<<<<< HEAD
-/**
- * Places a vessel entity on the map with proper handling for different view modes
- * @param {number|string} longitude - Vessel longitude
- * @param {number|string} latitude - Vessel latitude
- * @param {number|string} elevation - Vessel elevation (default: 0)
- * @param {string} type - Vessel type (default: "cargo")
- * @param {string} name - Vessel name (default: "Vessel")
- * @param {Object} viewer - Cesium viewer object (optional)
- * @returns {React.Element} - Resium Entity component
- */
-export function renderVesselEntity(longitude, latitude, elevation = 0, type = "cargo", name = "Vessel", viewer = null) {
-=======
 export function placeVessel(longitude, latitude, heading, elevation = 0, type = "OTHER", name = "UNKOWN") {
->>>>>>> origin/dev
     // Convert values to numbers and validate
     const numLongitude = Number(longitude);
     const numLatitude = Number(latitude);
@@ -91,9 +77,6 @@ export function placeVessel(longitude, latitude, heading, elevation = 0, type = 
         <Entity
             key={entityKey}
             position={position}
-<<<<<<< HEAD
-            billboard={billboardProps}
-=======
             billboard={{
                 image: dataUrl,
                 scale: 2.0,
@@ -105,7 +88,6 @@ export function placeVessel(longitude, latitude, heading, elevation = 0, type = 
                 eyeOffset: new Cartesian3(0, 0, -500),
                 pixelOffset: new Cartesian3(0, 0, 0),
             }}
->>>>>>> origin/dev
             name={`${type.charAt(0).toUpperCase() + type.slice(1)} Vessel: ${name}`}
             description={`This is a ${type} vessel named "${name}" at position ${numLongitude.toFixed(4)}, ${numLatitude.toFixed(4)}`}
         />

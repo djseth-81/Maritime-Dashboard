@@ -1,8 +1,5 @@
-<<<<<<< HEAD
-=======
 // Component for tracking, need to fetch 
 
->>>>>>> origin/dev
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -111,7 +108,6 @@ const useVesselTracking = (viewerRef, apiEndpoint) => {
         const newSceneMode = viewer.scene.mode;
         setCurrentSceneMode(newSceneMode);
         
-<<<<<<< HEAD
         // Log detailed information about the mode change
         console.log("Scene Mode Change Detected:");
         console.log(`  Mode Number: ${newSceneMode}`);
@@ -119,8 +115,6 @@ const useVesselTracking = (viewerRef, apiEndpoint) => {
         console.log(`  Is 3D: ${newSceneMode === SceneMode.SCENE3D}`);
         console.log(`  Is 2D: ${newSceneMode === SceneMode.SCENE2D}`);
         console.log(`  Is Columbus: ${newSceneMode === SceneMode.COLUMBUS_VIEW}`);
-=======
->>>>>>> origin/dev
         
         // Handle selected entity
         if (viewer.selectedEntity) {
@@ -193,8 +187,4 @@ const useVesselTracking = (viewerRef, apiEndpoint) => {
   };
 };
 
-<<<<<<< HEAD
 export default useVesselTracking;
-=======
-export default useVesselTracking;
->>>>>>> origin/dev

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Overlays from "./OverlaysUI";
+import Overlays from "./overlays/OverlaysUI";
 import FiltersUI from "./filters/FiltersUI";
 import useFetchFilters from "./filters/Filters";
 

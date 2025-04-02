@@ -8,6 +8,12 @@ const useFetchFilters = (apiEndpoint) => {
         statuses: []
     });
 
+    const [selectedFilters, setSelectedFilters] = useState({
+        types: [],
+        origins: [],
+        statuses: []
+    });
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -20,6 +26,11 @@ const useFetchFilters = (apiEndpoint) => {
                 if (isMounted) {
                     const data = response.data;
                     setFilterOptions(data);
+
+                    setSelectedFilters({
+                        ...selectedFilters,
+                        types: data.types
+                    });
                 }
             })
             .catch((error) => {
@@ -36,7 +47,7 @@ const useFetchFilters = (apiEndpoint) => {
         };
     }, [apiEndpoint]);
 
-    return { filterOptions, loading, error };
+    return { filterOptions, selectedFilters, setSelectedFilters, loading, error };
 };
 
 export default useFetchFilters;
