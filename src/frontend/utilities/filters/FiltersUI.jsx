@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
 import useFetchFilters from './Filters';
 
+/**
+ * FiltersUI component to display and manage filter options for vessels.
+ * @param {Object} props - Component props.
+ * @param {string} props.apiEndpoint - API endpoint to fetch filter options.
+ * @param {Function} props.onFilterApply - Callback function to apply selected filters.
+ * @returns {JSX.Element} - Rendered component.
+ * @description This component fetches filter options from the API and allows users to select filters for vessel tracking.
+ */
+
 const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
     const {
         filterOptions,

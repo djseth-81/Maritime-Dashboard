@@ -41,9 +41,13 @@ class DBOperator():
     def __init__(self, table: str, host='localhost', port='5432', user='postgres',
                  passwd='1234', schema='public', db='capstone') -> None:
     '''
+    ''' For Sean :) '''
+    def __init__(self, table: str, host='localhost', port='5432', user='postgres',
+                 passwd='gres', schema='public', db='ships') -> None:
 
-    def __init__(self, table: str, host='', port='', user='',
-                 passwd='', schema='public', db='capstone') -> None:
+
+    # def __init__(self, table: str, host='', port='', user='',
+    #              passwd='', schema='public', db='capstone') -> None:
         self.table = table
         self.__host = host
         self.__port = port
@@ -470,8 +474,8 @@ if __name__ == "__main__":
 
     # operator = DBOperator(table='vessels')  # For me :)
     operator = DBOperator(table='vessels', host='localhost', port='5432',
-                          user='postgres', passwd='1234', schema='public',
-                          db='capstone')  # For You :)
+                          user='postgres', passwd='gres', schema='public',
+                          db='ships')  # For Yolvin :)
     # print(operator.permissions)
     # print(operator.attrs)
     # input()
