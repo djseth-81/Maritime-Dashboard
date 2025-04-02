@@ -17,45 +17,114 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def connect_to_vessels() -> DBOperator:
+    """
+    Connects to the 'vessels' table in the database.
+
+    :return: DBOperator instance for interacting with the vessels table.
+    :raises HTTPException: If connection fails.
+    """
+    try:
+        db = DBOperator(table='vessels')
+        print("### Fast Server: Connected to vessels table")
+        return db
+    except Exception as e:
+        print("### Fast Server: Unable to connect to Vessels table")
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to connect to database."
+        )
+
 @app.get("/")
 async def welcome():
-    '''
-    Example First Fast API Example
-    '''
+    """
+    Handles the root endpoint.
+
+    :return: A welcome message with the current timestamp.
+    """
     return {"Message": "Welcome to FastAPI!",
             "Retrieved": datetime.now(),
            }
 
 @app.get("/weather/")
 async def weather():
-    '''
-    Weather query
-    '''
+    """
+    Handles the weather endpoint.
+
+    :return: A weather message with the current timestamp.
+    """
     return {"Message": "Weather!",
             "Retrieved": datetime.now(),
            }
 
 @app.get("/users/")
 async def users():
-    '''
-    Users query
-    '''
+    """
+    Handles the users endpoint.
+
+    :return: A users message with the current timestamp.
+    """
     return {"Message": "Getting users!",
             "Retrieved": datetime.now(),
            }
 
+def decrypt_password(encrypted_password: str, secret_key: str) -> str:
+    """
+    Decrypts a password using AES encryption.
+
+    :param encrypted_password: The base64-encoded encrypted password.
+    :param secret_key: The encryption key used for decryption.
+    :return: The decrypted password as a string.
+    """
+    encrypted_data = base64.b64decode(encrypted_password)
+    cipher = AES.new(secret_key.encode('utf-8'), AES.MODE_ECB)
+    decrypted_bytes = cipher.decrypt(encrypted_data)
+    return decrypted_bytes.strip().decode('utf-8')
+
 @app.post("/addUser")
 async def add_user(formData: dict):
+    """
+    Adds a new user based on provided form data.
+
+    :param formData: A dictionary containing user information.
+    :return: The received form data.
+    """
     print(formData)
     return formData
 
 @app.post("/login")
 async def login(formData: dict):
+    """
+    Logs in a user based on provided form data.
+
+    :param formData: A dictionary containing user credentials.
+    :return: The received form data.
+    """
     print(formData)
     # email = formData["email"]
     # decrypted_password = decrypt_password(formData["password"], secret_key="my-secret-key")
-    return (formData)
+    return formData
+    
 
+def filter_parser(p: dict, result: list) -> None:
+    """
+    Recursively generates query options from filter parameters.
+    ### WARNING: Creates some duplicate queries when more than one attribute
+    has more than 1 value. Pretty sure its cuz my recursive restraints suck. 
+    Shouldn't affect results since its a UNION query
+
+    :param p: Dictionary containing filter criteria.
+    :param result: List to store the resulting filter options.
+    """
+    x = {}
+    for k, v in p.items():
+        val = v if isinstance(v, list) else v.split(',')
+        while len(val) > 1:
+            q = p.copy()
+            q[k] = val.pop(0)
+            filter_parser(q, result)
+        x.update({k: val[0]})
+    result.append(x)
 
 @app.get("/vessels/", response_model=dict)
 async def get_filtered_vessels(
@@ -64,7 +133,13 @@ async def get_filtered_vessels(
     status: str = Query(None, description="Filter by vessel status")
 ):
     """
-    Fetch vessel data filter options.
+    Fetches vessel data based on filters.
+
+    :param type: Filter by vessel type.
+    :param origin: Filter by country of origin.
+    :param status: Filter by vessel status.
+    :return: Filtered vessel data.
+    :raises HTTPException: If database interaction fails.
     """
     db = connect('vessels')
     try:
@@ -174,7 +249,13 @@ async def zone_vessels(data: dict):
 
 @app.get("/filters/", response_model=dict)
 async def get_filter_options():
-    db = connect('vessels')
+    """
+    Fetches available filter options for vessels.
+
+    :return: A dictionary containing filter options.
+    :raises HTTPException: If database interaction fails.
+    """
+    db = connect_to_vessels()
     try:
         filter_options = db.fetch_filter_options()
         if not filter_options:
@@ -187,7 +268,14 @@ async def get_filter_options():
 
 @app.post("/vessels/add/")
 async def add_vessel(data: dict):
-    db = connect('vessels')
+    """
+    Adds a new vessel to the database.
+
+    :param data: A dictionary containing vessel information.
+    :return: A success message upon successful insertion.
+    :raises HTTPException: If database interaction fails or required fields are missing.
+    """
+    db = connect_to_vessels()
     required_fields = ["id", "name", "type", "country_of_origin", "status", "latitude", "longitude"]
 
     if not all(field in data for field in required_fields):
@@ -204,11 +292,20 @@ async def add_vessel(data: dict):
 
 @app.get("/metadata/")
 async def query_metadata():
-    '''
-    <query_description>
-    '''
-    ### Attempt DB connection
-    operator = connect('spatial_ref_sys')
+    """
+    Fetches metadata for spatial reference systems.
+
+    :return: Metadata payload including privileges, entity count, and attributes.
+    :raises HTTPException: If database interaction fails.
+    """
+    try:
+        operator = DBOperator(table='spatial_ref_sys')
+    except:
+        print("### Fast Server: Unable connect to spatial_ref_sys table")
+        return JSONResponse(
+            status_code=500,
+            content={"Error": "Unable to establish database connection"}
+        )
 
     ### IF DB connection successful, attempt assembling payload
     print("### Server: Assembling Payload...")
@@ -230,3 +327,18 @@ async def query_metadata():
     finally:
         operator.close() # Closes table instance
         return payload
+    
+@app.get("/prediction/{lon}/{lat}")
+async def predict_path(lon: float, lat: float):
+    """
+    Predicts vessel path based on coordinates.
+
+    :param lon: Longitude coordinate of the vessel.
+    :param lat: Latitude coordinate of the vessel.
+    :return: Predicted path data as a list of dictionaries.
+    :raises HTTPException: If prediction fails.
+    """
+    print(f"Received coordinates - Longitude: {lon}, Latitude: {lat}")
+    # linear_regression.perform_training_manually()
+    predictions = linear_regression_2.perform_vessel_prediction(lat, lon)
+    return predictions.to_dict(orient="records")
