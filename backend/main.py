@@ -168,7 +168,7 @@ async def zone_vessels(data: dict):
         payload['size'] = len(payload['payload'])
         return payload
     except Exception as e:
-        raise HTTPException(status_code=501, detail=f"Zoning not implemeneted")
+        raise HTTPException(status_code=500, detail=f"Error fetching zone data: {str(e)}")
     finally:
         vessels.close()
 
