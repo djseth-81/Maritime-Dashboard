@@ -405,7 +405,6 @@ class DBOperator():
                 FROM {self.table}
                 WHERE ST_Within(geom::geometry, ST_GeomFromGeoJSON(%s))
             """
-        print(query)
 
         self.__cursor.execute(f"SELECT row_to_json(data) FROM ({query}) AS data",(dumps(var),))
 
