@@ -44,8 +44,8 @@ export const handleToggleFilters = (setShowFilters) => {
 };
 
 /**
- * @description Handles the toggling of settings.
- * @param {Function} setShowSettings - Function to update the settings state.
+ * @description Handles the undo action for geometries.
+ * @param {Function} setGeometries - Function to update the geometries state.
  * @returns {void}
 */
 export const handleUndo = (setGeometries) => {
