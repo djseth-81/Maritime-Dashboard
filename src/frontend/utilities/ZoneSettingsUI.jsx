@@ -1,9 +1,13 @@
-import { useState } from "react";
-import * as Cesium from "cesium";
+import { useState, useEffect } from "react";
+import { convertCartesianToDegrees } from "./coordUtils";
 
 const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename }) => {
     const [isRenaming, setIsRenaming] = useState(false);
     const [newName, setNewName] = useState(zoneName);
+
+    useEffect(() => {
+        setNewName(zoneName);
+    }, [zoneName]);
 
     const handleKeyPress = (e) => {
         if (e.key === "Enter") {
@@ -12,18 +16,10 @@ const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename }
         }
     };
 
-    const convertCartesianToDegrees = (cartesian) => {
-        const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
-        const latitude = Cesium.Math.toDegrees(cartographic.latitude);
-        const longitude = Cesium.Math.toDegrees(cartographic.longitude);
-        const height = cartographic.height;
-        return { latitude, longitude, height };
-    };
-
     return (
         <div className="zone-settings-ui">
             <div className="settings-header">
-                <h2>
+                <h5>
                     Settings for zone '{zoneName}'
                     <button
                         className="rename-button"
@@ -32,7 +28,7 @@ const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename }
                     >
                         Rename
                     </button>
-                </h2>
+                </h5>
             </div>
 
             {isRenaming && (
@@ -53,12 +49,12 @@ const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename }
             )}
 
             <div className="settings-body">
-                <h3>Coordinates:</h3>
+                <h5>Coordinates:</h5>
                 <ul>
                     {positions.map((pos, index) => {
-                        const { latitude, longitude, height } = convertCartesianToDegrees(pos);
+                        const { latitude, longitude } = convertCartesianToDegrees(pos);
                         return (
-                            <li key={index}>{`Lat: ${latitude.toFixed(6)}, Lon: ${longitude.toFixed(6)}, Alt: ${height.toFixed(2)}`}</li>
+                            <li key={index}>{`Lat: ${latitude}, Lon: ${longitude}`}</li>
                         );
                     })}
                 </ul>
