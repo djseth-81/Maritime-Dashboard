@@ -3,7 +3,6 @@ from psycopg2 import *
 from psycopg2.errors import *
 from json import loads, dumps
 
-
 class DBOperator():
     """
     A basic Class that will directly interface with a PostGIS database on
@@ -22,14 +21,9 @@ class DBOperator():
 
     """
     // POSTGIS
-        - Storing as Geography, likely will have to conver to geography
-        - SRID = 4326 !!!
         - Zone stuff
             - ST_Equals() (to check zone existence)
-            - ST_Within() (Possibly good for ships encroaching on a zone for warning, or ships near others)
             - ST_Touches() (For bordering ships/zones)
-            - ST_DWithin() (FOR SHIPS WITHIN ANY ZONE)!!
-            - ST_Contians() (FOR SHIPS WITHIN ZONES)
             - ST_Intersect() (for a custom zone on EEZ/NOAA?)
             - ST_Overlaps(for a custom zone intersecting with EEZ/NOAA, to pull data wrt EEZ/NOAA)
         - Vessel prediction
@@ -478,7 +472,7 @@ if __name__ == "__main__":
     # operator = DBOperator(table='vessels')  # For me :)
     operator = DBOperator(table='vessels', host='localhost', port='5432',
                           user='postgres', passwd='1234', schema='public',
-                          db='capstone')  # For Yolvin :)
+                          db='capstone')  # For You :)
     # print(operator.permissions)
     # print(operator.attrs)
     # input()
@@ -521,8 +515,31 @@ if __name__ == "__main__":
     # input()
 
     # Modify
-    operator.modify(("current_status", ''), {'current_status': 'unknown'})
-    operator.commit()
+    # query = operator.get_table()
+    # for q in query:
+    #     if q['current_status'] in "1".split(',') or q['current_status'] == "anchored":
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'ANCHORED'})
+    #     elif q['current_status'] in "2".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'UNMANNED'})
+    #     elif q['current_status'] in "3,4".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'LIMITED MVMT'})
+    #     elif q['current_status'] in "5".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'MOORED'})
+    #     elif q['current_status'] in "6".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'AGROUND'})
+    #     elif q['current_status'] in "7".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'FISHING'})
+    #     elif q['current_status'] in "0,8".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'UNDERWAY'})
+    #     elif q['current_status'] in "9,10".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'MOVING HAZARDS'})
+    #     elif q['current_status'] in "11,12".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'TOWED'})
+    #     elif q['current_status'] in "14".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'EMERGENCY'})
+    #     else:
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'UNKNOWN'})
+    # operator.commit()
 
     # Delete
     # operator.delete(entity)
