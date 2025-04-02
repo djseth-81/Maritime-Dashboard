@@ -26,6 +26,47 @@ Northrop Grumman - Capstone 2025 - Maritime Operations Monitoring Dashboard
 ## 4. Running FastAPI (cd into backend directory)
 `uvicorn main:app --reload`
 
+<br />
+
+## 5. Python Documentation Tool Init
+
+### Install Sphinx Library
+
+`pip install sphinx`
+
+### Optional Extensions
+
+`pip install sphinx-autodoc-typehints`
+
+`pip install sphinxcontrib-httpdomain`
+
+`pip install sphinx-rtd-theme`
+
+### Go into the main project directory
+
+`cd MyProject`
+
+`sphinx-quickstart docs`
+
+### Go through the setup
+
+add .bst files for any directories to be parsed (frontend and backend in our case)
+build documenation by going into docs directory and running the make html command
+
+`cd docs`
+`make html`
+
+### Clean Command 
+
+`make clean`
+
+
+### To push pages to github
+
+`make html`
+
+copy docs/build/html contents to /docs on main repo branch
+
 ### Backend Info
 - http://127.0.0.1:8000/docs is the local server interactive API documentation source
 - http://127.0.0.1:8000/redoc is an alternative of the above
