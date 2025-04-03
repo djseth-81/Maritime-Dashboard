@@ -1,3 +1,5 @@
+import csv
+from duplicate_query import duplicator
 from pprint import pprint
 from psycopg2 import *
 from psycopg2.errors import *
@@ -425,7 +427,7 @@ class DBOperator():
 
 
 if __name__ == "__main__":
-    entity = {
+    entity2 = {
         'callsign': 'WDN2333',
         'cargo_weight': 65.0,
         'current_status': '0',
@@ -447,32 +449,10 @@ if __name__ == "__main__":
         'width': 23.0
     }
 
-    entity2 = {
-        'mmsi': 367702270,
-        'vessel_name': 'MS. JENIFER TRETTER',
-        'callsign': 'WDI4813',
-        'timestamp': '2024-09-30T00:00:00',
-        'heading': 334.5,
-        'speed': 6.6,
-        'current_status': '12',
-        'src': 'MarineCadastre-AIS',
-        'type': 'TUG',
-        'flag': 'USA',
-        'length': 113,
-        'width': 34,
-        'draft': 3.1,
-        'cargo_weight': 57,
-        'geom': 'Point(-97.21 26.1)',
-        'lat': 26.1,
-        'lon': -97.21,
-        'dist_from_shore': 0.0,
-        'dist_from_port': 0.0,
-    }
-
-    # operator = DBOperator(table='vessels')  # For me :)
-    operator = DBOperator(table='vessels', host='localhost', port='5432',
-                          user='postgres', passwd='1234', schema='public',
-                          db='capstone')  # For You :)
+    operator = DBOperator(table='vessels')  # For me :)
+    # operator = DBOperator(table='vessels', host='localhost', port='5432',
+    #                       user='postgres', passwd='1234', schema='public',
+    #                       db='capstone')  # For You :)
     # print(operator.permissions)
     # print(operator.attrs)
     # input()
@@ -505,40 +485,56 @@ if __name__ == "__main__":
     # input()
 
     # Add
-    # operator.add(entity2)
+    entity = {
+        'callsign': 'WDE6314',
+        'cargo_weight': 52.0,
+        'current_status': 'UNDERWAY',
+        'dist_from_port': 0.0,
+        'dist_from_shore': 0.0,
+        'draft': 3.1,
+        'flag': 'USA',
+        'heading': 103.5,
+        'lat': 45.26,
+        'length': 21.0,
+        'lon': -85.18,
+        'mmsi': 367378670,
+        'speed': 0.0,
+        'src': 'MarineCadastre-AIS',
+        'timestamp': '2024-09-30T00:00:00',
+        'type': 'FISHING',
+        'vessel_name': 'WENDY ANNE',
+        'width': 5.0
+    }
+
+
+    # operator.add(entity)
     # operator.commit()
 
     # Query
-    # pprint(operator.query([{"mmsi":368261120}])) # Table should have new entity
+
+    q = [
+
+    ]
+
+    results = []
+
+    for i in operator.query(duplicator()):
+        results.append(i['vessel_name'])
+
+    for i in duplicator():
+        if i['vessel_name'] not in results:
+            print(f"{i['vessel_name']} not found")
+        else:
+            print(f"{i['vessel_name']} in DB")
+
+    print(f"length of query{len(duplicator())}")
+    print(f"length of results{len(results)}")
     # pprint(operator.query([]))
     # pprint(operator.query([{}]))
     # input()
 
     # Modify
-    # query = operator.get_table()
-    # for q in query:
-    #     if q['current_status'] in "1".split(',') or q['current_status'] == "anchored":
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'ANCHORED'})
-    #     elif q['current_status'] in "2".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'UNMANNED'})
-    #     elif q['current_status'] in "3,4".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'LIMITED MVMT'})
-    #     elif q['current_status'] in "5".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'MOORED'})
-    #     elif q['current_status'] in "6".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'AGROUND'})
-    #     elif q['current_status'] in "7".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'FISHING'})
-    #     elif q['current_status'] in "0,8".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'UNDERWAY'})
-    #     elif q['current_status'] in "9,10".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'MOVING HAZARDS'})
-    #     elif q['current_status'] in "11,12".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'TOWED'})
-    #     elif q['current_status'] in "14".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'EMERGENCY'})
-    #     else:
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'UNKNOWN'})
+    # operator.modify()
     # operator.commit()
 
     # Delete
