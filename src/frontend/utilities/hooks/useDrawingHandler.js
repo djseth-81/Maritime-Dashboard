@@ -48,6 +48,21 @@ const useDrawingHandler = (scene, isDrawing, positions, setPositions, viewer, ge
                     if (cartesian) {
                         const { latitude, longitude } = convertCartesianToDegrees(cartesian);
                         console.log("Converted coordinates:", { latitude, longitude });
+
+                        /**
+                         * Add a point primitive to the scene for visual feedback.
+                         */
+                        const pointPrimitives = viewer.current.cesiumElement.scene.primitives.add(
+                            new Cesium.PointPrimitiveCollection()
+                        );
+                        pointPrimitives.add({
+                            position: cartesian,
+                            pixelSize: 10,
+                            color: Cesium.Color.RED,
+                            outlineColor: Cesium.Color.WHITE,
+                            outlineWidth: 2,
+                        });
+                        
                         setPositions((prevPositions) => [...prevPositions, cartesian]);
                     }
                 }

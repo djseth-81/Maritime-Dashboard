@@ -185,7 +185,11 @@ function App() {
   console.log("SHIP DATA:");
   console.log(vessels);
   console.log("SHIP NAME:");
-  console.log(selectedGeometry?.name.split(": ")[1]);
+  if (selectedGeometry?.name) {
+    console.log(selectedGeometry.name.split(": ")[1]);
+  } else {
+    console.log("No ship selected.");
+  }
   const vesselData = vessels.find(
     (vessel) => vessel.vessel_name === selectedGeometry?.name.split(": ")[1]
   );

@@ -35,9 +35,6 @@ const CustomGeometry = ({
 
     // Call hooks at the top level
     const scene = viewerReady && viewer?.current?.cesiumElement?.scene;
-
-    // Check if the scene is ready
-    if (!scene) return null;
     
     useRightClickContextMenu(scene, setSelectedGeometry, setContextMenuPosition, setShowContextMenu);
     useLeftClickSelect(scene, setSelectedGeometry, setShowContextMenu, setShowSettings);
