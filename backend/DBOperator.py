@@ -67,7 +67,12 @@ class DBOperator():
                 port=port
             )
             self.__cursor = self.__db.cursor()
-            if table not in self.__get_tables():
+
+            ### vDEBUG
+            self.tables = self.__get_tables()
+            if table not in self.tables:
+            # if table not in self.__get_tables():
+            ### ^DEBUG
                 raise RuntimeError(f"Table does not exist")
             print("### DBOperator: Connected to DB")
             self.permissions = self.__get_privileges()
@@ -213,7 +218,7 @@ class DBOperator():
         self.__cursor.execute(cmd)
         if call == 'w':
             self.__db.commit()
-            return [("Messge", "Committed.")]
+            return [("Message", "Committed.")]
         else:
             return self.__cursor.fetchall()
 
@@ -242,11 +247,29 @@ class DBOperator():
     ### Accessors ###
     def __get_attributes(self) -> dict:
         """
-        Fetches table attributes
+        Fetches table attributes and converts them into vaid Python types
         """
         self.__cursor.execute(
             f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{self.table}'")
-        return {q[0]: q[1] for q in self.__cursor.fetchall()}
+
+        result = {}
+
+        for key,value in {q[0]: q[1] for q in self.__cursor.fetchall()}.items():
+            if value in "bigint,integer".split(','):
+                result.update({key: type(1)})
+            elif value in "double precision".split(','):
+                result.update({key: type(1.1)})
+            # Not sure if I wanna use type(dict) for geom attrs or keep it as string for JSON
+            elif value in "character varying,text,name,USER-DEFINED".split(','):
+                result.update({key: type("goober")})
+            elif value in "boolean".split(','):
+                result.update({key: type(True)})
+            elif value in "ARRAY".split(','):
+                result.update({key: type([1,2,3])})
+            else:
+                result.update({key: "unk"})
+
+        return result
 
     # Fetching tables in DB --> Dev option!
     def __get_tables(self) -> list:
@@ -433,7 +456,6 @@ class DBOperator():
         """
         pass
 
-
 if __name__ == "__main__":
     entity2 = {
         'callsign': 'WDN2333',
@@ -457,12 +479,30 @@ if __name__ == "__main__":
         'width': 23.0
     }
 
-    operator = DBOperator(table='vessels')  # For me :)
     # operator = DBOperator(table='vessels', host='localhost', port='5432',
     #                       user='postgres', passwd='1234', schema='public',
     #                       db='capstone')  # For You :)
+    operator = DBOperator(table='vessels')
     # print(operator.permissions)
-    # print(operator.attrs)
+    pprint(operator.attrs)
+    # input()
+
+    ### Searching all tables for datatypes used
+    # def attrs(table):
+    #     aahh = DBOperator(table=table)  # For me :)
+    #     for attr,cast in aahh.attrs.items():
+    #         print(f'{attr} ({cast})')
+    #     aahh.close()
+    #     return aahh.attrs
+
+    # types = []
+    # for table in [i[0] for i in operator.custom_cmd("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",'r')]:
+    #     print(table)
+    #     for i in attrs(table).items():
+    #         if i[1] not in types:
+    #             types.append(i[1])
+    #     print()
+    # pprint(types)
     # input()
 
     # pprint(operator.proximity('Point(-91.02 30.13)', 1000))
@@ -519,27 +559,25 @@ if __name__ == "__main__":
     # operator.commit()
 
     # Query
-
-    q = [
-
-    ]
-
-    results = []
-
-    for i in operator.query(duplicator()):
-        results.append(i['vessel_name'])
-
-    for i in duplicator():
-        if i['vessel_name'] not in results:
-            print(f"{i['vessel_name']} not found")
-        else:
-            print(f"{i['vessel_name']} in DB")
-
-    print(f"length of query{len(duplicator())}")
-    print(f"length of results{len(results)}")
     # pprint(operator.query([]))
     # pprint(operator.query([{}]))
     # input()
+
+    """
+    The following has an interesting duplicate somewhere
+    """
+    # results = []
+    # for i in operator.query(duplicator()):
+    #     results.append(i['vessel_name'])
+
+    # for i in duplicator():
+    #     if i['vessel_name'] not in results:
+    #         print(f"{i['vessel_name']} not found")
+    #     else:
+    #         print(f"{i['vessel_name']} in DB")
+
+    # print(f"length of query{len(duplicator())}")
+    # print(f"length of results{len(results)}")
 
     # Modify
     # operator.modify()
@@ -553,4 +591,27 @@ if __name__ == "__main__":
 
     # operator = DBOperator(table='zones')
     # pprint(operator.query([{'id':'AKC013'}]))
-    operator.close()
+    # operator.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
