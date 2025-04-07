@@ -4,7 +4,9 @@ from fastapi import HTTPException
 from DBOperator import DBOperator
 
 def connect(table: str) -> DBOperator:
-    ### Attempt DB connection
+    """
+    Attempt DB connection
+    """
     try:
         instance = DBOperator(table=table)
         print(f"### Fast Server: Connected to {table} table")
@@ -26,11 +28,11 @@ def filter_parser(p: dict, result: list) -> None:
     """
     Quick lil recursion function to create a list of dictionaries that have one
     query-able value per attribute
-
-    ### WARNING: Creates some duplicate queries when more than one attribute
-    has more than 1 value. Pretty sure its cuz my recursive restraints suck so
-    much ass. Shouldn't affect results since its a UNION query
     """
+
+    # WARNING: Creates some duplicate queries when more than one attribute
+    # has more than 1 value. Pretty sure its cuz my recursive restraints suck so
+    # much ass. Shouldn't affect results since its a UNION query
     x = {}
     for k, v in p.items():
         # Still gonna parse, even though I think it's unecessary

@@ -77,7 +77,7 @@ async def ocean_data():
     except Exception as e:
         # raise HTTPException(status_code=501, detail=f"Coming soon")
         raise HTTPException(status_code=500, detail=f"Error fetching ocean data: {str(e)}")
-        
+
 @app.get("/events/")
 async def pull_events():
     '''
@@ -233,7 +233,7 @@ async def get_filtered_vessels(
     db.close()
 
 # FIXME: Weird bug where selecting a vessel and then selecting apply filters assumes zoning
-@app.post("/zoning/")
+@app.post("/zoning/", response_model=dict)
 async def zone_vessels(data: dict):
     '''
     Zoning query. Collects Meteorological and oceanographic data, events,
@@ -248,7 +248,7 @@ async def zone_vessels(data: dict):
         payload = {
             "retrieved": datetime.now(),
             "privileges": vessels.permissions,
-            "attribuets": vessels.attrs,
+            "attributes": [i for i in vessels.attrs.keys()],
             "payload": {}
         }
     except Exception as e:
