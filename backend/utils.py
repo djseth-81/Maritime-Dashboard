@@ -7,10 +7,10 @@ def connect(table: str) -> DBOperator:
     ### Attempt DB connection
     try:
         instance = DBOperator(table=table)
-        print("### Fast Server: Connected to vessels table")
+        print(f"### Fast Server: Connected to {table} table")
         return instance
     except Exception as e:
-        print("### Fast Server: Unable connect to Vessels table")
+        print(f"### Fast Server: Unable connect to {table} table")
         raise HTTPException(
             status_code=500,
             detail="Unable to connect to database."

@@ -56,6 +56,26 @@ async def login(formData: dict):
     # decrypted_password = decrypt_password(formData["password"], secret_key="my-secret-key")
     return (formData)
 
+@app.get("/coop/stations", response_model=dict)
+async def get_stations():
+    db = connect('sources')
+    try:
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attribuets": db.attrs,
+            # "filters": db.fetch_filter_options(),
+            "payload": []
+    }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching metadata for stations: {str(e)}")
+
+    try:
+        payload['payload'] = db.get_table() # Currently only NOAA-COOP stations in table
+        payload['size'] = len(payload['payload'])
+        return payload
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching stations: {str(e)}")
 
 @app.get("/vessels/", response_model=dict)
 async def get_filtered_vessels(
@@ -139,12 +159,13 @@ async def zone_vessels(data: dict):
     met = connect('meteorology')
     oce = connect('oceanography')
     events = connect('events')
+    sources = connect('sources')
     try:
         payload = {
             "retrieved": datetime.now(),
             "privileges": vessels.permissions,
             "attribuets": vessels.attrs,
-            "payload": []
+            "payload": {}
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching metadata for vessels: {str(e)}")
@@ -156,19 +177,35 @@ async def zone_vessels(data: dict):
 
     try:
 
-        # NOTE: I HATE this implemenetation.
-        # Would like to pop FROM query instead of append to results
-        # but it does some weird shit rn
-        query = vessels.within(geom)
+        ### Getting Vessels
+        payload['payload'].update({'vessels':[]})
 
-        for i in query:
+        # NOTE: I HATE this implemenetation.
+        for i in vessels.within(geom):
             if (i['type'] in types) or (i['flag'] in flags) or (i['current_status'] in status):
-                payload['payload'].append(i)
+                payload['payload']['vessels'].append(i)
 
         payload['size'] = len(payload['payload'])
+
+        # Pulling stations
+        stations = [i['id'] for i in sources.within(geom)]
+        payload['payload'].update({'stations': stations})
+
+        ### Getting Meteorology
+        print("### Websocket: querying meteorology data matching station id:")
+        pprint(met.query([{'src_id': i} for i in stations]))
+        payload['payload'].update({'weather': met.query([{'src_id': i} for i in stations])})
+
+        ### Getting Oceanography
+        payload['payload'].update({'oceanography': oce.query([{'src_id': i} for i in stations])})
+
+        ### Getting events <- FIXME: Doesn't have Geom but query() expects geom attr
+        # payload['payload'].update({'alerts': events.query([{'src_id': i} for i in stations])})
+
         return payload
     except Exception as e:
-        raise HTTPException(status_code=501, detail=f"Zoning not implemeneted")
+        print(f"### Websocket: Error occurred:\n{e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching payload data: {str(e)}")
     finally:
         vessels.close()
 

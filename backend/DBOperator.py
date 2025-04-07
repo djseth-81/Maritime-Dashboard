@@ -5,6 +5,12 @@ from psycopg2 import *
 from psycopg2.errors import *
 from json import loads, dumps
 
+'''
+// TODO:
+- Add ability to exclude attr:value for query/delete
+- Querying/Deleting substrings????
+'''
+
 class DBOperator():
     """
     A basic Class that will directly interface with a PostGIS database on
@@ -400,14 +406,14 @@ class DBOperator():
         Gets vessels within a specified geometry
         ST_Contains(var, geom)
         """
-        print(dumps(var))
+        # print(dumps(var))
 
         query = f"""
-                SELECT mmsi,vessel_name,callsign,heading,speed,current_status,src,type,flag,lat,lon,dist_from_shore,dist_from_port,ST_AsGeoJson(geom)
+                SELECT *,ST_AsGeoJson(geom)
                 FROM {self.table}
                 WHERE ST_Within(geom::geometry, ST_GeomFromGeoJSON(%s))
             """
-        print(query)
+        # print(query)
 
         self.__cursor.execute(f"SELECT row_to_json(data) FROM ({query}) AS data",(dumps(var),))
 
