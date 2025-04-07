@@ -36,7 +36,7 @@ async def weather():
         payload = {
             "retrieved": datetime.now(),
             "privileges": db.permissions,
-            "attribuets": db.attrs,
+            "attributes": [i for i in db.attrs.keys()],
             # "filters": db.fetch_filter_options(),
             "payload": []
     }
@@ -61,7 +61,7 @@ async def ocean_data():
         payload = {
             "retrieved": datetime.now(),
             "privileges": db.permissions,
-            "attribuets": db.attrs,
+            "attributes": [i for i in db.attrs.keys()],
             # "filters": db.fetch_filter_options(),
             "payload": []
     }
@@ -76,7 +76,7 @@ async def ocean_data():
         # raise HTTPException(status_code=501, detail=f"Coming soon")
         raise HTTPException(status_code=500, detail=f"Error fetching ocean data: {str(e)}")
         
-@app.get("/events/") # FIXME: DBOperator assumes geom object, but Events does NOT have geom object
+@app.get("/events/")
 async def pull_events():
     '''
     Events/Alerts query
@@ -86,7 +86,7 @@ async def pull_events():
         payload = {
             "retrieved": datetime.now(),
             "privileges": db.permissions,
-            "attribuets": db.attrs,
+            "attributes": [i for i in db.attrs.keys()],
             # "filters": db.fetch_filter_options(),
             "payload": []
     }
@@ -139,11 +139,12 @@ async def get_stations():
         payload = {
             "retrieved": datetime.now(),
             "privileges": db.permissions,
-            "attribuets": db.attrs,
+            "attributes": [i for i in db.attrs.keys()],
             # "filters": db.fetch_filter_options(),
             "payload": []
     }
     except Exception as e:
+        print(f"### Websocket: Error fetching metadata for stations:\n{e}")
         raise HTTPException(status_code=500, detail=f"Error fetching metadata for stations: {str(e)}")
 
     try:
@@ -167,7 +168,7 @@ async def get_filtered_vessels(
         payload = {
             "retrieved": datetime.now(),
             "privileges": db.permissions,
-            "attribuets": db.attrs,
+            "attributes": [i for i in db.attrs.keys()],
             "filters": db.fetch_filter_options(),
             "payload": []
         }

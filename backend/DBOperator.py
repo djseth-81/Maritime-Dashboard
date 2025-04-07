@@ -349,7 +349,7 @@ class DBOperator():
                 return []
 
             cmd.append(f"""
-                SELECT *, ST_AsGeoJson(geom)
+                SELECT *{',ST_AsGeoJson(geom)' if 'geom' in self.attrs.keys() else ''}
                 FROM {self.table}
                 WHERE {' AND '.join(conditions)}
             """)
@@ -376,8 +376,11 @@ class DBOperator():
         """
         Returns all entries in a table as a list of dictionary datatypes
         """
-        self.__cursor.execute(
-            f"select row_to_json(data) FROM (SELECT *,ST_AsGeoJson(geom) FROM {self.table}) data")
+        self.__cursor.execute( f"""
+                SELECT row_to_json(data)
+                FROM (SELECT *{',ST_AsGeoJson(geom)' if 'geom' in self.attrs.keys() else ''}
+                FROM {self.table}) data
+                """)
 
         results = [i[0] for i in self.__cursor.fetchall()]
 
@@ -407,6 +410,8 @@ class DBOperator():
         Gets vessels witihin a specified range of a geometry
         ST_DWithin(geom, var, range)
         """
+        if "geom" not in self.attrs.keys():
+            raise AttributeError("Cannot call GIS function on table with no 'geom' attrubute")
 
         query = f"""
                 SELECT mmsi,vessel_name,callsign,heading,speed,current_status,src,type,flag,lat,lon,dist_from_shore,dist_from_port,ST_AsGeoJson(geom)
@@ -414,7 +419,7 @@ class DBOperator():
                 WHERE ST_DWithin(geom, ST_GeogFromText('{var}'),{range})
             """
 
-        print(query)
+        # print(query)
 
         self.__cursor.execute(f"SELECT row_to_json(data) FROM ({query}) data")
 
@@ -431,6 +436,8 @@ class DBOperator():
         Gets vessels within a specified geometry
         ST_Contains(var, geom)
         """
+        if "geom" not in self.attrs.keys():
+            raise AttributeError("Cannot call GIS function on table with no 'geom' attrubute")
         # print(dumps(var))
 
         query = f"""
@@ -454,6 +461,9 @@ class DBOperator():
         """
         Gets vessels that border/touches a specified geometry
         """
+        if "geom" not in self.attrs.keys():
+            raise AttributeError("Cannot call GIS function on table with no 'geom' attrubute")
+
         pass
 
 if __name__ == "__main__":
@@ -484,8 +494,14 @@ if __name__ == "__main__":
     #                       db='capstone')  # For You :)
     operator = DBOperator(table='vessels')
     # print(operator.permissions)
-    pprint(operator.attrs)
+    # pprint(operator.attrs)
+    # print("Table attributes:")
+    # pprint(operator.attrs.keys())
+    # print("Table attribute datatypes:")
+    # pprint(operator.attrs.values())
     # input()
+
+    print(len(operator.get_table()))
 
     ### Searching all tables for datatypes used
     # def attrs(table):
