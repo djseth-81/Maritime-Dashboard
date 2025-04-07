@@ -373,7 +373,9 @@ class DBOperator():
         return self.__cursor.fetchone()[0]
 
     """
-    ### geom-ship relationships!
+    ### geom-based relationships!
+    // TODO
+        - If table doesn't have geom attr, throw error
     """
     # These are ideally supposed to take advantage of the PostGIS stuff
 

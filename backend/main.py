@@ -20,9 +20,9 @@ app.add_middleware(
 @app.get("/")
 async def welcome():
     '''
-    Example First Fast API Example
+    Root handler
     '''
-    return {"Message": "Welcome to FastAPI!",
+    return {"Message": "Hello :)",
             "Retrieved": datetime.now(),
            }
 
@@ -31,9 +31,75 @@ async def weather():
     '''
     Weather query
     '''
-    return {"Message": "Weather!",
-            "Retrieved": datetime.now(),
-           }
+    db = connect('meteorology')
+    try:
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attribuets": db.attrs,
+            # "filters": db.fetch_filter_options(),
+            "payload": []
+    }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching metadata for weather: {str(e)}")
+
+    try:
+        payload['payload'] = db.get_table() # Currently only NOAA-COOP stations in table
+        payload['size'] = len(payload['payload'])
+        return payload
+    except Exception as e:
+        # raise HTTPException(status_code=501, detail=f"Coming soon")
+        raise HTTPException(status_code=500, detail=f"Error fetching Weather data: {str(e)}")
+
+@app.get("/ocean/")
+async def ocean_data():
+    '''
+    Oceanography query
+    '''
+    db = connect('oceanography')
+    try:
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attribuets": db.attrs,
+            # "filters": db.fetch_filter_options(),
+            "payload": []
+    }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching metadata for ocean data: {str(e)}")
+
+    try:
+        payload['payload'] = db.get_table() # Currently only NOAA-COOP stations in table
+        payload['size'] = len(payload['payload'])
+        return payload
+    except Exception as e:
+        # raise HTTPException(status_code=501, detail=f"Coming soon")
+        raise HTTPException(status_code=500, detail=f"Error fetching ocean data: {str(e)}")
+        
+@app.get("/events/") # FIXME: DBOperator assumes geom object, but Events does NOT have geom object
+async def pull_events():
+    '''
+    Events/Alerts query
+    '''
+    db = connect('events')
+    try:
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attribuets": db.attrs,
+            # "filters": db.fetch_filter_options(),
+            "payload": []
+    }
+    except Exception as e:
+        raise HTTPException(status_code=501, detail=f"Coming soon")
+        # raise HTTPException(status_code=500, detail=f"Error fetching metadata for events: {str(e)}")
+
+    try:
+        payload['payload'] = db.get_table() # Currently only NOAA-COOP stations in table
+        payload['size'] = len(payload['payload'])
+        return payload
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching events: {str(e)}")
 
 @app.get("/users/")
 async def users():
@@ -46,18 +112,28 @@ async def users():
 
 @app.post("/addUser")
 async def add_user(formData: dict):
+    '''
+    User registration handler
+    '''
+    print("### Websocket: Form data:")
     print(formData)
     return formData
 
 @app.post("/login")
 async def login(formData: dict):
+    '''
+    User login handler
+    '''
     print(formData)
     # email = formData["email"]
     # decrypted_password = decrypt_password(formData["password"], secret_key="my-secret-key")
     return (formData)
 
-@app.get("/coop/stations", response_model=dict)
+@app.get("/stations/", response_model=dict)
 async def get_stations():
+    '''
+    Stations query
+    '''
     db = connect('sources')
     try:
         payload = {
@@ -84,7 +160,7 @@ async def get_filtered_vessels(
     status: str = Query(None, description="Filter by vessel status")
 ):
     """
-    Fetch vessel data filter options.
+    Fetch filtered vessels.
     """
     db = connect('vessels')
     try:
@@ -124,7 +200,8 @@ async def get_filtered_vessels(
         "current_status": status if status else None
     }.items() if value}
 
-    print(f"### Websocket: Filters:\n{filters}")
+    # print(f"### Websocket: Filters:\n{filters}")
+
     if len(filters) > 0:
         queries = []
         filter_parser(filters,queries)
@@ -134,8 +211,8 @@ async def get_filtered_vessels(
         # when more than 1 attribute has multiple values
         queries = [dict(t) for t in {tuple(d.items()) for d in queries}]
 
-        print(f"### Websocket: query array:")
-        pprint(queries)
+        # print(f"### Websocket: query array:")
+        # pprint(queries)
 
         ### IF DB connection successful, attempt assembling payload
         try:
@@ -155,6 +232,10 @@ async def get_filtered_vessels(
 # FIXME: Weird bug where selecting a vessel and then selecting apply filters assumes zoning
 @app.post("/zoning/")
 async def zone_vessels(data: dict):
+    '''
+    Zoning query. Collects Meteorological and oceanographic data, events,
+    and vessels that are sourced from inside zone
+    '''
     vessels = connect('vessels')
     met = connect('meteorology')
     oce = connect('oceanography')
@@ -192,8 +273,8 @@ async def zone_vessels(data: dict):
         payload['payload'].update({'stations': stations})
 
         ### Getting Meteorology
-        print("### Websocket: querying meteorology data matching station id:")
-        pprint(met.query([{'src_id': i} for i in stations]))
+        # print("### Websocket: querying meteorology data matching station id:")
+        # pprint(met.query([{'src_id': i} for i in stations]))
         payload['payload'].update({'weather': met.query([{'src_id': i} for i in stations])})
 
         ### Getting Oceanography
