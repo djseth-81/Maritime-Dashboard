@@ -36,6 +36,8 @@ async def weather():
         payload = {
             "retrieved": datetime.now(),
             "privileges": db.permissions,
+            # Converting types to json throws an error now, so just providing
+            # attributes themselves...
             "attributes": [i for i in db.attrs.keys()],
             # "filters": db.fetch_filter_options(),
             "payload": []
@@ -44,7 +46,7 @@ async def weather():
         raise HTTPException(status_code=500, detail=f"Error fetching metadata for weather: {str(e)}")
 
     try:
-        payload['payload'] = db.get_table() # Currently only NOAA-COOP stations in table
+        payload['payload'] = db.get_table() # Should retrieve nothing rn
         payload['size'] = len(payload['payload'])
         return payload
     except Exception as e:
@@ -69,7 +71,7 @@ async def ocean_data():
         raise HTTPException(status_code=500, detail=f"Error fetching metadata for ocean data: {str(e)}")
 
     try:
-        payload['payload'] = db.get_table() # Currently only NOAA-COOP stations in table
+        payload['payload'] = db.get_table() # Should retrieve nothing rn
         payload['size'] = len(payload['payload'])
         return payload
     except Exception as e:
@@ -95,7 +97,7 @@ async def pull_events():
         # raise HTTPException(status_code=500, detail=f"Error fetching metadata for events: {str(e)}")
 
     try:
-        payload['payload'] = db.get_table() # Currently only NOAA-COOP stations in table
+        payload['payload'] = db.get_table() # Should retrieve nothing rn
         payload['size'] = len(payload['payload'])
         return payload
     except Exception as e:
@@ -281,10 +283,11 @@ async def zone_vessels(data: dict):
         ### Getting Oceanography
         payload['payload'].update({'oceanography': oce.query([{'src_id': i} for i in stations])})
 
-        ### Getting events <- FIXME: Doesn't have Geom but query() expects geom attr
-        # payload['payload'].update({'alerts': events.query([{'src_id': i} for i in stations])})
+        ### Getting events
+        payload['payload'].update({'alerts': events.query([{'src_id': i} for i in stations])})
 
         return payload
+
     except Exception as e:
         print(f"### Websocket: Error occurred:\n{e}")
         raise HTTPException(status_code=500, detail=f"Error fetching payload data: {str(e)}")
@@ -322,30 +325,48 @@ async def add_vessel(data: dict):
         db.close()
 
 @app.get("/metadata/")
+# WARNING: it brokie. Not important enough for me to figure out why imo
 async def query_metadata():
     '''
     <query_description>
     '''
     ### Attempt DB connection
-    operator = connect('spatial_ref_sys')
+    db = connect('spatial_ref_sys')
 
     ### IF DB connection successful, attempt assembling payload
     print("### Server: Assembling Payload...")
     try:
-        payload = {"Message": "Metadata for Geometry",
-                   "Retrieved": datetime.now(),
-                   "Privileges": operator.get_privileges(),
-                   "Total entities": operator.get_count(),
-                   "Table attribuets": operator.get_attributes(),
-                   "payload": operator.query(('srid',4326)) # Spatial reference system, Global scope (https://spatialreference.org/ref/epsg/4326/)
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attributes": [i for i in db.attrs.keys()],
+            # "filters": db.fetch_filter_options(),
+            "payload": db.query([{'srid',4326}]) # Spatial reference system, Global scope (https://spatialreference.org/ref/epsg/4326/)
                    }
         print("### Server: Payload assembled.")
-    except:
+    except Exception as e:
+        print(f"### Server: Error retrieving metadata:\n{e}")
         print("### Fast Server: Error assembling payload.")
         payload = JSONResponse(
-            status_code=400,
+            status_code=500,
             content={"Error": "Error assembling payload."}
         )
     finally:
-        operator.close() # Closes table instance
+        db.close() # Closes table instance
         return payload
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
