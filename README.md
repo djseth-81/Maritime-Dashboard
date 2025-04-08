@@ -58,7 +58,7 @@ python -m venv .venv
 .venv\Scripts\activate
 
 # Kafka reciver
-uvicorn backend.main:app --host 0.0.0.0 --port 5000 --reload
+uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 
 # Start Kafka
 bin/kafka-server-start.sh config/kraft/server.properties

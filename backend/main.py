@@ -1,10 +1,15 @@
+import asyncio
 from pprint import pprint
 from json import loads, dumps
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from utils import connect, decrypt_password, filter_parser
+from backend.utils import connect, filter_parser
+from fastapi import WebSocket, WebSocketDisconnect
+from backend.kafka_service.kafka_ws_bridge import connected_clients, kafka_listener, start_kafka_consumer
+from backend.kafka_service.producer import send_message
+
 
 app = FastAPI()
 
@@ -234,3 +239,34 @@ async def query_metadata():
     finally:
         operator.close() # Closes table instance
         return payload
+
+
+# Frontend Websocket > FastAPI backend > Kafka > Consumer
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("### WebSocket: Client connected")
+    connected_clients.add(websocket)
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+            print("Received from client:", data)
+            await websocket.send_text(f"Echo: {data}")
+
+            try:
+                parsed = loads(data)
+                key = parsed.get("key", "default")
+                send_message(key, parsed)
+                print(f"Sent to Kafka | key: {key} | value: {parsed}")
+            except Exception as e:
+                print(f"Error sending to Kafka: {e}")
+    except WebSocketDisconnect:
+        print("### WebSocket: Client disconnected")
+        connected_clients.remove(websocket)
+
+
+@app.on_event("startup")
+async def startup_event():
+    start_kafka_consumer()  # run in thread
+    asyncio.create_task(kafka_listener()) 

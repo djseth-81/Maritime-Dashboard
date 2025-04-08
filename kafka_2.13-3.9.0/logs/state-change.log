@@ -1,0 +1,6 @@
+[2025-04-08 18:40:57,952] INFO [Broker id=1] Transitioning 1 partition(s) to local leaders. (state.change.logger)
+[2025-04-08 18:40:57,953] INFO [Broker id=1] Creating new partition maritime-events-0 with topic id mqx2fuLrTACCzLY9fN-X1w. (state.change.logger)
+[2025-04-08 18:40:57,971] INFO [Broker id=1] Leader maritime-events-0 with topic id Some(mqx2fuLrTACCzLY9fN-X1w) starts at leader epoch 0 from offset 0 with partition epoch 0, high watermark 0, ISR [1], adding replicas [] and removing replicas [] . Previous leader None and previous leader epoch was -1. (state.change.logger)
+[2025-04-08 18:44:08,564] INFO [Broker id=1] Transitioning 1 partition(s) to local followers. (state.change.logger)
+[2025-04-08 18:44:08,570] INFO [Broker id=1] Follower maritime-events-0 starts at leader epoch 1 from offset 2 with partition epoch 1 and high watermark 2. Current leader is -1. Previous leader Some(-1) and previous leader epoch was 1. (state.change.logger)
+[2025-04-08 18:44:08,574] INFO [Broker id=1] Stopped fetchers as part of controlled shutdown for 1 partitions (state.change.logger)
