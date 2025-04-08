@@ -54,7 +54,7 @@ vessels = query(vessels_url)
 pprint(vessels)
 # pprint(vessels['entries'])
 # pprint(vessels.keys())
-sys.exit()
+input()
 
 vessel = vessels['entries'][1]
 mmsi = vessel['selfReportedInfo'][0]['ssvid']
