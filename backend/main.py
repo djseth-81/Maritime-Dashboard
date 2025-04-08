@@ -263,6 +263,7 @@ async def zone_vessels(data: dict):
 
     pprint(geom)
 
+    try:
         ### Getting Vessels
         payload['payload'].update({'vessels':[]})
 
