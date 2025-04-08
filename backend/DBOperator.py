@@ -37,17 +37,8 @@ class DBOperator():
             - ST_Perimeter()
     """
 
-    ''' Default
     def __init__(self, table: str, host='', port='', user='',
                     passwd='', schema='public', db='capstone') -> None:
-    '''
-    ''' For Yolvin :) 
-    def __init__(self, table: str, host='localhost', port='5432', user='postgres',
-                 passwd='1234', schema='public', db='capstone') -> None:
-    '''
-    ''' For Sean :) '''
-    def __init__(self, table: str, host='localhost', port='5432', user='postgres',
-                 passwd='gres', schema='public', db='ships') -> None:
 
         self.table = table
         self.__host = host

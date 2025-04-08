@@ -139,6 +139,7 @@ async def zone_vessels(data: dict):
     met = connect('meteorology')
     oce = connect('oceanography')
     events = connect('events')
+
     try:
         payload = {
             "retrieved": datetime.now(),
@@ -147,6 +148,7 @@ async def zone_vessels(data: dict):
             "payload": []
         }
     except Exception as e:
+        print(f"### Websocket: Error fetching metadata for zoning:\n{e}")
         raise HTTPException(status_code=500, detail=f"Error fetching metadata for vessels: {str(e)}")
 
     geom = data['geom']
@@ -154,8 +156,9 @@ async def zone_vessels(data: dict):
     status = data['origin'].split(',') if 'origin' in data.keys() else []
     flags = data['flag'].split(',') if 'flag' in data.keys() else []
 
-    try:
+    pprint(geom)
 
+    try:
         # NOTE: I HATE this implemenetation.
         # Would like to pop FROM query instead of append to results
         # but it does some weird shit rn
@@ -168,6 +171,7 @@ async def zone_vessels(data: dict):
         payload['size'] = len(payload['payload'])
         return payload
     except Exception as e:
+        print(f"### Websocket: Error fetching zoning data:\n{e}")
         raise HTTPException(status_code=500, detail=f"Error fetching zone data: {str(e)}")
     finally:
         vessels.close()
