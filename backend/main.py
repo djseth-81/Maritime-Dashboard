@@ -244,6 +244,7 @@ async def zone_vessels(data: dict):
     oce = connect('oceanography')
     events = connect('events')
     sources = connect('sources')
+
     try:
         payload = {
             "retrieved": datetime.now(),
@@ -252,6 +253,7 @@ async def zone_vessels(data: dict):
             "payload": {}
         }
     except Exception as e:
+        print(f"### Websocket: Error fetching metadata for zoning:\n{e}")
         raise HTTPException(status_code=500, detail=f"Error fetching metadata for vessels: {str(e)}")
 
     geom = data['geom']
@@ -259,7 +261,7 @@ async def zone_vessels(data: dict):
     status = data['origin'].split(',') if 'origin' in data.keys() else []
     flags = data['flag'].split(',') if 'flag' in data.keys() else []
 
-    try:
+    pprint(geom)
 
         ### Getting Vessels
         payload['payload'].update({'vessels':[]})
@@ -289,8 +291,8 @@ async def zone_vessels(data: dict):
         return payload
 
     except Exception as e:
-        print(f"### Websocket: Error occurred:\n{e}")
-        raise HTTPException(status_code=500, detail=f"Error fetching payload data: {str(e)}")
+        print(f"### Websocket: Error fetching zoning data:\n{e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching zone data: {str(e)}")
     finally:
         vessels.close()
 

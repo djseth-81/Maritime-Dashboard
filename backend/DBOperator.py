@@ -44,14 +44,19 @@ class DBOperator():
             - ST_ExteriorRing()
             - ST_Perimeter()
     """
-
     ''' For Yolvin :) 
     def __init__(self, table: str, host='localhost', port='5432', user='postgres',
                  passwd='1234', schema='public', db='capstone') -> None:
     '''
+    '''
+    def __init__(self, table: str, host='localhost', port='5432',
+                 user='postgres', passwd='gres', schema='public',
+                 db='ships') -> None: # For Sean
+    '''
 
     def __init__(self, table: str, host='', port='', user='',
-                 passwd='', schema='public', db='capstone') -> None:
+                    passwd='', schema='public', db='capstone') -> None:
+
         self.table = table
         self.__host = host
         self.__port = port
@@ -489,10 +494,12 @@ if __name__ == "__main__":
         'width': 23.0
     }
 
+
+    operator = DBOperator(table='vessels')  # For me :)
     # operator = DBOperator(table='vessels', host='localhost', port='5432',
-    #                       user='postgres', passwd='1234', schema='public',
-    #                       db='capstone')  # For You :)
-    operator = DBOperator(table='vessels')
+    #                       user='postgres', passwd='gres', schema='public',
+    #                       db='ships')  # For Sean, db='capstone' otherwise
+
     # print(operator.permissions)
     # pprint(operator.attrs)
     # print("Table attributes:")
