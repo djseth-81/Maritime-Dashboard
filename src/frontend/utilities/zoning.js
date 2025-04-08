@@ -55,7 +55,7 @@ export const zoning = async (polygonData, filters = {}, setVessels) => {
             return;
         }
 
-        const transformedVessels = response.data.payload?.map((vessel) =>
+        const transformedVessels = response.data.payload.vessels?.map((vessel) =>
             Array.isArray(vessel)
                 ? {
                     id: vessel["mmsi"],
