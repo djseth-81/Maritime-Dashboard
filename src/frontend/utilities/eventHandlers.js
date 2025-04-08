@@ -82,10 +82,13 @@ export const handleClearConfirmed = (
   setShowContextMenu,
   setShowClearDialog
 ) => {
-  const entities = viewerRef.current.cesiumElement.entities.values;
+  const viewer = viewerRef.current.cesiumElement;
+  const entities = viewer.entities.values;
   for (let i = entities.length - 1; i >= 0; i--) {
-    if (entities[i].isGeometry) {
-      viewerRef.current.cesiumElement.entities.remove(entities[i]);
+    const entity = entities[i];
+    if (entity.isGeometry || entity.parent) {
+      viewer.entities.remove(entity);
+      console.log("Removed entity:", entity.id);
     }
   }
   setGeometries([]);
@@ -162,7 +165,16 @@ export const handleDeleteConfirm = (
   setShowDeleteDialog
 ) => {
   if (selectedGeometry) {
-    viewerRef.current.cesiumElement.entities.removeById(selectedGeometry.id);
+    const viewer = viewerRef.current.cesiumElement;
+    viewer.entities.removeById(selectedGeometry.id);
+
+    const childEntities = viewer.entities.values;
+    for (let i = childEntities.length - 1; i >= 0; i--) {
+      const child = childEntities[i];
+      if (child.parent && child.parent.id === selectedGeometry.id) {
+        viewer.entities.remove(child);
+      }
+    }
 
     setGeometries((prev) =>
       prev.filter((geo) => geo.id !== selectedGeometry.id)

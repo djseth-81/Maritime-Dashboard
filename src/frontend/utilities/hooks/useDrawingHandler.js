@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Cesium from "cesium";
 import { convertCartesianToDegrees } from "../coordUtils";
 
@@ -19,6 +19,7 @@ import { convertCartesianToDegrees } from "../coordUtils";
 const useDrawingHandler = (scene, isDrawing, positions, setPositions, viewer, geometries, setGeometries) => {
     const lastClickTimeRef = useRef(0);
     const doubleClickDetectedRef = useRef(false);
+    const [activeZone, setActiveZone] = useState(null); // Track the active zone being created
 
     useEffect(() => {
         if (!scene || !isDrawing) return;
@@ -49,21 +50,69 @@ const useDrawingHandler = (scene, isDrawing, positions, setPositions, viewer, ge
                         const { latitude, longitude } = convertCartesianToDegrees(cartesian);
                         console.log("Converted coordinates:", { latitude, longitude });
 
-                        /**
-                         * Add a point primitive to the scene for visual feedback.
-                         */
-                        const pointPrimitives = viewer.current.cesiumElement.scene.primitives.add(
-                            new Cesium.PointPrimitiveCollection()
-                        );
-                        pointPrimitives.add({
-                            position: cartesian,
-                            pixelSize: 10,
-                            color: Cesium.Color.RED,
-                            outlineColor: Cesium.Color.WHITE,
-                            outlineWidth: 2,
-                        });
-                        
-                        setPositions((prevPositions) => [...prevPositions, cartesian]);
+                        // Create the active zone if it doesn't exist
+                        if (!activeZone) {
+                            const zoneEntity = viewer.current.cesiumElement.entities.add({
+                                polygon: {
+                                    hierarchy: new Cesium.PolygonHierarchy([]), // Empty hierarchy for now
+                                    material: Cesium.Color.RED.withAlpha(0.5),
+                                },
+                                name: `Zone ${geometries.length + 1}`,
+                                isGeometry: true, // Add custom property to identify geometry
+                            });
+
+                            // Use a local variable to reference the active zone immediately
+                            const newActiveZone = { id: zoneEntity.id, entity: zoneEntity, points: [] };
+                            setActiveZone(newActiveZone);
+
+                            // Add the first point to the new active zone
+                            const pointEntity = viewer.current.cesiumElement.entities.add({
+                                position: cartesian,
+                                point: {
+                                    pixelSize: 10,
+                                    color: Cesium.Color.RED,
+                                    outlineColor: Cesium.Color.WHITE,
+                                    outlineWidth: 2,
+                                },
+                                name: `Point ${positions.length + 1}`,
+                                parent: zoneEntity, // Use the local variable for the parent
+                            });
+
+                            console.log("Point entity created:", pointEntity);
+
+                            // Update the positions and active zone points
+                            setPositions((prevPositions) => [...prevPositions, cartesian]);
+                            setActiveZone((prevZone) => ({
+                                ...newActiveZone,
+                                points: [...(prevZone?.points || []), pointEntity],
+                            }));
+
+                            console.log("Active Zone Points:", newActiveZone.points);
+                        } else {
+                            // Add subsequent points to the existing active zone
+                            const pointEntity = viewer.current.cesiumElement.entities.add({
+                                position: cartesian,
+                                point: {
+                                    pixelSize: 10,
+                                    color: Cesium.Color.RED,
+                                    outlineColor: Cesium.Color.WHITE,
+                                    outlineWidth: 2,
+                                },
+                                name: `Point ${positions.length + 1}`,
+                                parent: activeZone.entity, // Use the existing active zone
+                            });
+
+                            console.log("Point entity created:", pointEntity);
+
+                            // Update the positions and active zone points
+                            setPositions((prevPositions) => [...prevPositions, cartesian]);
+                            setActiveZone((prevZone) => ({
+                                ...prevZone,
+                                points: [...(prevZone?.points || []), pointEntity],
+                            }));
+
+                            console.log("Active Zone Points:", activeZone.points);
+                        }
                     }
                 }
             }, 300);
@@ -72,22 +121,19 @@ const useDrawingHandler = (scene, isDrawing, positions, setPositions, viewer, ge
         // Double-click to complete geometry
         handler.setInputAction(() => {
             console.log("Double-click registered to complete geometry");
-            if (positions.length > 2) {
-                const newPolygon = viewer.current.cesiumElement.entities.add({
-                    polygon: {
-                        hierarchy: new Cesium.PolygonHierarchy(positions),
-                        material: Cesium.Color.RED.withAlpha(0.5),
-                    },
-                    name: `Zone ${geometries.length + 1}`,
-                    isGeometry: true, // Add custom property to identify geometry
-                });
+            if (positions.length > 2 && activeZone) {
+                // Update the active zone's polygon hierarchy
+                activeZone.entity.polygon.hierarchy = new Cesium.PolygonHierarchy(positions);
 
+                // Add the completed zone to the geometries state
                 setGeometries((prevGeometries) => [
                     ...prevGeometries,
-                    { id: newPolygon.id, positions: [...positions] },
+                    { id: activeZone.id, entity: activeZone.entity, positions: [...positions], points: activeZone.points },
                 ]);
 
-                setPositions([]); // Resets positions for next polygon
+                // Reset the active zone and positions
+                setActiveZone(null);
+                setPositions([]);
             }
 
             // Reset the double-click flag after handling the double-click
@@ -99,7 +145,9 @@ const useDrawingHandler = (scene, isDrawing, positions, setPositions, viewer, ge
         return () => {
             handler.destroy();
         };
-    }, [scene, isDrawing, positions, setPositions, viewer, setGeometries]);
+    }, [scene, isDrawing, positions, setPositions, viewer, geometries, setGeometries, activeZone]);
+
+    return activeZone; // Return the active zone if needed elsewhere
 };
 
 export default useDrawingHandler;

@@ -64,13 +64,16 @@ const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename }
                 <ul>
                     {positions.map((pos, index) => {
                         // console.log("Position:", pos);
-                        const { latitude, longitude } = 
-                        pos.latitude !== undefined && pos.longitude !== undefined
-                            ? pos
-                            : convertCartesianToDegrees(pos);
-                            // console.log("Converted Position:", { latitude, longitude });
+                        const { latitude, longitude } =
+                            pos.latitude !== undefined && pos.longitude !== undefined
+                                ? pos
+                                : convertCartesianToDegrees(pos);
+                        // console.log("Converted Position:", { latitude, longitude });
                         return (
-                            <li key={index}>{`Lat: ${latitude}, Lon: ${longitude}`}</li>
+                            <li key={index}>
+                                <strong>Point {index + 1}:</strong>
+                                Lat: {latitude}, Lon: {longitude}
+                            </li>
                         );
                     })}
                 </ul>
