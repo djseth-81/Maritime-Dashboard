@@ -1,9 +1,10 @@
 import csv
-from duplicate_query import duplicator
 from pprint import pprint
 from psycopg2 import *
 from psycopg2.errors import *
 from json import loads, dumps
+
+from .duplicate_query import duplicator
 
 '''
 // TODO:
@@ -136,8 +137,8 @@ class DBOperator():
         # If geom was popped, finish off cmd string formatting append 'ST_GeomFromText()'
         #   Otherwise, just add a ')'
         if geom != None:
-            cmd += 'ST_GeographyFromText(%s))'
-            # cmd += 'ST_GeogFromWKB(ST_GeomFromGeoJSON(%s)))' # NOTE: USING to convert GeoJSON into PostGIS Geography
+            # cmd += 'ST_GeographyFromText(%s))'
+            cmd += 'ST_GeogFromWKB(ST_GeomFromGeoJSON(%s)))' # NOTE: USING to convert GeoJSON into PostGIS Geography
         else:
             cmd = cmd[:-1] + ')'
 
