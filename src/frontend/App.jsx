@@ -13,8 +13,7 @@ import { Viewer } from "resium";
 // import axios from "axios";
 import OverlaysUI from "./utilities/overlays/OverlaysUI";
 import { fetchVessels } from "./utilities/apiFetch";
-import { zoning } from "./utilities/zoning";
-import {
+import { zoning } from "./utilities/zoning"; import {
   handleUndo,
   handleToggleDrawing,
   handleToggleOverlays,
