@@ -9,8 +9,8 @@ import "react-toastify/ReactToastify.css";
 import "./App.css";
 import { placeVessel } from "./utilities/shippingVessels/Vessels";
 import { Viewer } from "resium";
-import { SceneMode, Cartographic, Math } from "cesium";
-import axios from "axios";
+// import { SceneMode, Cartographic, Math } from "cesium";
+// import axios from "axios";
 import OverlaysUI from "./utilities/overlays/OverlaysUI";
 import { fetchVessels } from "./utilities/apiFetch";
 import { zoning } from "./utilities/zoning";
@@ -205,9 +205,9 @@ function App() {
         />
       )}
 
-      {showFilters && (
+      {/* {showFilters && (
         <FiltersUI apiEndpoint={filtersAPI} onFilterApply={handleFilterApply} />
-      )}
+      )} */}
 
       {showOverlays && (
         <OverlaysUI

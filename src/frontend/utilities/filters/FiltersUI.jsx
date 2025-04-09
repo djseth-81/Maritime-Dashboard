@@ -19,8 +19,23 @@ const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
         error
     } = useFetchFilters(apiEndpoint);
 
+    const vesselTypes = [
+        "CARGO",
+        "FISHING",
+        "TANKER",
+        "TUG",
+        "PASSENGER",
+        "RECREATIONAL",
+        "OTHER",
+    ]
+
+    const [orderedVesselTypes, setOrderedVesselTypes] = useState(vesselTypes);
+
     useEffect(() => {
         if (filterOptions?.types) {
+            const orderedTypes = vesselTypes.filter(type => filterOptions.types.includes(type));
+            const extraTypes = filterOptions.types.filter(type => !vesselTypes.includes(type)); // catch any extra types
+            setOrderedVesselTypes([...orderedTypes, ...extraTypes]);
             setSelectedFilters((prev) => ({
                 ...prev,
                 types: filterOptions.types
@@ -87,7 +102,7 @@ const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
         <div className="filter-subwindow">
             <div className='vessel-subwindow'>
                 <label>Vessel Type:</label>
-                {filterOptions?.types?.map((type) => (
+                {orderedVesselTypes.map((type) => (
                     <label key={type}>
                         <input
                             type="checkbox"
