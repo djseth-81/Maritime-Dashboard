@@ -21,14 +21,9 @@ class DBOperator():
 
     """
     // POSTGIS
-        - Storing as Geography, likely will have to conver to geography
-        - SRID = 4326 !!!
         - Zone stuff
             - ST_Equals() (to check zone existence)
-            - ST_Within() (Possibly good for ships encroaching on a zone for warning, or ships near others)
             - ST_Touches() (For bordering ships/zones)
-            - ST_DWithin() (FOR SHIPS WITHIN ANY ZONE)!!
-            - ST_Contians() (FOR SHIPS WITHIN ZONES)
             - ST_Intersect() (for a custom zone on EEZ/NOAA?)
             - ST_Overlaps(for a custom zone intersecting with EEZ/NOAA, to pull data wrt EEZ/NOAA)
         - Vessel prediction
@@ -42,12 +37,9 @@ class DBOperator():
             - ST_Perimeter()
     """
 
-    ''' For Yolvin :) 
     def __init__(self, table: str, host='localhost', port='5432', user='postgres',
-                 passwd='1234', schema='public', db='capstone') -> None:
-    '''
-    def __init__(self, table: str, host='', port='', user='',
-                 passwd='', schema='public', db='capstone') -> None:
+                    passwd='Jimenez3128', schema='public', db='capstone') -> None:
+
         self.table = table
         self.__host = host
         self.__port = port
@@ -89,7 +81,7 @@ class DBOperator():
         # IDK how I want this to handle a bulk add, but I know it will include cursor.executemany()
         #   - Prolly have entity become entities = [dict]
         #   - Pretty sure this will replicate for modify() and delete() too
-        
+
         #   i.e. JSON is provided, with all values, and data that is unkown/un-needed is given default or NULL value
 
         geom = None
@@ -100,7 +92,7 @@ class DBOperator():
 
         # Format keys as attributes for INSERT INTO cmd
         attrs = ','.join(entity.keys())
-        if geom != None: # If geometry was popped, append geom key to attrs
+        if geom != None:  # If geometry was popped, append geom key to attrs
             attrs += ',geom'
 
         # Define values array for pruning LATER...
@@ -112,7 +104,7 @@ class DBOperator():
             INSERT INTO {self.table} ({attrs})
             VALUES ({'%s,' * (len(values))}'''
 
-        if geom != None: # if geom was popped, append value to values array
+        if geom != None:  # if geom was popped, append value to values array
             values += [geom]
             # values += [dumps(geom)] # NOTE: USING to convert GeoJSON into PostGIS Geography
 
@@ -128,7 +120,7 @@ class DBOperator():
             cmd = cmd[:-1] + ')'
 
         try:
-            self.__cursor.execute(cmd,(values))
+            self.__cursor.execute(cmd, (values))
             print("### DBOperator: Entry added to commands queue")
         except UniqueViolation as e:
             print(f"### DBOperator ERROR: Unable to add entity: {e}")
@@ -157,14 +149,15 @@ class DBOperator():
         # Assumes value exists, and just deletes nothing
 
         if len(entity) == 0:
-            raise AttributeError("### DBOperator: Error. Provided entity is empty.")
+            raise AttributeError(
+                "### DBOperator: Error. Provided entity is empty.")
 
         print(f"### DBOperator: Deleting {entity}")
 
         conditions = []
         values = []
 
-        for attr,value in entity.items():
+        for attr, value in entity.items():
             if attr == 'geom':
                 print(f"Geom provided: {attr}:{value}")
                 conditions.append(f"{attr} = ST_GeographyFromText(%s)")
@@ -184,12 +177,12 @@ class DBOperator():
 
         # input()
 
-        try: 
+        try:
             self.__cursor.execute(query, tuple(values))
             print("### DBOperator: Deletion reqeust added to queue.")
         except UndefinedColumn as e:
             print(f"{e}\n### DBOperator: Error deleting item.")
-            self.rollback() # Uhm... Why are you necessary so other commands don't break?
+            self.rollback()  # Uhm... Why are you necessary so other commands don't break?
             raise UndefinedColumn
 
     def clear(self) -> tuple:
@@ -239,15 +232,17 @@ class DBOperator():
         """
         Fetches table attributes
         """
-        self.__cursor.execute(f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{self.table}'")
-        return {q[0]:q[1] for q in self.__cursor.fetchall()}
+        self.__cursor.execute(
+            f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{self.table}'")
+        return {q[0]: q[1] for q in self.__cursor.fetchall()}
 
     # Fetching tables in DB --> Dev option!
     def __get_tables(self) -> list:
         """
         Fetching tables in DB
         """
-        self.__cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+        self.__cursor.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
         tables = [i[0] for i in self.__cursor.fetchall()]
         # pprint(type(tables))
         # for table in tables:
@@ -263,7 +258,8 @@ class DBOperator():
 
         # I doubt this will hold up to ANY sort of load
         for op in operations:
-            self.__cursor.execute(f"SELECT has_table_privilege('{self.table}', '{op}')")
+            self.__cursor.execute(
+                f"SELECT has_table_privilege('{self.table}', '{op}')")
             result[f"{op}"] = self.__cursor.fetchone()[0]
 
         return result
@@ -273,7 +269,7 @@ class DBOperator():
         Fetches distinct filter options for vessel types, origins, and statuses.
         """
         query = f"""
-            SELECT DISTINCT type, flag, current_status AS origin
+            SELECT DISTINCT type, flag, current_status
             FROM {self.table};
         """
         self.__cursor.execute(query)
@@ -302,13 +298,15 @@ class DBOperator():
         values = []
 
         if len(queries) == 0:
-            raise AttributeError("### DBOperator: Cannot query an empty array...")
+            raise AttributeError(
+                "### DBOperator: Cannot query an empty array...")
 
         for entity in queries:
             if len(entity) == 0:
-                raise AttributeError("### DBOperator: Cannot query an empty dictionary...")
+                raise AttributeError(
+                    "### DBOperator: Cannot query an empty dictionary...")
             conditions = []
-            for attr,value in entity.items():
+            for attr, value in entity.items():
                 conditions.append(f"{attr} = %s")
                 values.append(value)
 
@@ -322,10 +320,11 @@ class DBOperator():
             """)
 
         try:
-            self.__cursor.execute(f"SELECT row_to_json(data) FROM ({' UNION '.join(cmd)}) data", tuple(values))
+            self.__cursor.execute(
+                f"SELECT row_to_json(data) FROM ({' UNION '.join(cmd)}) data", tuple(values))
             results = [i[0] for i in self.__cursor.fetchall()]
 
-            for r in results: # quick formatting to remove binary Geom data
+            for r in results:  # quick formatting to remove binary Geom data
                 tmp = r.pop('st_asgeojson')
                 r['geom'] = tmp
 
@@ -334,18 +333,20 @@ class DBOperator():
             print(f"### DBOperator: Error occured:\n{e}")
             raise UndefinedColumn
         except InFailedSqlTransaction as e:
-            print(f"{e}\n### DBOperator: Error executing query. Did you forget to rollback an invalid edit-like command?")
+            print(
+                f"{e}\n### DBOperator: Error executing query. Did you forget to rollback an invalid edit-like command?")
             raise InFailedSqlTransaction
 
     def get_table(self) -> list:
         """
         Returns all entries in a table as a list of dictionary datatypes
         """
-        self.__cursor.execute(f"select row_to_json(data) FROM (SELECT *,ST_AsGeoJson(geom) FROM {self.table}) data")
+        self.__cursor.execute(
+            f"select row_to_json(data) FROM (SELECT *,ST_AsGeoJson(geom) FROM {self.table}) data")
 
         results = [i[0] for i in self.__cursor.fetchall()]
 
-        for r in results: # quick formatting to remove binary Geom data
+        for r in results:  # quick formatting to remove binary Geom data
             tmp = r.pop('st_asgeojson')
             r['geom'] = tmp
 
@@ -363,51 +364,60 @@ class DBOperator():
     ### geom-ship relationships!
     """
     # These are ideally supposed to take advantage of the PostGIS stuff
-    def proximity(self, var, range=5000.0):
+
+    def proximity(self, var: str, range=5000.0):
         """
         Gets vessels witihin a specified range of a geometry
         ST_DWithin(geom, var, range)
         """
 
         query = f"""
-                SELECT mmsi,vessel_name,callsign,heading,speed,current_status,src,type,flag,lat,lon,ST_AsGeoJson(geom)
+                SELECT mmsi,vessel_name,callsign,heading,speed,current_status,src,type,flag,lat,lon,dist_from_shore,dist_from_port,ST_AsGeoJson(geom)
                 FROM {self.table}
                 WHERE ST_DWithin(geom, ST_GeogFromText('{var}'),{range})
             """
 
-        """
-        select mmsi 
-        from vessels 
-        where ST_DWithin(geom, St_GeogFromText('Point(-91.02 30.13)'), 5000)
-        """
         print(query)
 
-        # input()
-
         self.__cursor.execute(f"SELECT row_to_json(data) FROM ({query}) data")
-        
+
         results = [i[0] for i in self.__cursor.fetchall()]
 
-        for r in results: # quick formatting to remove binary Geom data
+        for r in results:  # quick formatting to remove binary Geom data
             tmp = r.pop('st_asgeojson')
             r['geom'] = tmp
 
         return results
 
-    def inside(self, var):
+    def within(self, var: dict) -> list:
         """
         Gets vessels within a specified geometry
         ST_Contains(var, geom)
         """
-        pass
+        print(dumps(var))
 
+        query = f"""
+                SELECT mmsi,vessel_name,callsign,heading,speed,current_status,src,type,flag,lat,lon,dist_from_shore,dist_from_port,ST_AsGeoJson(geom)
+                FROM {self.table}
+                WHERE ST_Within(geom::geometry, ST_GeomFromGeoJSON(%s))
+            """
+
+        self.__cursor.execute(f"SELECT row_to_json(data) FROM ({query}) AS data",(dumps(var),))
+
+        results = [i[0] for i in self.__cursor.fetchall()]
+
+        for r in results:  # quick formatting to remove binary Geom data
+            tmp = r.pop('st_asgeojson')
+            r['geom'] = tmp
+
+        return results
 
     def borders(self, var):
         """
         Gets vessels that border/touches a specified geometry
         """
         pass
-    
+
 
 if __name__ == "__main__":
     entity = {
@@ -433,38 +443,55 @@ if __name__ == "__main__":
     }
 
     entity2 = {
-        'mmsi':367702270,
-        'vessel_name':'MS. JENIFER TRETTER',
-        'callsign':'WDI4813',
-        'timestamp':'2024-09-30T00:00:00',
-        'heading':334.5,
-        'speed':6.6,
-        'current_status':'12',
-        'src':'MarineCadastre-AIS',
-        'type':'TUG',
-        'flag':'USA',
-        'length':113,
-        'width':34,
-        'draft':3.1,
-        'cargo_weight':57,
-        'geom':'Point(-97.21 26.1)',
-        'lat':26.1,
-        'lon':-97.21,
-        'dist_from_shore':0.0,
-        'dist_from_port':0.0,
+        'mmsi': 367702270,
+        'vessel_name': 'MS. JENIFER TRETTER',
+        'callsign': 'WDI4813',
+        'timestamp': '2024-09-30T00:00:00',
+        'heading': 334.5,
+        'speed': 6.6,
+        'current_status': '12',
+        'src': 'MarineCadastre-AIS',
+        'type': 'TUG',
+        'flag': 'USA',
+        'length': 113,
+        'width': 34,
+        'draft': 3.1,
+        'cargo_weight': 57,
+        'geom': 'Point(-97.21 26.1)',
+        'lat': 26.1,
+        'lon': -97.21,
+        'dist_from_shore': 0.0,
+        'dist_from_port': 0.0,
     }
 
-    # operator = DBOperator(table='vessels')
+    # operator = DBOperator(table='vessels')  # For me :)
+    operator = DBOperator(table='vessels', host='localhost', port='5432',
+                          user='postgres', passwd='gres', schema='public',
+                          db='ships')  # For Sean, db='capstone' otherwise
     # print(operator.permissions)
     # print(operator.attrs)
     # input()
 
     # pprint(operator.proximity('Point(-91.02 30.13)', 1000))
-    ### Get filterable items
+    # input()
+
+    # geom = {'coordinates': [[['-84.4296', '29.6962'],
+    #                          ['-80.9127', '31.0080'],
+    #                          ['-79.0213', '25.4102'],
+    #                          ['-82.6333', '23.7645'],
+    #                          ['-85.1153', '29.2929']]],
+    #         'type': 'Polygon'}
+
+    # query = operator.within(geom)
+
+    # print(len(query)) # expect to pull 5 vessels
+    # pprint(query)
+
+    # Get filterable items
     # pprint(operator.fetch_filter_options())
     # input()
 
-    ### Filter
+    # Filter
     # filters = {
     #     "type": "TUG",
     #     "orign": "USA"
@@ -472,24 +499,44 @@ if __name__ == "__main__":
     # operator.fetch_filtered_vessels(filters)
     # input()
 
-    ### Add
+    # Add
     # operator.add(entity2)
     # operator.commit()
 
-    ### Query
+    # Query
     # pprint(operator.query([{"mmsi":368261120}])) # Table should have new entity
     # pprint(operator.query([]))
     # pprint(operator.query([{}]))
     # input()
-    
-    ### Modify
-    # operator.modify(("mmsi",368261120),{'speed':0.0})
-    # operator.commit()
-    # print("Changed entry:")
-    # pprint(operator.query(("mmsi",368261120)))
-    # input()
 
-    ### Delete
+    # Modify
+    # query = operator.get_table()
+    # for q in query:
+    #     if q['current_status'] in "1".split(',') or q['current_status'] == "anchored":
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'ANCHORED'})
+    #     elif q['current_status'] in "2".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'UNMANNED'})
+    #     elif q['current_status'] in "3,4".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'LIMITED MVMT'})
+    #     elif q['current_status'] in "5".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'MOORED'})
+    #     elif q['current_status'] in "6".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'AGROUND'})
+    #     elif q['current_status'] in "7".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'FISHING'})
+    #     elif q['current_status'] in "0,8".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'UNDERWAY'})
+    #     elif q['current_status'] in "9,10".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'MOVING HAZARDS'})
+    #     elif q['current_status'] in "11,12".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'TOWED'})
+    #     elif q['current_status'] in "14".split(','):
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'EMERGENCY'})
+    #     else:
+    #         operator.modify(("current_status", q['current_status']), {'current_status': 'UNKNOWN'})
+    # operator.commit()
+
+    # Delete
     # operator.delete(entity)
     # operator.delete({'mmsi':1234})
     # operator.commit()
@@ -497,4 +544,4 @@ if __name__ == "__main__":
 
     # operator = DBOperator(table='zones')
     # pprint(operator.query([{'id':'AKC013'}]))
-    # operator.close()
+    operator.close()
