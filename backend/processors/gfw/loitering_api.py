@@ -50,10 +50,7 @@ data = {
     "endDate": date.strftime("%Y-%m-%d"),
 }
 
-vessel_name = "steve"
-mmsi = "steve"
-
-entity = {} # Empty dict for our events entity
+entity = {} # Empty dict for our events entities
 
 events_url = f"https://gateway.api.globalfishingwatch.org/v3/events?offset=0&limit=500"
 events = requests.post(events_url, headers=headers, json=data)

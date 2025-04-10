@@ -144,6 +144,10 @@ for event in events_data:
     input()
 
     try:
+        """
+        I'm using this to add constructed entities to DB, but I imagine this is where
+        the Kafka stuff will go as well
+        """
         # Adding event TODO!
         # events_operator.add(entity.copy())
         # events_operator.commit()
@@ -159,20 +163,16 @@ for event in events_data:
         input()
         failures.append(entity)
 
-"""
-I'm using this to add constructed entities to DB, but I imagine this is where
-the Kafka stuff will go as well
-"""
 print(f"{dubs} total pushes to DB.")
 print(f"{len(failures)} total vessels that weren't added to DB for some reason")
 
-# TODO: DUNNO IF THE FOLLOWING ACCURATELY SAVES DATA
-with open('gfw-encounters-failures.csv', 'w', newline='') as outFile:
-    writer = csv.DictWriter(outFile, delimiter=',',
-                            fieldnames=failures[0].keys())
-    writer.writeheader()
-    for goob in failures:
-        writer.writerow(goob)
+if len(failures) > 0:
+    with open('gfw-encounters-failures.csv', 'w', newline='') as outFile:
+        writer = csv.DictWriter(outFile, delimiter=',',
+                                fieldnames=failures[0].keys())
+        writer.writeheader()
+        for goob in failures:
+            writer.writerow(goob)
 
 
 

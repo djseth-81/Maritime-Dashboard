@@ -34,14 +34,16 @@ def query(url: str) -> dict:
 """
 q = 100
 
+# Attempt to obtain token, and exit if none is found
 GFW_TOKEN = os.environ.get("TOKEN")
-
 if GFW_TOKEN is None:
     sys.exit("No GFW API Token provided.")
 
+# Open up vessels and events tables
 vessels_operator = DBOperator(table='vessels')
 events_operator = DBOperator(table='events')
 
+# Get current time, and prep our UTC conversion
 date = datetime.now()
 utc = pytz.UTC
 
@@ -51,24 +53,29 @@ headers = {
 
 data = {
     "datasets": [
+        # We CAN query encounters, fishing, loitering, ports, and gaps in one
+        # go, but I get a timeout error when I do and it takes FOREVER
         "public-global-encounters-events:latest",
     ],
     "startDate": "2025-01-01",
     "endDate": date.strftime("%Y-%m-%d"),
 }
 
-vessel_name = "steve"
-mmsi = "steve"
-
 dubs = 0
 failures = []
 
-entity = {}  # Empty dict for our events entity
+entity = {}  # Empty dict for our events entities
 
 # TODO: Loop through until no offset remains
+# Get a batch of Encounter reports
 events_url = f"https://gateway.api.globalfishingwatch.org/v3/events?offset=0&limit={q}"
 events = requests.post(events_url, headers=headers, json=data)
 print(events.status_code)
+
+if events.status_code >= 400:  # A client/server error was encountered. Break!
+    pprint("### GFW Encounters API: Encountered HTTP Error:")
+    pprint(events.json())
+    # break
 
 # Pulling events data from response
 events_data = events.json()['entries']
@@ -80,13 +87,13 @@ events_nextOffset = events.json()['nextOffset']
 total_events = events.json()['total']
 events_size = events.json()['limit']
 
-print(f"Event keys: {events_keys}")
-print(f"Total found events: {total_events}")
-print(f"Events retrieved: {events_size}")
-print(f"Current events offeset: {events_offset}")
-print(f"next events offeset: {events_nextOffset}")
-if events_nextOffset:  # If we more data waitng for us, calculate what's left
-    print(f"Remaining events: {total_events - events_size}")
+# print(f"Event keys: {events_keys}")
+# print(f"Total found events: {total_events}")
+# print(f"Events retrieved: {events_size}")
+# print(f"Current events offeset: {events_offset}")
+# print(f"next events offeset: {events_nextOffset}")
+# if events_nextOffset:  # If we more data waitng for us, calculate what's left
+    # print(f"Remaining events: {total_events - events_size}")
 
 # Iterate through retrieved events
 for event in events_data:
@@ -95,6 +102,7 @@ for event in events_data:
     event_id = event['id']  # id
     startTime = event['start']  # effective
     endTime = event['end']  # expires
+    # Recording start/end time as DateTime object for determining active state and such
     startDate = datetime.fromisoformat(event['start'])
     endDate = datetime.fromisoformat(event['end'])
 
@@ -114,14 +122,15 @@ for event in events_data:
     risk = event[event_type]['potentialRisk']
 
     description = f"Vessel {vessel_name} ({mmsi}) reported encounter with vessel {guest_vessel_name} ({guest_vessel_mmsi}) at a distance of {medianDistance}"
-    instructions = "None"  # instructions
+    instructions = "None"
+    # If reported risk is true, set urgency and severity to high
     if risk:
-        event_urgency = 'high'  # urgency
-        event_severity = 'high'  # severity
+        event_urgency = 'high'
+        event_severity = 'high'
     else:
-        event_urgency = 'low'  # urgency
-        event_severity = 'low'  # severity
-    headline = f"Vessel encounter alert from {vessel_name}"  # headline
+        event_urgency = 'low'
+        event_severity = 'low'
+    headline = f"Vessel encounter alert from {vessel_name}"
 
     """
     Updating associated vessel
@@ -129,7 +138,8 @@ for event in events_data:
     # Getting latitutde and longitude
     lat = event['position']['lat']
     lon = event['position']['lon']
-    # TODO: current_status, speed, heading, geom
+    # TODO: Update associated vessel's current_status, speed, heading, geom
+    # TODO: Implement vessels.modify() !!!
 
     # if event is currenty active, update with start time. If it is expired,
     # update with end. Otherwise, ignore (save to events later).
@@ -145,22 +155,22 @@ for event in events_data:
     """
     Build event dictionary
     """
-    entity.update({'id': event_id})
-    entity.update({'src_id': mmsi})  # vessel ID
-    entity.update({'timestamp': date.strftime(
-        "%Y-%m-%dT%H:%M:%S")})  # Current time
-    entity.update({'effective': startTime})
-    entity.update({'end_time': endTime})
-    entity.update({'active': (
-        (utc.localize(date) >= startDate) and (utc.localize(date) < endDate)
-    )})
-    entity.update({'type': event_type.upper()})
-    entity.update({'description': description})
-    entity.update({'expires': endTime})
-    entity.update({'instructions': instructions})
-    entity.update({'urgency': event_urgency})
-    entity.update({'severity': event_severity})
-    entity.update({'headline': headline})
+    entity.update({
+        'id': event_id,
+        'src_id': mmsi,  # vessel ID
+        'timestamp': date.strftime(
+            "%Y-%m-%dT%H:%M:%S"),  # Current time
+        'effective': startTime,
+        'end_time': endTime,
+        'active': (utc.localize(date) >= startDate) and (utc.localize(date) < endDate),
+        'type': event_type.upper(),
+        'description': description,
+        'expires': endTime,
+        'instructions': instructions,
+        'urgency': event_urgency,
+        'severity': event_severity,
+        'headline': headline,
+    })
 
     pprint(entity)
     input()
@@ -188,30 +198,10 @@ for event in events_data:
 print(f"{dubs} total pushes to DB.")
 print(f"{len(failures)} total vessels that weren't added to DB for some reason")
 
-# TODO: DUNNO IF THE FOLLOWING ACCURATELY SAVES DATA
-with open('gfw-encounters-failures.csv', 'w', newline='') as outFile:
-    writer = csv.DictWriter(outFile, delimiter=',',
-                            fieldnames=failures[0].keys())
-    writer.writeheader()
-    for goob in failures:
-        writer.writerow(goob)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+if len(failures) > 0:
+    with open('gfw-encounters-failures.csv', 'w', newline='') as outFile:
+        writer = csv.DictWriter(outFile, delimiter=',',
+                                fieldnames=failures[0].keys())
+        writer.writeheader()
+        for goob in failures:
+            writer.writerow(goob)

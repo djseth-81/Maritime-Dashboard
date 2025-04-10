@@ -7,10 +7,7 @@ from json import loads, dumps
 from ...DBOperator import DBOperator
 
 """
-// TODO
-- MATCH WHAT IS IN DB
-- if mmsi/name matches
-    - check entry timestamp proximity and update as needed
+// IGNORE ME! Don't think this is necessary
 
 // Uh oh
 - Noticed that a vessel's MMSI can change

@@ -41,7 +41,6 @@ def query(url: str) -> dict:
     return response.json()
 
 GFW_TOKEN = os.environ.get("TOKEN")
-
 if GFW_TOKEN == None:
     sys.exit("No GFW API Token provided.")
 
@@ -63,16 +62,14 @@ data = {
     "endDate": date.strftime("%Y-%m-%d"),
 }
 
-vessel_name = "steve"
-mmsi = "steve"
-
-entity = {} # Empty dict for our events entity
+entity = {} # Empty dict for our events entities
 
 events_url = f"https://gateway.api.globalfishingwatch.org/v3/events?offset=0&limit=500"
 events = requests.post(events_url, headers=headers, json=data)
 print(events.status_code)
 pprint(events.json()['entries'])
 pprint(events.json().keys())
+# TODO: Use to update status of vessel. as of right now, no need to record event
 sys.exit()
 
 # Retrieving more details with latest events
@@ -139,26 +136,4 @@ elif ((utc.localize(date) >= startDate) and (utc.localize(date) <= endDate)):  #
     timestamp = event['start']
     dist_from_port = event['distances']['startDistanceFromPortKm']
     dist_from_shore = event['distances']['startDistanceFromShoreKm']
-
-"""
-Build event dictionary
-"""
-entity.update({'id': event_id})
-entity.update({'src_id':event['vessel']['ssvid']}) # vessel ID
-entity.update({'timestamp':date.strftime("%Y-%m-%dT%H:%M:%S")}) # Current time
-entity.update({'effective': startTime})
-entity.update({'end_time': endTime})
-entity.update({'active': (
-    (utc.localize(date) >= startDate) and (utc.localize(date) < endDate)
-)})
-entity.update({'type': event_type.upper()})
-entity.update({'description':description})
-entity.update({'expires': endTime})
-entity.update({'instructions': instructions})
-entity.update({'urgency': event_urgency})
-entity.update({'severity': event_severity})
-entity.update({'headline': headline})
-
-pprint(entity)
-input()
 

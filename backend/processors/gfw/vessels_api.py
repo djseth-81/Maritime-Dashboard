@@ -9,13 +9,9 @@ from datetime import datetime, timedelta
 from ...DBOperator import DBOperator
 
 """
-// TODO
-- Parse for vessels and updates!
-    - MATCH WHAT IS IN DB
-    - if mmsi/name matches
-        - check entry timestamp proximity and update as needed
-
-- start pulling entries within the past year
+IGNORE ME! As of right now, now new vessels are shared via this API. Until I
+can get a consistent stream of new Vessels to report, this is ONLY to add these
+vessels from scratch!
 
 // Uh oh
 - Noticed that a vessel's MMSI can change

@@ -293,9 +293,9 @@ class DBOperator():
         result = {}
 
         for key, value in {q[0]: q[1] for q in self.__cursor.fetchall()}.items():
-            if value in "bigint,integer".split(','):
+            if value in "bigint,smallint,integer".split(','):
                 result.update({key: type(1)})
-            elif value in "double precision".split(','):
+            elif value in "double precision,numeric,decimal,real".split(','):
                 result.update({key: type(1.1)})
             # Not sure if I wanna use type(dict) for geom attrs or keep it as string for JSON
             elif value in "character varying,text,name,USER-DEFINED".split(','):

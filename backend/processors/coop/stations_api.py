@@ -30,6 +30,7 @@ for station in data['stations']:
     for product in "air_temperature wind water_temperature air_pressure humidity conductivity visibility salinity water_level hourly_height high_low daily_mean monthly_mean one_minute_water_level predictions air_gap currents currents_predictions ofs_water_level".split():
         url = f"https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station={station['id']}&product={product}&datum=STND&time_zone=gmt&units=english&format=json"
         res = requests.get(url)
+        # if we get valid data from product query (and it's not an error message), record it as valid station datum
         if (res.status_code == 200) and ('error' not in res.json().keys()):
             products.append(product)
 
@@ -48,6 +49,7 @@ for station in data['stations']:
     # print(f"Forecast: {station['forecast']}")
     # print()
 
+    # Build station entity
     entity = {
         "id": station['id'],
         "name": station['name'],
@@ -84,78 +86,3 @@ if len(failures) > 0:
             writer.writerow(goob)
 
 sources.close()
-sys.exit()
-
-"""
-^^^ ABOVE IS WHAT IS IMPORTANT
-vvv BELOW IS WHAT I WANNA RUN TO PULL DATA
-"""
-
-"""
-API Key:
---------------------------------
-0. air temp
-1. wind
-2. water temp
-3. air pressure
-4. humidity
-5. conductivity
-6. visibility
-7. salinity
-8. water lvl
-9. hr_height
-10. hi/low
-11. daily mean
-12. montly mean
-13. one min lvl
-14. prediction water lvl
-15. air gap (bridge and water lvl)
-16. currents
-17. currents prediciton
-18. ofs water lvl
-19. datums/disclaimers
-20. notices
-"""
-
-def query(url: str) -> dict:
-    response = requests.get(url)
-    print(f"STATUS: {response.status_code}")
-    pprint(response.json())
-    return response.json()
-
-# Meteorology
-a_temp = query(apis[0])
-
-wind = query(apis[1])
-
-air_pressure = query(apis[3])
-
-humidity = query(apis[4])
-
-visibility = query(apis[6])
-
-# Oceanography
-w_temp = query(apis[2])
-
-water_lvl = query(apis[8])
-
-# daily_lvl_mean = query(apis[11])
-
-monthly_lvl_mean = query(apis[12])
-
-air_gap = query(apis[15])
-
-currents = query(apis[16])
-
-currents_predict = query(apis[16])
-
-# Datums
-datums = query(apis[19])
-
-# Notice reports
-notices = query(apis[20])
-
-"""
-NOTES
-- Extrapolate to entire NOAA MET zone station is located in?
-"""
