@@ -21,7 +21,7 @@ for wfo in "OAX, ALY, BGM, BOX, BTV, BUF, CAE, CAR, CHS, CLE, CTP, GSP, GYX, ILM
     print(f"Station Name: {station_name}")
     print(f"Region: USA-{address['addressRegion']}")
     print("Timezone: ???") # TODO: Dunno how to retrieve
-    print("Type: NOAA-MET")
+    print("Type: NOAA-NWS")
     print("Geometry: ???") # TODO: How to retrieve?
     print(f"Datums: {['Events', 'Meteorology']}")
     # Do I save ???
