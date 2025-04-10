@@ -19,9 +19,6 @@ class DBOperator():
     DBOperator will implicitly connect to 'capstone' database unless specified
     otherwise
     """
-    # FIXME: All queries assume tables have geometry, and some will not have them!
-    #   - expected fix: take table's attr.keys() and replace the 'SELECT *' with SELECT {attrs}
-    #       - If geom is in attr.keys(), append with ST_GeomAsJson()
     # FIXME: add() accepts WKT, but doesn't like GeoJSON
     #   - Just threw in a couple lines to convert the geom as needed.
     #   - Want a better fix than that^ !!!
@@ -49,10 +46,10 @@ class DBOperator():
     def __init__(self, table: str, host='localhost', port='5432', user='postgres',
                  passwd='1234', schema='public', db='capstone') -> None:
     '''
-    '''
+    ''' For Sean
     def __init__(self, table: str, host='localhost', port='5432',
                  user='postgres', passwd='gres', schema='public',
-                 db='ships') -> None: # For Sean
+                 db='ships') -> None:
     '''
 
     def __init__(self, table: str, host='', port='', user='',
@@ -132,9 +129,9 @@ class DBOperator():
         # If geom was popped, finish off cmd string formatting append 'ST_GeomFromText()'
         #   Otherwise, just add a ')'
         if geom != None:
-            # cmd += 'ST_GeographyFromText(%s))'
+            cmd += 'ST_GeographyFromText(%s))'
             # NOTE: USING to convert GeoJSON into PostGIS Geography
-            cmd += 'ST_GeogFromWKB(ST_GeomFromGeoJSON(%s)))'
+            # cmd += 'ST_GeogFromWKB(ST_GeomFromGeoJSON(%s)))'
         else:
             cmd = cmd[:-1] + ')'
 
@@ -508,12 +505,17 @@ class DBOperator():
 
 if __name__ == "__main__":
 
-    operator = DBOperator(table='vessels')  # For me :)
+    # operator = DBOperator(table='vessels')  # For me :)
+    # operator = DBOperator(table='zones')
+    operator = DBOperator(table='sources')
+    # operator = DBOperator(table='meteorology')
+    # operator = DBOperator(table='oceanography')
+    # operator = DBOperator(table='events')
+
     # operator = DBOperator(table='vessels', host='localhost', port='5432',
     #                       user='postgres', passwd='gres', schema='public',
     #                       db='ships')  # For Sean, db='capstone' otherwise
 
-    # operator = DBOperator(table='zones')
     # pprint(operator.query([{'id':'AKC013'}]))
     # operator.close()
 
@@ -544,9 +546,29 @@ if __name__ == "__main__":
     """
     Scratch work
     """
-    operator.modify({'callsign':''},{'callsign':'NONE'})
-    operator.commit()
 
+    pprint(operator.get_count())
 
 
     operator.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

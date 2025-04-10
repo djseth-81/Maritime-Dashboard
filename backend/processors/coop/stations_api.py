@@ -4,7 +4,7 @@ import sys
 import requests
 from pprint import pprint
 from json import loads, dumps
-from DBOperator import DBOperator
+from ...DBOperator import DBOperator
 
 sources = DBOperator(db="capstone",table="sources")
 coop_stations_url = "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json"
@@ -26,14 +26,12 @@ units = data['units']
 station = data['stations']
 for station in data['stations']:
     # build apis array because I'm way too lazy
-    apis = []
+    products = []
     for product in "air_temperature wind water_temperature air_pressure humidity conductivity visibility salinity water_level hourly_height high_low daily_mean monthly_mean one_minute_water_level predictions air_gap currents currents_predictions ofs_water_level".split():
         url = f"https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station={station['id']}&product={product}&datum=STND&time_zone=gmt&units=english&format=json"
-        # print(product)
-        apis.append(url)
-
-    apis.append(station['datums']['self']) # append with datums
-    apis.append(station['notices']['self']) # start array with notices
+        res = requests.get(url)
+        if (res.status_code == 200) and ('error' not in res.json().keys()):
+            products.append(product)
 
     # Parsing CO-OP station data of last entry
     # print(f"Name: {station['name']}")
@@ -54,23 +52,21 @@ for station in data['stations']:
         "id": station['id'],
         "name": station['name'],
         "region": "USA",
-        "type": f"NOAA-{station['affiliations']}", # Cannot be "API"
-        "datums": apis, # Check if URI returns 200 or not
+        "type": f"NOAA-COOP", # Cannot be "API"
+        "datums": products, # Check if URI returns 200 or not
         # Following CANNOT BE NULL
         "timezone": f"{station['timezone']} (GMT {station['timezonecorr']})",
         "geom": f"Point({station['lng']} {station['lat']})",
     }
 
-    # pprint(entity)
-
     try:
         print(f"Adding entity to db...")
-        sources.add(entity)
+        sources.add(entity.copy())
         sources.commit()
         dubs += 1
     except Exception as e:
         print(f"An error occured adding vessel to DB...\n{e}")
-        print("This vessel caused the failure:")
+        print("This entity caused the failure:")
         pprint(entity)
         input()
 
@@ -86,9 +82,9 @@ if len(failures) > 0:
         writer.writeheader()
         for goob in failures:
             writer.writerow(goob)
-        input()
 
 sources.close()
+sys.exit()
 
 """
 ^^^ ABOVE IS WHAT IS IMPORTANT
