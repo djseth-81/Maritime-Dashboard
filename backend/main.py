@@ -25,9 +25,9 @@ app.add_middleware(
 @app.get("/")
 async def welcome():
     '''
-    Example First Fast API Example
+    Root handler
     '''
-    return {"Message": "Welcome to FastAPI!",
+    return {"Message": "Hello :)",
             "Retrieved": datetime.now(),
            }
 
@@ -36,9 +36,77 @@ async def weather():
     '''
     Weather query
     '''
-    return {"Message": "Weather!",
-            "Retrieved": datetime.now(),
-           }
+    db = connect('meteorology')
+    try:
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            # Converting types to json throws an error now, so just providing
+            # attributes themselves...
+            "attributes": [i for i in db.attrs.keys()],
+            # "filters": db.fetch_filter_options(),
+            "payload": []
+    }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching metadata for weather: {str(e)}")
+
+    try:
+        payload['payload'] = db.get_table() # Should retrieve nothing rn
+        payload['size'] = len(payload['payload'])
+        return payload
+    except Exception as e:
+        # raise HTTPException(status_code=501, detail=f"Coming soon")
+        raise HTTPException(status_code=500, detail=f"Error fetching Weather data: {str(e)}")
+
+@app.get("/ocean/")
+async def ocean_data():
+    '''
+    Oceanography query
+    '''
+    db = connect('oceanography')
+    try:
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attributes": [i for i in db.attrs.keys()],
+            # "filters": db.fetch_filter_options(),
+            "payload": []
+    }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching metadata for ocean data: {str(e)}")
+
+    try:
+        payload['payload'] = db.get_table() # Should retrieve nothing rn
+        payload['size'] = len(payload['payload'])
+        return payload
+    except Exception as e:
+        # raise HTTPException(status_code=501, detail=f"Coming soon")
+        raise HTTPException(status_code=500, detail=f"Error fetching ocean data: {str(e)}")
+
+@app.get("/events/")
+async def pull_events():
+    '''
+    Events/Alerts query
+    '''
+    db = connect('events')
+    try:
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attributes": [i for i in db.attrs.keys()],
+            # "filters": db.fetch_filter_options(),
+            "payload": []
+    }
+    except Exception as e:
+        raise HTTPException(status_code=501, detail=f"Coming soon")
+        # raise HTTPException(status_code=500, detail=f"Error fetching metadata for events: {str(e)}")
+
+    try:
+        payload['payload'] = db.get_table() # Should retrieve nothing rn
+        payload['size'] = len(payload['payload'])
+        return payload
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching events: {str(e)}")
 
 @app.get("/users/")
 async def users():
@@ -51,16 +119,47 @@ async def users():
 
 @app.post("/addUser")
 async def add_user(formData: dict):
+    '''
+    User registration handler
+    '''
+    print("### Websocket: Form data:")
     print(formData)
     return formData
 
 @app.post("/login")
 async def login(formData: dict):
+    '''
+    User login handler
+    '''
     print(formData)
     # email = formData["email"]
     # decrypted_password = decrypt_password(formData["password"], secret_key="my-secret-key")
     return (formData)
 
+@app.get("/stations/", response_model=dict)
+async def get_stations():
+    '''
+    Stations query
+    '''
+    db = connect('sources')
+    try:
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attributes": [i for i in db.attrs.keys()],
+            # "filters": db.fetch_filter_options(),
+            "payload": []
+    }
+    except Exception as e:
+        print(f"### Websocket: Error fetching metadata for stations:\n{e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching metadata for stations: {str(e)}")
+
+    try:
+        payload['payload'] = db.get_table() # Currently only NOAA-COOP stations in table
+        payload['size'] = len(payload['payload'])
+        return payload
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching stations: {str(e)}")
 
 @app.get("/vessels/", response_model=dict)
 async def get_filtered_vessels(
@@ -69,14 +168,14 @@ async def get_filtered_vessels(
     status: str = Query(None, description="Filter by vessel status")
 ):
     """
-    Fetch vessel data filter options.
+    Fetch filtered vessels.
     """
     db = connect('vessels')
     try:
         payload = {
             "retrieved": datetime.now(),
             "privileges": db.permissions,
-            "attribuets": db.attrs,
+            "attributes": [i for i in db.attrs.keys()],
             "filters": db.fetch_filter_options(),
             "payload": []
         }
@@ -109,7 +208,8 @@ async def get_filtered_vessels(
         "current_status": status if status else None
     }.items() if value}
 
-    print(f"### Websocket: Filters:\n{filters}")
+    # print(f"### Websocket: Filters:\n{filters}")
+
     if len(filters) > 0:
         queries = []
         filter_parser(filters,queries)
@@ -119,8 +219,8 @@ async def get_filtered_vessels(
         # when more than 1 attribute has multiple values
         queries = [dict(t) for t in {tuple(d.items()) for d in queries}]
 
-        print(f"### Websocket: query array:")
-        pprint(queries)
+        # print(f"### Websocket: query array:")
+        # pprint(queries)
 
         ### IF DB connection successful, attempt assembling payload
         try:
@@ -138,19 +238,24 @@ async def get_filtered_vessels(
     db.close()
 
 # FIXME: Weird bug where selecting a vessel and then selecting apply filters assumes zoning
-@app.post("/zoning/")
+@app.post("/zoning/", response_model=dict)
 async def zone_vessels(data: dict):
+    '''
+    Zoning query. Collects Meteorological and oceanographic data, events,
+    and vessels that are sourced from inside zone
+    '''
     vessels = connect('vessels')
     met = connect('meteorology')
     oce = connect('oceanography')
     events = connect('events')
+    sources = connect('sources')
 
     try:
         payload = {
             "retrieved": datetime.now(),
             "privileges": vessels.permissions,
-            "attribuets": vessels.attrs,
-            "payload": []
+            "attributes": [i for i in vessels.attrs.keys()],
+            "payload": {}
         }
     except Exception as e:
         print(f"### Websocket: Error fetching metadata for zoning:\n{e}")
@@ -164,17 +269,33 @@ async def zone_vessels(data: dict):
     pprint(geom)
 
     try:
-        # NOTE: I HATE this implemenetation.
-        # Would like to pop FROM query instead of append to results
-        # but it does some weird shit rn
-        query = vessels.within(geom)
+        ### Getting Vessels
+        payload['payload'].update({'vessels':[]})
 
-        for i in query:
+        # NOTE: I HATE this implemenetation.
+        for i in vessels.within(geom):
             if (i['type'] in types) or (i['flag'] in flags) or (i['current_status'] in status):
-                payload['payload'].append(i)
+                payload['payload']['vessels'].append(i)
 
         payload['size'] = len(payload['payload'])
+
+        # Pulling stations
+        stations = [i['id'] for i in sources.within(geom)]
+        payload['payload'].update({'stations': stations})
+
+        ### Getting Meteorology
+        # print("### Websocket: querying meteorology data matching station id:")
+        # pprint(met.query([{'src_id': i} for i in stations]))
+        payload['payload'].update({'weather': met.query([{'src_id': i} for i in stations])})
+
+        ### Getting Oceanography
+        payload['payload'].update({'oceanography': oce.query([{'src_id': i} for i in stations])})
+
+        ### Getting events
+        payload['payload'].update({'alerts': events.query([{'src_id': i} for i in stations])})
+
         return payload
+
     except Exception as e:
         print(f"### Websocket: Error fetching zoning data:\n{e}")
         raise HTTPException(status_code=500, detail=f"Error fetching zone data: {str(e)}")
@@ -212,32 +333,34 @@ async def add_vessel(data: dict):
         db.close()
 
 @app.get("/metadata/")
+# WARNING: it brokie. Not important enough for me to figure out why imo
 async def query_metadata():
     '''
     <query_description>
     '''
     ### Attempt DB connection
-    operator = connect('spatial_ref_sys')
+    db = connect('spatial_ref_sys')
 
     ### IF DB connection successful, attempt assembling payload
     print("### Server: Assembling Payload...")
     try:
-        payload = {"Message": "Metadata for Geometry",
-                   "Retrieved": datetime.now(),
-                   "Privileges": operator.get_privileges(),
-                   "Total entities": operator.get_count(),
-                   "Table attribuets": operator.get_attributes(),
-                   "payload": operator.query(('srid',4326)) # Spatial reference system, Global scope (https://spatialreference.org/ref/epsg/4326/)
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attributes": [i for i in db.attrs.keys()],
+            # "filters": db.fetch_filter_options(),
+            "payload": db.query([{'srid',4326}]) # Spatial reference system, Global scope (https://spatialreference.org/ref/epsg/4326/)
                    }
         print("### Server: Payload assembled.")
-    except:
+    except Exception as e:
+        print(f"### Server: Error retrieving metadata:\n{e}")
         print("### Fast Server: Error assembling payload.")
         payload = JSONResponse(
-            status_code=400,
+            status_code=500,
             content={"Error": "Error assembling payload."}
         )
     finally:
-        operator.close() # Closes table instance
+        db.close() # Closes table instance
         return payload
 
 

@@ -1,7 +1,15 @@
+import csv
+# from duplicate_query import duplicator
 from pprint import pprint
 from psycopg2 import *
 from psycopg2.errors import *
 from json import loads, dumps
+
+'''
+// TODO:
+- Add ability to exclude attr:value for query/delete
+- Querying/Deleting substrings????
+'''
 
 class DBOperator():
     """
@@ -36,11 +44,18 @@ class DBOperator():
             - ST_ExteriorRing()
             - ST_Perimeter()
     """
-#For Yolvin :) 
-#    def __init__(self, table: str, host='localhost', port='5432', user='postgres', passwd='1234', schema='public', db='capstone') -> None:
+    ''' For Yolvin :) 
+    def __init__(self, table: str, host='localhost', port='5432', user='postgres',
+                 passwd='1234', schema='public', db='capstone') -> None:
+    '''
+    '''
+    def __init__(self, table: str, host='localhost', port='5432',
+                 user='postgres', passwd='gres', schema='public',
+                 db='ships') -> None: # For Sean
+    '''
 
     def __init__(self, table: str, host='localhost', port='5432', user='postgres',
-                    passwd='1234', schema='public', db='capstone') -> None:
+                    passwd='gres', schema='public', db='ships') -> None:
 
         self.table = table
         self.__host = host
@@ -57,7 +72,12 @@ class DBOperator():
                 port=port
             )
             self.__cursor = self.__db.cursor()
-            if table not in self.__get_tables():
+
+            ### vDEBUG
+            self.tables = self.__get_tables()
+            if table not in self.tables:
+            # if table not in self.__get_tables():
+            ### ^DEBUG
                 raise RuntimeError(f"Table does not exist")
             print("### DBOperator: Connected to DB")
             self.permissions = self.__get_privileges()
@@ -203,7 +223,7 @@ class DBOperator():
         self.__cursor.execute(cmd)
         if call == 'w':
             self.__db.commit()
-            return [("Messge", "Committed.")]
+            return [("Message", "Committed.")]
         else:
             return self.__cursor.fetchall()
 
@@ -232,11 +252,29 @@ class DBOperator():
     ### Accessors ###
     def __get_attributes(self) -> dict:
         """
-        Fetches table attributes
+        Fetches table attributes and converts them into vaid Python types
         """
         self.__cursor.execute(
             f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{self.table}'")
-        return {q[0]: q[1] for q in self.__cursor.fetchall()}
+
+        result = {}
+
+        for key,value in {q[0]: q[1] for q in self.__cursor.fetchall()}.items():
+            if value in "bigint,integer".split(','):
+                result.update({key: type(1)})
+            elif value in "double precision".split(','):
+                result.update({key: type(1.1)})
+            # Not sure if I wanna use type(dict) for geom attrs or keep it as string for JSON
+            elif value in "character varying,text,name,USER-DEFINED".split(','):
+                result.update({key: type("goober")})
+            elif value in "boolean".split(','):
+                result.update({key: type(True)})
+            elif value in "ARRAY".split(','):
+                result.update({key: type([1,2,3])})
+            else:
+                result.update({key: "unk"})
+
+        return result
 
     # Fetching tables in DB --> Dev option!
     def __get_tables(self) -> list:
@@ -316,7 +354,7 @@ class DBOperator():
                 return []
 
             cmd.append(f"""
-                SELECT *, ST_AsGeoJson(geom)
+                SELECT *{',ST_AsGeoJson(geom)' if 'geom' in self.attrs.keys() else ''}
                 FROM {self.table}
                 WHERE {' AND '.join(conditions)}
             """)
@@ -343,8 +381,11 @@ class DBOperator():
         """
         Returns all entries in a table as a list of dictionary datatypes
         """
-        self.__cursor.execute(
-            f"select row_to_json(data) FROM (SELECT *,ST_AsGeoJson(geom) FROM {self.table}) data")
+        self.__cursor.execute( f"""
+                SELECT row_to_json(data)
+                FROM (SELECT *{',ST_AsGeoJson(geom)' if 'geom' in self.attrs.keys() else ''}
+                FROM {self.table}) data
+                """)
 
         results = [i[0] for i in self.__cursor.fetchall()]
 
@@ -363,7 +404,9 @@ class DBOperator():
         return self.__cursor.fetchone()[0]
 
     """
-    ### geom-ship relationships!
+    ### geom-based relationships!
+    // TODO
+        - If table doesn't have geom attr, throw error
     """
     # These are ideally supposed to take advantage of the PostGIS stuff
 
@@ -372,6 +415,8 @@ class DBOperator():
         Gets vessels witihin a specified range of a geometry
         ST_DWithin(geom, var, range)
         """
+        if "geom" not in self.attrs.keys():
+            raise AttributeError("Cannot call GIS function on table with no 'geom' attrubute")
 
         query = f"""
                 SELECT mmsi,vessel_name,callsign,heading,speed,current_status,src,type,flag,lat,lon,dist_from_shore,dist_from_port,ST_AsGeoJson(geom)
@@ -379,7 +424,7 @@ class DBOperator():
                 WHERE ST_DWithin(geom, ST_GeogFromText('{var}'),{range})
             """
 
-        print(query)
+        # print(query)
 
         self.__cursor.execute(f"SELECT row_to_json(data) FROM ({query}) data")
 
@@ -396,13 +441,16 @@ class DBOperator():
         Gets vessels within a specified geometry
         ST_Contains(var, geom)
         """
-        print(dumps(var))
+        if "geom" not in self.attrs.keys():
+            raise AttributeError("Cannot call GIS function on table with no 'geom' attrubute")
+        # print(dumps(var))
 
         query = f"""
-                SELECT mmsi,vessel_name,callsign,heading,speed,current_status,src,type,flag,lat,lon,dist_from_shore,dist_from_port,ST_AsGeoJson(geom)
+                SELECT *,ST_AsGeoJson(geom)
                 FROM {self.table}
                 WHERE ST_Within(geom::geometry, ST_GeomFromGeoJSON(%s))
             """
+        # print(query)
 
         self.__cursor.execute(f"SELECT row_to_json(data) FROM ({query}) AS data",(dumps(var),))
 
@@ -418,11 +466,13 @@ class DBOperator():
         """
         Gets vessels that border/touches a specified geometry
         """
+        if "geom" not in self.attrs.keys():
+            raise AttributeError("Cannot call GIS function on table with no 'geom' attrubute")
+
         pass
 
-
 if __name__ == "__main__":
-    entity = {
+    entity2 = {
         'callsign': 'WDN2333',
         'cargo_weight': 65.0,
         'current_status': '0',
@@ -444,34 +494,38 @@ if __name__ == "__main__":
         'width': 23.0
     }
 
-    entity2 = {
-        'mmsi': 367702270,
-        'vessel_name': 'MS. JENIFER TRETTER',
-        'callsign': 'WDI4813',
-        'timestamp': '2024-09-30T00:00:00',
-        'heading': 334.5,
-        'speed': 6.6,
-        'current_status': '12',
-        'src': 'MarineCadastre-AIS',
-        'type': 'TUG',
-        'flag': 'USA',
-        'length': 113,
-        'width': 34,
-        'draft': 3.1,
-        'cargo_weight': 57,
-        'geom': 'Point(-97.21 26.1)',
-        'lat': 26.1,
-        'lon': -97.21,
-        'dist_from_shore': 0.0,
-        'dist_from_port': 0.0,
-    }
 
-    # operator = DBOperator(table='vessels')  # For me :)
-    operator = DBOperator(table='vessels', host='localhost', port='5432',
-                          user='postgres', passwd='gres', schema='public',
-                          db='ships')  # For Sean, db='capstone' otherwise
+    operator = DBOperator(table='vessels')  # For me :)
+    # operator = DBOperator(table='vessels', host='localhost', port='5432',
+    #                       user='postgres', passwd='gres', schema='public',
+    #                       db='ships')  # For Sean, db='capstone' otherwise
+
     # print(operator.permissions)
-    # print(operator.attrs)
+    # pprint(operator.attrs)
+    # print("Table attributes:")
+    # pprint(operator.attrs.keys())
+    # print("Table attribute datatypes:")
+    # pprint(operator.attrs.values())
+    # input()
+
+    print(len(operator.get_table()))
+
+    ### Searching all tables for datatypes used
+    # def attrs(table):
+    #     aahh = DBOperator(table=table)  # For me :)
+    #     for attr,cast in aahh.attrs.items():
+    #         print(f'{attr} ({cast})')
+    #     aahh.close()
+    #     return aahh.attrs
+
+    # types = []
+    # for table in [i[0] for i in operator.custom_cmd("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",'r')]:
+    #     print(table)
+    #     for i in attrs(table).items():
+    #         if i[1] not in types:
+    #             types.append(i[1])
+    #     print()
+    # pprint(types)
     # input()
 
     # pprint(operator.proximity('Point(-91.02 30.13)', 1000))
@@ -502,40 +556,54 @@ if __name__ == "__main__":
     # input()
 
     # Add
-    # operator.add(entity2)
+    entity = {
+        'callsign': 'WDE6314',
+        'cargo_weight': 52.0,
+        'current_status': 'UNDERWAY',
+        'dist_from_port': 0.0,
+        'dist_from_shore': 0.0,
+        'draft': 3.1,
+        'flag': 'USA',
+        'heading': 103.5,
+        'lat': 45.26,
+        'length': 21.0,
+        'lon': -85.18,
+        'mmsi': 367378670,
+        'speed': 0.0,
+        'src': 'MarineCadastre-AIS',
+        'timestamp': '2024-09-30T00:00:00',
+        'type': 'FISHING',
+        'vessel_name': 'WENDY ANNE',
+        'width': 5.0
+    }
+
+
+    # operator.add(entity)
     # operator.commit()
 
     # Query
-    # pprint(operator.query([{"mmsi":368261120}])) # Table should have new entity
     # pprint(operator.query([]))
     # pprint(operator.query([{}]))
     # input()
 
-    # Modify
-    # query = operator.get_table()
-    # for q in query:
-    #     if q['current_status'] in "1".split(',') or q['current_status'] == "anchored":
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'ANCHORED'})
-    #     elif q['current_status'] in "2".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'UNMANNED'})
-    #     elif q['current_status'] in "3,4".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'LIMITED MVMT'})
-    #     elif q['current_status'] in "5".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'MOORED'})
-    #     elif q['current_status'] in "6".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'AGROUND'})
-    #     elif q['current_status'] in "7".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'FISHING'})
-    #     elif q['current_status'] in "0,8".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'UNDERWAY'})
-    #     elif q['current_status'] in "9,10".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'MOVING HAZARDS'})
-    #     elif q['current_status'] in "11,12".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'TOWED'})
-    #     elif q['current_status'] in "14".split(','):
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'EMERGENCY'})
+    """
+    The following has an interesting duplicate somewhere
+    """
+    # results = []
+    # for i in operator.query(duplicator()):
+    #     results.append(i['vessel_name'])
+
+    # for i in duplicator():
+    #     if i['vessel_name'] not in results:
+    #         print(f"{i['vessel_name']} not found")
     #     else:
-    #         operator.modify(("current_status", q['current_status']), {'current_status': 'UNKNOWN'})
+    #         print(f"{i['vessel_name']} in DB")
+
+    # print(f"length of query{len(duplicator())}")
+    # print(f"length of results{len(results)}")
+
+    # Modify
+    # operator.modify()
     # operator.commit()
 
     # Delete
@@ -546,4 +614,27 @@ if __name__ == "__main__":
 
     # operator = DBOperator(table='zones')
     # pprint(operator.query([{'id':'AKC013'}]))
-    operator.close()
+    # operator.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
