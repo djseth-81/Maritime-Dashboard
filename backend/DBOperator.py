@@ -1,5 +1,5 @@
 import csv
-from duplicate_query import duplicator
+# from duplicate_query import duplicator
 from pprint import pprint
 from psycopg2 import *
 from psycopg2.errors import *

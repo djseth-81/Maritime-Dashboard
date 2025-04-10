@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import useFetchFilters from './Filters';
+import BoatIcon from "../../assets/icons/boatIcon";
 
 /**
  * FiltersUI component to display and manage filter options for vessels.
@@ -29,7 +30,22 @@ const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
         "OTHER",
     ]
 
+    const statusTypes = [
+        "UNDERWAY",
+        "ANCHORED",
+        "MOORED",
+        "IN TOW",
+        "FISHING",
+        "UNMANNED",
+        "LIMITED MOVEMENT",
+        "HAZARDOUS CARGO",
+        "AGROUND",
+        "EMERGENCY",
+        "UNKNOWN",
+    ]
+
     const [orderedVesselTypes, setOrderedVesselTypes] = useState(vesselTypes);
+    const [orderedStatusTypes, setOrderedStatusTypes] = useState(statusTypes);
 
     useEffect(() => {
         if (filterOptions?.types) {
@@ -39,6 +55,16 @@ const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
             setSelectedFilters((prev) => ({
                 ...prev,
                 types: filterOptions.types
+            }));
+        }
+
+        if (filterOptions?.current_status) {
+            const orderedStatuses = statusTypes.filter(status => filterOptions.current_status.includes(status));
+            const extraStatuses = filterOptions.current_status.filter(status => !statusTypes.includes(status)); // catch any extra statuses
+            setOrderedStatusTypes([...orderedStatuses, ...extraStatuses]);
+            setSelectedFilters((prev) => ({
+                ...prev,
+                statuses: filterOptions.current_status
             }));
         }
     }, [filterOptions]);
@@ -103,7 +129,8 @@ const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
             <div className='vessel-subwindow'>
                 <label>Vessel Type:</label>
                 {orderedVesselTypes.map((type) => (
-                    <label key={type}>
+                    <label key={type} className='vessel-type-label'>
+                        <BoatIcon type={type} size={20} heading={90}/>
                         <input
                             type="checkbox"
                             value={type}
@@ -127,7 +154,7 @@ const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
 
             <div className='status-subwindow'>
                 <label>Status:</label>
-                {filterOptions?.current_status?.map((status) => (
+                {orderedStatusTypes.map((status) => (
                     <label key={status}>
                         <input
                             type="checkbox"
