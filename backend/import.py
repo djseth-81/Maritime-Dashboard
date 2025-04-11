@@ -10,9 +10,9 @@ from DBOperator import DBOperator
 # WARNING: Currently have 1206 entities in Vessels, and it's making the app LAG TF OUT!
 """
 // TODO
+- Run Me!
 
 Algoritm:
-- Run Me!
 - When I error:
     - If I error out on row 2, see how many rows already exist in DB, up until a row doesn't
     - If I don't error out on row 2, delete all rows up until row that errors out
