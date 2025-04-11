@@ -1,5 +1,5 @@
 ## main.py
-Handles GET requests made to localhost:8000. Uses DBOperator to retrive basic information from interfacing with the PostGIS example database "NYC Census Data".
+Performs Websocket operations by handling GET and POST requests made by the client. Uses DBOperator to retrive basic information from interfacing with the PostGIS database.
 
 ## DBOperator
 DBOperator is a basic Object meant to strictly operate on PostGIS tables. It uses the PyGreSQL `psycopb2` library to execute PostgreSQL calls. It only performs very basic SQL queries right now, and one entity at a time.

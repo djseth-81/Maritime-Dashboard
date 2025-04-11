@@ -62,7 +62,7 @@ function App() {
     );
 
   useEffect(() => {
-    fetchVessels();
+    // fetchVessels();
     
     selectedGeometry ? zoning(polygonData, setVessels) : console.log("NO ZONE SELECTED"); // Dunno whether or not this actually does anything...
 

@@ -128,7 +128,7 @@ for station in stations:
         })
         pprint(notice)
         notices.append(notice)
-        
+    input()
     sleep(0.1) # to avoid 504 Gateway Timeout
 
 print(f'{len(weather_reports)} weather reports to push to DB')
