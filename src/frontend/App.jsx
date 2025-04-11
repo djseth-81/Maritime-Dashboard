@@ -62,7 +62,15 @@ function App() {
     );
 
   useEffect(() => {
-    fetchVessels();
+    const defaultFilters = {}; // or add initial filter values here
+    fetchVessels(vesselsAPI, {}, setVessels);
+
+
+    if (selectedGeometry) {
+      zoning(polygonData, defaultFilters, setVessels);
+    } else {
+      console.log("NO ZONE SELECTED");
+    }
     
     selectedGeometry ? zoning(polygonData, setVessels) : console.log("NO ZONE SELECTED"); // Dunno whether or not this actually does anything...
 
@@ -116,7 +124,7 @@ function App() {
     
 
 
-  }, [viewerRef.current]);
+  }, [viewerReady]);
 
   // Debug
   // console.log("Show Context Menu:", showContextMenu);

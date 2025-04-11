@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from backend.utils import connect, filter_parser
 from fastapi import WebSocket, WebSocketDisconnect
-from backend.kafka_service.kafka_ws_bridge import connected_clients, kafka_listener, start_kafka_consumer
+from backend.kafka_service.kafka_ws_bridge import connected_clients, kafka_listener
 from backend.kafka_service.producer import send_message
 
 
@@ -391,5 +391,4 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.on_event("startup")
 async def startup_event():
-    start_kafka_consumer()  # run in thread
-    asyncio.create_task(kafka_listener()) 
+    asyncio.create_task(kafka_listener())
