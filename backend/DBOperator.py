@@ -1,5 +1,4 @@
 import csv
-# from duplicate_query import duplicator
 from pprint import pprint
 from psycopg2 import *
 from psycopg2.errors import *
@@ -11,6 +10,7 @@ from json import loads, dumps
 - Querying/Deleting substrings????
 '''
 
+
 class DBOperator():
     """
     A basic Class that will directly interface with a PostGIS database on
@@ -19,9 +19,6 @@ class DBOperator():
     DBOperator will implicitly connect to 'capstone' database unless specified
     otherwise
     """
-    # FIXME: All queries assume tables have geometry, and some will not have them!
-    #   - expected fix: take table's attr.keys() and replace the 'SELECT *' with SELECT {attrs}
-    #       - If geom is in attr.keys(), append with ST_GeomAsJson()
     # FIXME: add() accepts WKT, but doesn't like GeoJSON
     #   - Just threw in a couple lines to convert the geom as needed.
     #   - Want a better fix than that^ !!!
@@ -44,18 +41,16 @@ class DBOperator():
             - ST_ExteriorRing()
             - ST_Perimeter()
     """
+
     ''' For Yolvin :) 
     def __init__(self, table: str, host='localhost', port='5432', user='postgres',
                  passwd='1234', schema='public', db='capstone') -> None:
     '''
-    '''
-    def __init__(self, table: str, host='localhost', port='5432',
-                 user='postgres', passwd='gres', schema='public',
-                 db='ships') -> None: # For Sean
-    '''
-
     def __init__(self, table: str, host='localhost', port='5432', user='postgres',
                     passwd='1234', schema='public', db='capstone') -> None:
+
+    # def __init__(self, table: str, host='', port='', user='',
+    #              passwd='', schema='public', db='capstone') -> None:
 
         self.table = table
         self.__host = host
@@ -72,12 +67,7 @@ class DBOperator():
                 port=port
             )
             self.__cursor = self.__db.cursor()
-
-            ### vDEBUG
-            self.tables = self.__get_tables()
-            if table not in self.tables:
-            # if table not in self.__get_tables():
-            ### ^DEBUG
+            if table not in self.__get_tables():
                 raise RuntimeError(f"Table does not exist")
             print("### DBOperator: Connected to DB")
             self.permissions = self.__get_privileges()
@@ -137,29 +127,74 @@ class DBOperator():
         #   Otherwise, just add a ')'
         if geom != None:
             cmd += 'ST_GeographyFromText(%s))'
-            # cmd += 'ST_GeogFromWKB(ST_GeomFromGeoJSON(%s)))' # NOTE: USING to convert GeoJSON into PostGIS Geography
+            # NOTE: USING to convert GeoJSON into PostGIS Geography
+            # cmd += 'ST_GeogFromWKB(ST_GeomFromGeoJSON(%s)))'
         else:
             cmd = cmd[:-1] + ')'
 
         try:
             self.__cursor.execute(cmd, (values))
-            print("### DBOperator: Entry added to commands queue")
         except UniqueViolation as e:
             print(f"### DBOperator ERROR: Unable to add entity: {e}")
             raise UniqueViolation
 
-    def modify(self, entity: tuple, data: dict) -> None:
+    def modify(self, entity: dict, data: dict) -> None:
         """
         Modifys a singular exisitng entity
         """
-        # Disgusting
-        cmd = f"UPDATE {self.table} SET "
-        for i, (key, val) in enumerate(data.items()):
-            cmd += f"{key} = {val}" if type(val) != str else f"{key} = '{val}'"
-            if i < (len(data.items()) - 1):
-                cmd += ","
+        # TODO: Try getting dict working for entity!
+        if len(data) == 0:
+            raise AttributeError(
+                "### DBOperator: Error. No data provided.")
+        if len(entity) == 0:
+            raise AttributeError(
+                "### DBOperator: Error. Entity is empty.")
 
-        self.__cursor.execute(cmd + f" WHERE {entity[0]} = %s", (entity[1],))
+        conditions = []
+        changes = []
+        values = []
+
+        # Constructing changes for 'SET' clause
+        for attr, value in data.items():
+            if attr == 'geom':
+                print(f"Geom provided: {attr}:{value}")
+                # Potentially an issue if passed GeoJSON
+                changes.append(f"{attr} = ST_GeographyFromText(%s)")
+            else:
+                changes.append(f"{attr} = %s")
+            values.append(value)
+
+        # Constructing conditions for 'WHERE' clause
+        # since the values need to be associated with the '%s' in the WHERE
+        # clause, this HAS to be last
+        for attr, value in entity.items():
+            if attr == 'geom':
+                print(f"Geom provided: {attr}:{value}")
+                # Potentially an issue if passed GeoJSON
+                conditions.append(f"{attr} = ST_GeographyFromText(%s)")
+            else:
+                conditions.append(f"{attr} = %s")
+            values.append(value)
+
+        query = f"""
+            UPDATE {self.table}
+            SET {' AND '.join(changes)}
+            WHERE {' AND '.join(conditions)}
+        """
+
+        # DEBUG
+        print(query)
+        print()
+        pprint(values)
+        input()
+
+        try:
+            self.__cursor.execute(query, tuple(values))
+            print("### DBOperator: Update reqeust added to queue.")
+        except UndefinedColumn as e:
+            print(f"{e}\n### DBOperator: Error updating item.")
+            self.rollback()  # Uhm... Why are you necessary so other commands don't break?
+            raise UndefinedColumn
 
     def delete(self, entity: dict) -> None:
         """
@@ -172,9 +207,7 @@ class DBOperator():
 
         if len(entity) == 0:
             raise AttributeError(
-                "### DBOperator: Error. Provided entity is empty.")
-
-        print(f"### DBOperator: Deleting {entity}")
+                "### DBOperator: Error. Entity is empty.")
 
         conditions = []
         values = []
@@ -194,10 +227,6 @@ class DBOperator():
             DELETE FROM ONLY {self.table}
             WHERE {' AND '.join(conditions)}
         """
-        print(f"### DBOperator: Query:\n{query}")
-        print(f"### DBOperator: Values: {tuple(values)}")
-
-        # input()
 
         try:
             self.__cursor.execute(query, tuple(values))
@@ -212,6 +241,7 @@ class DBOperator():
         Clears all entries from table
         """
         self.__cursor.execute(f"DELETE FROM {self.table}")
+        print(f"### DBOperator: {self.table} Cleared.")
         return ("message", "table cleared.")
 
     def custom_cmd(self, cmd: str, call: str) -> list:
@@ -259,10 +289,10 @@ class DBOperator():
 
         result = {}
 
-        for key,value in {q[0]: q[1] for q in self.__cursor.fetchall()}.items():
-            if value in "bigint,integer".split(','):
+        for key, value in {q[0]: q[1] for q in self.__cursor.fetchall()}.items():
+            if value in "bigint,smallint,integer".split(','):
                 result.update({key: type(1)})
-            elif value in "double precision".split(','):
+            elif value in "double precision,numeric,decimal,real".split(','):
                 result.update({key: type(1.1)})
             # Not sure if I wanna use type(dict) for geom attrs or keep it as string for JSON
             elif value in "character varying,text,name,USER-DEFINED".split(','):
@@ -270,7 +300,7 @@ class DBOperator():
             elif value in "boolean".split(','):
                 result.update({key: type(True)})
             elif value in "ARRAY".split(','):
-                result.update({key: type([1,2,3])})
+                result.update({key: type([1, 2, 3])})
             else:
                 result.update({key: "unk"})
 
@@ -381,7 +411,7 @@ class DBOperator():
         """
         Returns all entries in a table as a list of dictionary datatypes
         """
-        self.__cursor.execute( f"""
+        self.__cursor.execute(f"""
                 SELECT row_to_json(data)
                 FROM (SELECT *{',ST_AsGeoJson(geom)' if 'geom' in self.attrs.keys() else ''}
                 FROM {self.table}) data
@@ -405,8 +435,6 @@ class DBOperator():
 
     """
     ### geom-based relationships!
-    // TODO
-        - If table doesn't have geom attr, throw error
     """
     # These are ideally supposed to take advantage of the PostGIS stuff
 
@@ -416,15 +444,14 @@ class DBOperator():
         ST_DWithin(geom, var, range)
         """
         if "geom" not in self.attrs.keys():
-            raise AttributeError("Cannot call GIS function on table with no 'geom' attrubute")
+            raise AttributeError(
+                "Cannot call GIS function on table with no 'geom' attrubute.")
 
         query = f"""
                 SELECT mmsi,vessel_name,callsign,heading,speed,current_status,src,type,flag,lat,lon,dist_from_shore,dist_from_port,ST_AsGeoJson(geom)
                 FROM {self.table}
                 WHERE ST_DWithin(geom, ST_GeogFromText('{var}'),{range})
             """
-
-        # print(query)
 
         self.__cursor.execute(f"SELECT row_to_json(data) FROM ({query}) data")
 
@@ -442,17 +469,17 @@ class DBOperator():
         ST_Contains(var, geom)
         """
         if "geom" not in self.attrs.keys():
-            raise AttributeError("Cannot call GIS function on table with no 'geom' attrubute")
-        # print(dumps(var))
+            raise AttributeError(
+                "Cannot call GIS function on table with no 'geom' attrubute.")
 
         query = f"""
                 SELECT *,ST_AsGeoJson(geom)
                 FROM {self.table}
                 WHERE ST_Within(geom::geometry, ST_GeomFromGeoJSON(%s))
             """
-        # print(query)
 
-        self.__cursor.execute(f"SELECT row_to_json(data) FROM ({query}) AS data",(dumps(var),))
+        self.__cursor.execute(
+            f"SELECT row_to_json(data) FROM ({query}) AS data", (dumps(var),))
 
         results = [i[0] for i in self.__cursor.fetchall()]
 
@@ -467,38 +494,27 @@ class DBOperator():
         Gets vessels that border/touches a specified geometry
         """
         if "geom" not in self.attrs.keys():
-            raise AttributeError("Cannot call GIS function on table with no 'geom' attrubute")
+            raise AttributeError(
+                "Cannot call GIS function on table with no 'geom' attrubute")
 
         pass
 
+
 if __name__ == "__main__":
-    entity2 = {
-        'callsign': 'WDN2333',
-        'cargo_weight': 65.0,
-        'current_status': '0',
-        'dist_from_port': 0.0,
-        'dist_from_shore': 0.0,
-        'draft': 2.8,
-        'flag': 'USA',
-        'geom': 'Point(-91.0 30.15)',
-        'heading': 356.3,
-        'lat': 30.15,
-        'length': 137.0,
-        'lon': -91.0,
-        'mmsi': 368261120,
-        'speed': 7.6,
-        'src': 'MarineCadastre-AIS',
-        'timestamp': '2024-09-30T00:00:01',
-        'type': 'PASSENGER',
-        'vessel_name': 'VIKING MISSISSIPPI',
-        'width': 23.0
-    }
 
+    # operator = DBOperator(table='vessels')  # For me :)
+    # operator = DBOperator(table='zones')
+    operator = DBOperator(table='sources')
+    # operator = DBOperator(table='meteorology')
+    # operator = DBOperator(table='oceanography')
+    # operator = DBOperator(table='events')
 
-    operator = DBOperator(table='vessels')  # For me :)
     # operator = DBOperator(table='vessels', host='localhost', port='5432',
     #                       user='postgres', passwd='gres', schema='public',
     #                       db='ships')  # For Sean, db='capstone' otherwise
+
+    # pprint(operator.query([{'id':'AKC013'}]))
+    # operator.close()
 
     # print(operator.permissions)
     # pprint(operator.attrs)
@@ -506,117 +522,32 @@ if __name__ == "__main__":
     # pprint(operator.attrs.keys())
     # print("Table attribute datatypes:")
     # pprint(operator.attrs.values())
-    # input()
-
-    print(len(operator.get_table()))
-
-    ### Searching all tables for datatypes used
-    # def attrs(table):
-    #     aahh = DBOperator(table=table)  # For me :)
-    #     for attr,cast in aahh.attrs.items():
-    #         print(f'{attr} ({cast})')
-    #     aahh.close()
-    #     return aahh.attrs
-
-    # types = []
-    # for table in [i[0] for i in operator.custom_cmd("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",'r')]:
-    #     print(table)
-    #     for i in attrs(table).items():
-    #         if i[1] not in types:
-    #             types.append(i[1])
-    #     print()
-    # pprint(types)
-    # input()
-
-    # pprint(operator.proximity('Point(-91.02 30.13)', 1000))
-    # input()
-
-    # geom = {'coordinates': [[['-84.4296', '29.6962'],
-    #                          ['-80.9127', '31.0080'],
-    #                          ['-79.0213', '25.4102'],
-    #                          ['-82.6333', '23.7645'],
-    #                          ['-85.1153', '29.2929']]],
-    #         'type': 'Polygon'}
-
-    # query = operator.within(geom)
-
-    # print(len(query)) # expect to pull 5 vessels
-    # pprint(query)
-
-    # Get filterable items
-    # pprint(operator.fetch_filter_options())
-    # input()
-
-    # Filter
-    # filters = {
-    #     "type": "TUG",
-    #     "orign": "USA"
-    # }
-    # operator.fetch_filtered_vessels(filters)
-    # input()
+    print(f"Entities in table: {operator.get_count()}")
 
     # Add
-    entity = {
-        'callsign': 'WDE6314',
-        'cargo_weight': 52.0,
-        'current_status': 'UNDERWAY',
-        'dist_from_port': 0.0,
-        'dist_from_shore': 0.0,
-        'draft': 3.1,
-        'flag': 'USA',
-        'heading': 103.5,
-        'lat': 45.26,
-        'length': 21.0,
-        'lon': -85.18,
-        'mmsi': 367378670,
-        'speed': 0.0,
-        'src': 'MarineCadastre-AIS',
-        'timestamp': '2024-09-30T00:00:00',
-        'type': 'FISHING',
-        'vessel_name': 'WENDY ANNE',
-        'width': 5.0
-    }
-
-
-    # operator.add(entity)
+    # operator.add()
     # operator.commit()
-
-    # Query
-    # pprint(operator.query([]))
-    # pprint(operator.query([{}]))
-    # input()
-
-    """
-    The following has an interesting duplicate somewhere
-    """
-    # results = []
-    # for i in operator.query(duplicator()):
-    #     results.append(i['vessel_name'])
-
-    # for i in duplicator():
-    #     if i['vessel_name'] not in results:
-    #         print(f"{i['vessel_name']} not found")
-    #     else:
-    #         print(f"{i['vessel_name']} in DB")
-
-    # print(f"length of query{len(duplicator())}")
-    # print(f"length of results{len(results)}")
 
     # Modify
     # operator.modify()
     # operator.commit()
 
     # Delete
-    # operator.delete(entity)
-    # operator.delete({'mmsi':1234})
+    # operator.delete()
     # operator.commit()
-    # pprint(operator.query([{"mmsi":368261120}]))
 
-    # operator = DBOperator(table='zones')
-    # pprint(operator.query([{'id':'AKC013'}]))
-    # operator.close()
+    # Clear
+    # operator.clear()
+    # operator.commit()
+
+    """
+    Scratch work
+    """
+
+    pprint(operator.get_count())
 
 
+    operator.close()
 
 
 
