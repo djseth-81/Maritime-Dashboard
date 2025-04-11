@@ -136,3 +136,26 @@ fast interact with frontend directly
   
 ### Other
 - N/A
+
+## v3.0
+### Features
+- Infobox now shows additional information pertaining on the entity selected
+- Improved path prediction model to use extra features in the model for better prediction accuracy
+- API processors gather and package event data from the Global Fishing watch Encounters, Fishing, Loitering, AIS Transponder Gaps, and Port visits events databases
+- API processors gather and package oceanography and meteorology data from NOAA CO-OP
+- Added a legend for visibility
+- Modularized the codebase to ease bug-fixing and adding new features
+
+### Bug Fixes
+- Fixed issue with vessels not being as visible
+- Fixed issue with infobox description
+- Fixed issue with backend operations where they weren't agnostic to different table attributes in the database
+- Added troubleshooting various error messages thrown
+- Real-time messaging pipeline to pass data from the frontend over to Kafka and then listens to those messages with a Kafka consumer
+  
+### Other
+- Known Bugs
+  - Vessels flash on UI when toggling filters while zoning function is applied
+  - Custom zoning may include and/or exclude vessels that would appear otherwise when applied
+- Got the frontend to pass data via WebSocket which the backend pushed it to Kafka and stores it as a topic
+  - Then have a consumer listening that manages the message
