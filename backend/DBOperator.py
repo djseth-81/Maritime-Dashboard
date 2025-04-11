@@ -47,9 +47,8 @@ class DBOperator():
                  passwd='1234', schema='public', db='capstone') -> None:
     '''
     ''' For Sean
-    def __init__(self, table: str, host='localhost', port='5432',
-                 user='postgres', passwd='gres', schema='public',
-                 db='ships') -> None:
+    def __init__(self, table: str, host='localhost', port='5432', user='postgres',
+                    passwd='gres', schema='public', db='ships') -> None:
     '''
 
     def __init__(self, table: str, host='', port='', user='',
