@@ -18,7 +18,7 @@ Algoritm:
     - If I don't error out on row 2, delete all rows up until row that errors out
 """
 dubs = 0
-vessels = DBOperator(db="capstone",table="vessels")
+vessels = DBOperator(db="ships",table="vessels") # Had to change db="capstone" to db="ships" to get it to access the webpage for me - Sean
 
 failures = []
 
