@@ -10,10 +10,11 @@ export default function BoatIcon({
   const vesselColors = {
     CARGO: "#6B8E23", // Olive green
     FISHING: "#8B4513", // Brown
-    TANKER: "#CD5C5C", // Indian red
-    TUG: "#CD5C5C", // Indian red
-    RECREATIONAL: "#4682B4", // Steel blue
+    TANKER: "#FA6B05", // Indian red
+    TUG: "#F9C256", // Gold
+    RECREATIONAL: "#D31EFF", // Magenta
     PASSENGER: "#4682B4", // Steel blue
+    OTHER: "#CD5C5C" //  Indian red
   };
 
   // Get the color based on the vessel type
@@ -21,7 +22,7 @@ export default function BoatIcon({
     // Get the base color
     const baseColor = vesselColors[type] || vesselColors.cargo;
     // Return the color with 50% opacity
-    return baseColor + "90"; // 80 in hex is 50% opacity
+    return baseColor + "B3"; // 80 in hex is 50% opacity
   };
   
   // Calculate the points for a simple angle shape like <

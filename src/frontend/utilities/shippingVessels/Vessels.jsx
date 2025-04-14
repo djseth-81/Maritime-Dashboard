@@ -2,7 +2,7 @@ import React from 'react'
 import { Entity } from 'resium'
 import { Cartesian3, DistanceDisplayCondition, NearFarScalar, HeightReference } from 'cesium'
 import ReactDOMServer from 'react-dom/server'
-import BoatIcon from "../../assets/icons/boatIcon"
+import BoatIcon from "../../assets/icons/boatIcon";
 
 export function placeVessel(longitude, latitude, heading, elevation = 0, type = "OTHER", name = "UNKOWN") {
     // Convert values to numbers and validate
@@ -23,9 +23,33 @@ export function placeVessel(longitude, latitude, heading, elevation = 0, type = 
         <BoatIcon type={type} size={25} heading={heading} />
     );
 
-
     const encodedSvg = encodeURIComponent(svgString);
     const dataUrl = `data:image/svg+xml;charset=utf-8,${encodedSvg}`;
+
+    // Create a fully custom HTML description with inline styles
+    const description = `
+        <div style="background-color:#1a1a1a; color:#ffffff; font-family:Arial; padding:10px; margin:-10px; width:calc(100% + 20px);">
+            <h3 style="margin-top:0; color:#ffffff;">${type} Details</h3>
+            <table style="width:100%; color:#ffffff;">
+                <tr>
+                    <td style="color:#ffffff; padding:3px 0;">Name:</td>
+                    <td style="color:#ffffff; padding:3px 0;"><strong>${name}</strong></td>
+                </tr>
+                <tr>
+                    <td style="color:#ffffff; padding:3px 0;">Type:</td>
+                    <td style="color:#ffffff; padding:3px 0;">${type}</td>
+                </tr>
+                <tr>
+                    <td style="color:#ffffff; padding:3px 0;">Position:</td>
+                    <td style="color:#ffffff; padding:3px 0;">${numLatitude.toFixed(4)}°, ${numLongitude.toFixed(4)}°</td>
+                </tr>
+                <tr>
+                    <td style="color:#ffffff; padding:3px 0;">Heading:</td>
+                    <td style="color:#ffffff; padding:3px 0;">${heading}°</td>
+                </tr>
+            </table>
+        </div>
+    `;
 
     return (
         <Entity
@@ -43,18 +67,7 @@ export function placeVessel(longitude, latitude, heading, elevation = 0, type = 
                 pixelOffset: new Cartesian3(0, 0, 0),
             }}
             name={`${type.charAt(0).toUpperCase() + type.slice(1)} Vessel: ${name}`}
-            description={`This is a ${type} vessel named "${name}".`}
+            description={description}
         />
     );
 }
-
-// Helper function to get scene mode name for logging
-function getSceneModeName(sceneMode) {
-    switch(sceneMode) {
-        case SceneMode.SCENE3D: return "3D";
-        case SceneMode.SCENE2D: return "2D";
-        case SceneMode.COLUMBUS_VIEW: return "Columbus View";
-        default: return "Unknown";
-    }
-}
-

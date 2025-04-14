@@ -29,7 +29,9 @@ export const useCesiumViewer = (viewerRef, setViewerReady) => {
 
       return () => {
         if (viewer && viewer.scene && !viewer.isDestroyed()) {
-          viewer.scene.morphComplete.removeEventListener(sceneModeChangeHandler);
+          viewer.scene.morphComplete.removeEventListener(
+            sceneModeChangeHandler
+          );
         }
       };
     }
