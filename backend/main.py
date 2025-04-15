@@ -358,6 +358,25 @@ async def query_metadata():
         db.close() # Closes table instance
         return payload
 
+@app.get("/eezs/", response_model=dict)
+async def fetch_eezs():
+    db = connect('zones')
+    print("### Websocket: Collecting EEZs")
+    try:
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attributes": [i for i in db.attrs.keys()],
+            "payload": db.query([{'type':'EEZ'}]),
+        }
+        print("### Websocket: EEZs collected.")
+        payload.update({"size": len(payload['payload'])})
+        return payload
+    except Exception as e:
+        print(f"### Websocket: Error fetching data for EEZs:\n{e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching data for EEZs: {str(e)}")
+    finally:
+        db.close()
 
 
 
