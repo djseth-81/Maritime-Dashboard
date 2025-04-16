@@ -49,8 +49,6 @@ class DBOperator():
     def __init__(self, table: str, host='localhost', port='5432', user='postgres',
                     passwd='gres', schema='public', db='capstone') -> None:
 
-    # def __init__(self, table: str, host='', port='', user='',
-    #                 passwd='', schema='', db='capstone') -> None:
 
     # def __init__(self, table: str, host='', port='', user='',
     #              passwd='', schema='public', db='capstone') -> None:
@@ -397,9 +395,10 @@ class DBOperator():
                 f"SELECT row_to_json(data) FROM ({' UNION '.join(cmd)}) data", tuple(values))
             results = [i[0] for i in self.__cursor.fetchall()]
 
-            for r in results:  # quick formatting to remove binary Geom data
-                tmp = r.pop('st_asgeojson')
-                r['geom'] = tmp
+            if 'geom' in self.attrs.keys():
+                for r in results:  # quick formatting to remove binary Geom data
+                    tmp = r.pop('st_asgeojson')
+                    r['geom'] = tmp
 
             return results
         except UndefinedColumn as e:
@@ -507,8 +506,8 @@ if __name__ == "__main__":
 
     # operator = DBOperator(table='vessels')  # For me :)
     # operator = DBOperator(table='zones')
-    operator = DBOperator(table='sources')
-    # operator = DBOperator(table='meteorology')
+    # operator = DBOperator(table='sources')
+    operator = DBOperator(table='meteorology')
     # operator = DBOperator(table='oceanography')
     # operator = DBOperator(table='events')
 
@@ -525,7 +524,6 @@ if __name__ == "__main__":
     # pprint(operator.attrs.keys())
     # print("Table attribute datatypes:")
     # pprint(operator.attrs.values())
-    print(f"Entities in table: {operator.get_count()}")
 
     # Add
     # operator.add()
@@ -547,7 +545,8 @@ if __name__ == "__main__":
     Scratch work
     """
 
-    pprint(operator.get_count())
+    print(f"Entities in table: {operator.get_count()}")
+    pprint(operator.query([{'src_id':'1611400'}]))
 
 
     operator.close()
