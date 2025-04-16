@@ -62,7 +62,15 @@ function App() {
     );
 
   useEffect(() => {
-    fetchVessels();
+    const defaultFilters = {}; // or add initial filter values here
+    fetchVessels(vesselsAPI, {}, setVessels);
+
+
+    if (selectedGeometry) {
+      zoning(polygonData, defaultFilters, setVessels);
+    } else {
+      console.log("NO ZONE SELECTED");
+    }
     
     selectedGeometry ? zoning(polygonData, setVessels) : console.log("NO ZONE SELECTED"); // Dunno whether or not this actually does anything...
 
@@ -93,7 +101,30 @@ function App() {
         }
       };
     }
-  }, [viewerRef.current]);
+    const ws = new WebSocket("ws://localhost:8000/ws");
+  
+    ws.onopen = () => {
+      console.log("WebSocket connected from React");  //displays message showing websocket is connected (shows on F12 + console)
+      ws.send("Hello from React WebSocket client!");  //dispalys on backend log
+    };
+  
+    ws.onmessage = (event) => {
+      console.log("Message from WebSocket server:", event.data);  //echos the response from backend log (shows on F12 + console)
+    };
+  
+    ws.onerror = (err) => {
+      console.error("WebSocket error:", err); //error handling
+    };
+  
+    ws.onclose = () => {
+      console.log("WebSocket disconnected");  //error handling
+    };
+  
+    return () => ws.close();
+    
+
+
+  }, [viewerReady]);
 
   // Debug
   // console.log("Show Context Menu:", showContextMenu);

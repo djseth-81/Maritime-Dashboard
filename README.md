@@ -58,7 +58,9 @@ python -m venv .venv
 .venv\Scripts\activate
 
 # Kafka reciver
-uvicorn backend.main:app --host 0.0.0.0 --port 5000 --reload
+uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+.venv\Scripts\python.exe -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+
 
 # Start Kafka
 bin/kafka-server-start.sh config/kraft/server.properties
@@ -95,3 +97,27 @@ fast interact with frontend directly
   
 ### Other
 - N/A
+
+
+
+## Notes for Yolvin
+const ws = new WebSocket("ws://localhost:8000/ws");
+
+ws.onmessage = (msg) => console.log("Message from server:", msg.data);
+ws.onopen = () => {
+  console.log("WebSocket connection opened");
+};
+ws.onclose = () => console.log("WebSocket closed");
+ws.onerror = (e) => console.error("WebSocket error:", e);
+
+
+
+ws.send(JSON.stringify({ key: "shipX", status: "All clear" }));
+
+## Consumer Listner
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic maritime-events --from-beginning
+
+
+python -m backend.processors.gfw.loitering_api
+python -m backend.processors.gfw.fishing_api
+python -m backend.processors.gfw.encounters_api
