@@ -43,7 +43,7 @@ response = requests.post(events_url, headers=headers, json=data)
 print("Status Code:", response.status_code)
 
 if response.status_code not in [200, 201]:
-    print("❗ Response content:")
+    print("Response content:")
     print(response.text)
     sys.exit("Failed to fetch events.")
 
@@ -73,7 +73,6 @@ for event in events_data:
         dist_from_port = event['distances'].get('endDistanceFromPortKm')
         dist_from_shore = event['distances'].get('endDistanceFromShoreKm')
 
-        # Create entity
         entity = {
             "id": event['id'],
             "src_id": mmsi,
