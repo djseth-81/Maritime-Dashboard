@@ -33,20 +33,17 @@ def request(id, product):
 weather_reports = []
 notices = []
 
+# Retrieving stations
 sources = DBOperator(table='sources')
-met = DBOperator(table='meteorology')
-
 stations = sources.query([{'type': 'NOAA-COOP'}])
+
 
 things = "air_temperature wind visibility humidity".split()
 timestamp = datetime.now()
 
 # iterate through stations
 for station in stations:
-    weather_report = {
-        # TODO: Add visiblity column
-        # TODO: Delete region, geom, lat, lon columns!
-    }
+    weather_report = {}
     notice = {}
 
     # Metadata for met weather_report
@@ -61,8 +58,8 @@ for station in stations:
     for thing in things:
         # If expected datum is not recorded by station, continue
         if thing not in station['datums']:
-            # print(f"No {thing} to report from {station['name']}")
-            weather_report.update({f'{thing}': None})  # datum is entered as null
+            print(f"No {thing} to report from {station['name']}")
+            # weather_report.update({f'{thing}': None})  # datum is entered as null
             continue
 
         # Executes API call to pull datum
@@ -70,15 +67,22 @@ for station in stations:
 
         # If client or server error, quit while we're ahead and print out returned error
         if type(data) is not type({"1":1}) and data.status_code >= 400:
-            print("### COOP-Meteorology API: HTTP ERROR:")
-            pprint(data.json())
+            print(f"### COOP-Meteorology API: HTTP ERROR {data.status_code}")
+            # pprint(data.json())
             break
 
         # if error found in data keys when trying a datum, notify that it's no longer valid
         if 'error' in data.keys():
             # TODO: Enable modify() to update datums for station
             print(f"### COOP-Meteorology API: {thing} expected, but is no longer recorded at station {station['name']} ({station['id']})")
-            weather_report.update({f'{thing}': None})  # datum is entered as null
+            # I am in a panic for seemingly no reason because I feel like I'm
+            # behind for STILL processing API data, so this is just gross
+            if thing == 'wind':
+                weather_report.update({'wind_heading': None})
+                weather_report.update({'wind_speed': None})
+            else:
+                weather_report.update({f'{thing}': None})  # datum is entered as null
+
             continue
 
         # The JSON for wind datums is structured differently than the others...
@@ -86,7 +90,6 @@ for station in stations:
             # deg?
             # print(f"Wind direction: {data['data'][0]['dr']} ({data['data'][0]['d']})")
             weather_report.update({f'wind_heading': data['data'][0]['d']})
-
             # print(f"Wind speed: {data['data'][0]['s']}")  # kts?
             weather_report.update({f'wind_speed': data['data'][0]['s']})
         else:
@@ -96,7 +99,8 @@ for station in stations:
     weather_report.update({'percipitation': None})
     weather_report.update({'forecast': None})
     weather_report.update({'event_id': None})  # Is this even necessary?
-    pprint(weather_report)
+    # pprint(weather_report)
+    pprint("### COOP Meteorology API: Queuing weather report...") # Printing for logs
     weather_reports.append(weather_report)
 
     # Even though I ask if associating weather data to a notice is necessary,
@@ -126,7 +130,8 @@ for station in stations:
             'severity': "low",
             'headline': data['notices'][0]['name'],
         })
-        pprint(notice)
+        # pprint(notice)
+        pprint("### COOP Meteorology API: Queuing notice...") # Printing for logs
         notices.append(notice)
         
     sleep(0.1) # to avoid 504 Gateway Timeout
@@ -135,6 +140,9 @@ print(f'{len(weather_reports)} weather reports to push to DB')
 print(f'{len(notices)} notices to push to DB')
 
 failures = []
+
+# Adding weather reports
+met = DBOperator(table='meteorology')
 for entity in weather_reports:
     try:
         """
@@ -142,19 +150,16 @@ for entity in weather_reports:
         where the Kafka stuff will go as well
         """
         print("Adding weather report to Meteorology...")
-        # Adding event TODO!
-        # events_operator.add(entity.copy())
-        # events_operator.commit()
-
-        # Updating related vessel TODO!
-        # vessels_operator.modify(entity.copy()) # TODO: TEST!
-        # vessels_operator.commit()
+        # Adding event
+        met.add(entity.copy())
+        met.commit()
     except Exception as e:
         print(f"An error occured adding weather report to DB...\n{e}")
         print("This report caused the failure:")
         pprint(entity)
-        input()
+        input() # DEBUG
         failures.append(entity)
+met.close()
 
 if len(failures) > 0:
     with open('coop-met-failures.csv', 'w', newline='') as outFile:
@@ -165,6 +170,9 @@ if len(failures) > 0:
             writer.writerow(goob)
 
 failures = []
+
+# Adding notices reported by stations
+events = DBOperator(table='events')
 for entity in notices:
     try:
         """
@@ -172,19 +180,15 @@ for entity in notices:
         where the Kafka stuff will go as well
         """
         print("Adding notice to events table")
-        # Adding event TODO!
-        # events_operator.add(entity.copy())
-        # events_operator.commit()
-
-        # Updating related vessel TODO!
-        # vessels_operator.modify(entity.copy()) # TODO: TEST!
-        # vessels_operator.commit()
+        events.add(entity.copy())
+        events.commit()
     except Exception as e:
         print(f"An error occured adding notice to DB...\n{e}")
         print("This notice caused the failure:")
         pprint(entity)
-        input()
+        input() # DEBUG
         failures.append(entity)
+events.close()
 
 if len(failures) > 0:
     with open('coop-notice-failures.csv', 'w', newline='') as outFile:
@@ -193,6 +197,7 @@ if len(failures) > 0:
         writer.writeheader()
         for goob in failures:
             writer.writerow(goob)
+
 
 ### DATUMS URL
 # datums_url = f"https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/{station[id]}/datums.json"

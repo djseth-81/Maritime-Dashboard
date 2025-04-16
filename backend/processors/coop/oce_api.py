@@ -6,11 +6,6 @@ from time import sleep
 from ...DBOperator import DBOperator
 
 """
-// Thinkin' Thoughts
-- I wonder if it's worth it to combine this and the NWS Forecast API into one
-  that pulls stations based on Within() Zone, so Missing data can be
-  potentially accounted between one another
-
 // TODO
 - Convert types to coincide with DB
 - VERIFY DATA KEYS AND UNITS ARE WHAT I THINK THEY ARE
@@ -38,8 +33,6 @@ ocean_reports = []
 notices = []
 
 sources = DBOperator(table='sources')
-oce = DBOperator(table='oceanography')
-
 stations = sources.query([{'type': 'NOAA-COOP'}])
 
 # All known oceanographic datums
@@ -53,10 +46,7 @@ timestamp = datetime.now()
 
 # iterate through stations
 for station in stations:
-    ocean_report = {
-        # TODO: remove geom, region, lat, lon
-        # TODO: Rename to water_temperature
-    }
+    ocean_report = {}
 
     # Metadata for ocean_report
     # print(f"# Station {station['name']} ({station['id']})")
@@ -80,8 +70,8 @@ for station in stations:
 
         # If client or server error, quit while we're ahead and print out returned error
         if type(data) is not type({"1": 1}) and data.status_code >= 400:
-            print("### COOP-Oceanography API: HTTP ERROR:")
-            pprint(data.json())
+            print(f"### COOP-Oceanography API: HTTP ERROR {data.status_code}")
+            # pprint(data.json())
             break
 
         # if error found in data keys when trying a datum, notify that it's no longer valid
@@ -104,13 +94,17 @@ for station in stations:
             # print(f"{thing} report from {station['name']}:")
             # pprint(data)
 
+    pprint("### COOP Oceanography API: Queuing ocean report...") # Printing for logs
     ocean_reports.append(ocean_report)
 
     sleep(0.1)  # to avoid 504 Gateway Timeout
+sources.close()
 
 print(f'{len(ocean_reports)} oceanography reports to push to DB')
-
 failures = []
+
+# Adding ocean events to database
+oce = DBOperator(table='oceanography')
 for entity in ocean_reports:
     try:
         """
@@ -118,19 +112,16 @@ for entity in ocean_reports:
         where the Kafka stuff will go as well
         """
         print("Adding oceanography report to Oceanography...")
-        # Adding event TODO!
-        # events_operator.add(entity.copy())
-        # events_operator.commit()
+        oce.add(entity.copy())
+        oce.commit()
 
-        # Updating related vessel TODO!
-        # vessels_operator.modify(entity.copy()) # TODO: TEST!
-        # vessels_operator.commit()
     except Exception as e:
         print(f"An error occured adding oceanography report to DB...\n{e}")
         print("This report caused the failure:")
         pprint(entity)
-        input()
+        input() # DEBUG
         failures.append(entity)
+oce.close()
 
 if len(failures) > 0:
     with open('coop-oce-failures.csv', 'w', newline='') as outFile:
@@ -142,3 +133,17 @@ if len(failures) > 0:
 
 # DATUMS URL
 # datums_url = f"https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/{station[id]}/datums.json"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
