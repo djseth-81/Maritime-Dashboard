@@ -19,6 +19,18 @@ export const handleToggleDrawing = (isDrawing, setIsDrawing) => {
       pauseOnHover: false,
       draggable: false,
     });
+
+    toast.info(
+      `Click on the map to add points. Double-click to finish the polygon.`,
+      {
+        position: "bottom-right",
+        autoClose: false,
+        hideProgressBar: true,
+        closeOnClick: true,
+        pauseOnHover: false,
+        draggable: false,
+      }
+    );
     return newState;
   });
 };

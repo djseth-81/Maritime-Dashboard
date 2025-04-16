@@ -133,7 +133,7 @@ for station in stations:
         # pprint(notice)
         pprint("### COOP Meteorology API: Queuing notice...") # Printing for logs
         notices.append(notice)
-        
+    input()
     sleep(0.1) # to avoid 504 Gateway Timeout
 
 print(f'{len(weather_reports)} weather reports to push to DB')
