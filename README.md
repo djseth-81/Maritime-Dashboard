@@ -120,3 +120,4 @@ bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic maritime
 
 python -m backend.processors.gfw.loitering_api
 python -m backend.processors.gfw.fishing_api
+python -m backend.processors.gfw.encounters_api
