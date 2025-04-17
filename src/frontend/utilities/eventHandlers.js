@@ -20,17 +20,19 @@ export const handleToggleDrawing = (isDrawing, setIsDrawing) => {
       draggable: false,
     });
 
-    toast.info(
-      `Click on the map to add points. Double-click to finish the polygon.`,
-      {
-        position: "bottom-right",
-        autoClose: false,
-        hideProgressBar: true,
-        closeOnClick: true,
-        pauseOnHover: false,
-        draggable: false,
-      }
-    );
+    if (newState) {
+      toast.info(
+        `Click on the map to add points. Double-click to finish the polygon.`,
+        {
+          position: "bottom-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: false,
+        }
+      );
+    }
     return newState;
   });
 };
@@ -56,17 +58,17 @@ export const handleToggleFilters = (setShowFilters) => {
 };
 
 /**
- * @description Handles the undo action for geometries.
- * @param {Function} setGeometries - Function to update the geometries state.
+ * @description Handles the undo action for geometries in progress.
+
  * @returns {void}
-*/
-export const handleUndo = (setGeometries) => {
-  setGeometries((prev) => {
-    if (prev.length === 0) return prev;
-    const updated = [...prev];
-    updated[updated.length - 1].positions.pop();
-    return updated;
-  });
+ */
+export const handleUndo = (undoLastPoint) => {
+  console.log("Undo function passed to handleUndo:", undoLastPoint);
+  if(undoLastPoint) {
+    undoLastPoint();
+  } else {
+    console.log("No active zone or points to undo.");
+  }
 };
 
 /**
