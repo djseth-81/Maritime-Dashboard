@@ -1,4 +1,4 @@
-from DBOperator import DBOperator
+from ...DBOperator import DBOperator
 import csv
 import requests
 from time import sleep

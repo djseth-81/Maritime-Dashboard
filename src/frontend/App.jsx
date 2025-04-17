@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import CustomGeometry from "./utilities/CustomGeometry";
 import ToolsUI from "./utilities/ToolsUI";
 import ZoneSettingsUI from "./utilities/ZoneSettingsUI";
-import FiltersUI from "./utilities/filters/FiltersUI";
+// import FiltersUI from "./utilities/filters/FiltersUI";
 import ConfirmationDialog from "./utilities/ConfirmationDialog";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/ReactToastify.css";
@@ -52,35 +52,63 @@ function App() {
   useCesiumViewer(viewerRef, setViewerReady);
 
   const handleFilterApply = async (filters) => {
-    console.log("Filters selected:");
-    console.log(filters);
-    await fetchVessels(vesselsAPI, filters, setVessels);
-    await selectedGeometry ? zoning(polygonData, filters, setVessels) : console.log("NO ZONE SELECTED");
+    console.log("Applying filters...", filters);
+    try {
+      await fetchVessels(vesselsAPI, filters, setVessels);
+      if (selectedGeometry) {
+        await zoning(polygonData, filters, setVessels);
+      } else {
+        console.log("NO ZONE SELECTED");
+      }
+    } catch (error) {
+      console.error("Error applying filters:", error.message);
+      toast.error("Failed to apply filters.");
+    }
   };
-    const polygonData = geometries?.find(
-        (geo) => geo.id === selectedGeometry?.id
-    );
+  const polygonData = geometries?.find(
+    (geo) => geo.id === selectedGeometry?.id
+  );
 
-  // useEffect(() => {
-  //   //fetchVessels();
-    
-  //   selectedGeometry ? zoning(polygonData, setVessels) : console.log("NO ZONE SELECTED"); // Dunno whether or not this actually does anything...
+  // Default filters for vessels
+  const defaultFilters = {
+    types: ["CARGO", "FISHING", "TANKER", "TUG", "PASSENGER", 
+      "RECREATIONAL", "OTHER"],
+    statuses: [
+      "UNDERWAY", "ANCHORED", "MOORED", "IN TOW", "FISHING",
+      "UNMANNED", "LIMITED MOVEMENT", "HAZARDOUS CARGO",
+      "AGROUND", "EMERGENCY", "UNKNOWN",
+    ],
+  }
 
-  //   if (viewerRef.current && viewerRef.current.cesiumElement) {
-  //     const viewer = viewerRef.current.cesiumElement;
-  //     setViewerReady(true);
-  //     // Create a scene mode change event handler
-  //     const sceneModeChangeHandler = () => {
-  //       // If there's a selected entity, re-select it to update the info box position
-  //       if (viewer.selectedEntity) {
-  //         const currentEntity = viewer.selectedEntity;
-  //         viewer.selectedEntity = undefined; // Deselect
-  //         setTimeout(() => {
-  //           viewer.selectedEntity = currentEntity; // Re-select after a brief delay
-  //         }, 100);
-  //       }
-  //     };
+   useEffect(() => {
+    if (viewerRef.current && viewerRef.current.cesiumElement) {
+      const viewer = viewerRef.current.cesiumElement;
+      setViewerReady(true);
+      // Create a scene mode change event handler
+      const sceneModeChangeHandler = () => {
+        // If there's a selected entity, re-select it to update the info box position
+        if (viewer.selectedEntity) {
+          const currentEntity = viewer.selectedEntity;
+          viewer.selectedEntity = undefined; // Deselect
+          setTimeout(() => {
+            viewer.selectedEntity = currentEntity; // Re-select after a brief delay
+          }, 100);
+        }
+      };
 
+      // Add event listener for scene mode changes
+      viewer.scene.morphComplete.addEventListener(sceneModeChangeHandler);
+
+      // Clean up event listener when component unmounts
+      return () => {
+        if (viewer && viewer.scene && !viewer.isDestroyed()) {
+          viewer.scene.morphComplete.removeEventListener(
+            sceneModeChangeHandler
+          );
+        }
+      };
+    }
+  }, [viewerRef.current]);
   //     // Add event listener for scene mode changes
   //     viewer.scene.morphComplete.addEventListener(sceneModeChangeHandler);
 
@@ -94,6 +122,20 @@ function App() {
   //     };
   //   }
   // }, [viewerRef.current]);
+
+  // Fetch vessels when the viewer is ready and the API endpoint is available
+  useEffect(() => {
+    const loadVessels = async () => {
+      try {
+        console.log("Fetching vessels...");
+        await fetchVessels(vesselsAPI, defaultFilters, setVessels);
+      } catch (error) {
+        console.error("Error fetching vessels:", error.message);
+        toast.error("Failed to load vessels.");
+      };
+    };
+    loadVessels();
+  }, [viewerReady, vesselsAPI]);
 
   // Debug
   // console.log("Show Context Menu:", showContextMenu);
@@ -111,20 +153,20 @@ function App() {
   // );
 
   // SHIP DATA
-  console.log("SHIP DATA:");
-  console.log(vessels);
-  console.log("SHIP NAME:");
-  if (selectedGeometry?.name) {
-    console.log(selectedGeometry.name.split(": ")[1]);
-  } else {
-    console.log("No ship selected.");
-  }
-  const vesselData = vessels.find(
-    (vessel) => vessel.vessel_name === selectedGeometry?.name.split(": ")[1]
-  );
-  console.log("Selected Ship data: ", vesselData);
-  console.log("Selected ship position:");
-  console.log(vesselData?.geom);
+  // console.log("SHIP DATA:");
+  // console.log(vessels);
+  // console.log("SHIP NAME:");
+  // if (selectedGeometry?.name) {
+  //   console.log(selectedGeometry.name.split(": ")[1]);
+  // } else {
+  //   console.log("No ship selected.");
+  // }
+  // const vesselData = vessels.find(
+  //   (vessel) => vessel.vessel_name === selectedGeometry?.name.split(": ")[1]
+  // );
+  // console.log("Selected Ship data: ", vesselData);
+  // console.log("Selected ship position:");
+  // console.log(vesselData?.geom);
 
   return (
     <div className="cesium-viewer">
@@ -184,7 +226,7 @@ function App() {
           className="context-menu"
           style={{ top: contextMenuPosition.y, left: contextMenuPosition.x }}
         >
-          <button onClick={() => {setShowSettings(true); setShowContextMenu(false);}}>Settings</button>
+          <button onClick={() => { setShowSettings(true); setShowContextMenu(false); }}>Settings</button>
           <button onClick={() => handleDelete(setShowContextMenu, setShowDeleteDialog)}>
             Delete
           </button>
