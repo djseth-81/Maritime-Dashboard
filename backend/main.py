@@ -276,6 +276,8 @@ async def zone_vessels(data: dict):
 
         # Pulling stations
         stations = [i['id'] for i in sources.within(geom)]
+        # print("### Websocket: stations found:")
+        # pprint(stations)
         payload['payload'].update({'stations': stations})
 
         ### Getting Meteorology

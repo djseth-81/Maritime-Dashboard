@@ -59,35 +59,6 @@ const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape, apiEndpoint,
                     <button onClick={onUndo}>Undo</button>
                     <button onClick={onClear}>Clear</button>
 
-                    {/* non-functional buttons */}
-                    {/* <h4>Select Shape</h4>
-                    <label>
-                        <input
-                            type="radio"
-                            value="polygon"
-                            checked={selectedShape === "polygon"}
-                            onChange={handleShapeChange}
-                        />
-                        Polygon
-                    </label>
-                    <label>
-                        <input
-                            type="radio"
-                            value="polyline"
-                            checked={selectedShape === "polyline"}
-                            onChange={handleShapeChange}
-                        />
-                        Polyline
-                    </label>
-                    <label>
-                        <input
-                            type="radio"
-                            value="point"
-                            checked={selectedShape === "point"}
-                            onChange={handleShapeChange}
-                        />
-                        Point
-                    </label> */}
                 </div>
             )}
 

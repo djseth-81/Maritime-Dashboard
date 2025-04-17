@@ -13,7 +13,8 @@ import { Viewer } from "resium";
 // import axios from "axios";
 import OverlaysUI from "./utilities/overlays/OverlaysUI";
 import { fetchVessels } from "./utilities/apiFetch";
-import { zoning } from "./utilities/zoning"; import {
+import { zoning } from "./utilities/zoning";
+import {
   handleUndo,
   handleToggleDrawing,
   handleToggleOverlays,
@@ -43,14 +44,15 @@ function App() {
   const [viewerReady, setViewerReady] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
+  
   const viewerRef = useRef(null);
+  const customGeomRef = useRef(null);
   const URL = window.location.href.split(":");
   const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
   const filtersAPI = "http:" + URL[1] + ":8000/filters/";
-
+  
   useCesiumViewer(viewerRef, setViewerReady);
-
+  
   const handleFilterApply = async (filters) => {
     console.log("Applying filters...", filters);
     try {
@@ -71,7 +73,7 @@ function App() {
 
   // Default filters for vessels
   const defaultFilters = {
-    types: ["CARGO", "FISHING", "TANKER", "TUG", "PASSENGER", 
+    types: ["CARGO", "FISHING", "TANKER", "TUG", "PASSENGER",
       "RECREATIONAL", "OTHER"],
     statuses: [
       "UNDERWAY", "ANCHORED", "MOORED", "IN TOW", "FISHING",
@@ -80,35 +82,22 @@ function App() {
     ],
   }
 
-   useEffect(() => {
-    if (viewerRef.current && viewerRef.current.cesiumElement) {
-      const viewer = viewerRef.current.cesiumElement;
-      setViewerReady(true);
-      // Create a scene mode change event handler
-      const sceneModeChangeHandler = () => {
-        // If there's a selected entity, re-select it to update the info box position
-        if (viewer.selectedEntity) {
-          const currentEntity = viewer.selectedEntity;
-          viewer.selectedEntity = undefined; // Deselect
-          setTimeout(() => {
-            viewer.selectedEntity = currentEntity; // Re-select after a brief delay
-          }, 100);
-        }
-      };
+  // useEffect(() => { Redudant code for scene mode change event handler
+  //   if (viewerRef.current && viewerRef.current.cesiumElement) {
+  //     const viewer = viewerRef.current.cesiumElement;
+  //     setViewerReady(true);
+  //     // Create a scene mode change event handler
+  //     const sceneModeChangeHandler = () => {
+  //       // If there's a selected entity, re-select it to update the info box position
+  //       if (viewer.selectedEntity) {
+  //         const currentEntity = viewer.selectedEntity;
+  //         viewer.selectedEntity = undefined; // Deselect
+  //         setTimeout(() => {
+  //           viewer.selectedEntity = currentEntity; // Re-select after a brief delay
+  //         }, 100);
+  //       }
+  //     };
 
-      // Add event listener for scene mode changes
-      viewer.scene.morphComplete.addEventListener(sceneModeChangeHandler);
-
-      // Clean up event listener when component unmounts
-      return () => {
-        if (viewer && viewer.scene && !viewer.isDestroyed()) {
-          viewer.scene.morphComplete.removeEventListener(
-            sceneModeChangeHandler
-          );
-        }
-      };
-    }
-  }, [viewerRef.current]);
   //     // Add event listener for scene mode changes
   //     viewer.scene.morphComplete.addEventListener(sceneModeChangeHandler);
 
@@ -122,6 +111,7 @@ function App() {
   //     };
   //   }
   // }, [viewerRef.current]);
+
 
   // Fetch vessels when the viewer is ready and the API endpoint is available
   useEffect(() => {
@@ -167,7 +157,6 @@ function App() {
   // console.log("Selected Ship data: ", vesselData);
   // console.log("Selected ship position:");
   // console.log(vesselData?.geom);
-
   return (
     <div className="cesium-viewer">
       <ToastContainer />
@@ -199,6 +188,7 @@ function App() {
         )}
 
         <CustomGeometry
+          ref={customGeomRef}
           viewer={viewerRef}
           viewerReady={viewerReady}
           isDrawing={isDrawing}
@@ -216,7 +206,8 @@ function App() {
         apiEndpoint={filtersAPI}
         onFilterApply={handleFilterApply}
         onToggleDrawing={() => handleToggleDrawing(isDrawing, setIsDrawing)}
-        onUndo={() => handleUndo(setGeometries)}
+        onUndo={() => {console.log("Undo function passed to handleUndo:", customGeomRef.current?.undoLastPoint);
+          handleUndo(customGeomRef.current?.undoLastPoint)}}
         onClear={() => handleClear(setShowClearDialog)}
         onToggleOverlays={() => handleToggleOverlays(showOverlays, setShowOverlays)}
       />
