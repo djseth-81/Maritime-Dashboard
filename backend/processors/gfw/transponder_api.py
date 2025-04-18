@@ -43,7 +43,7 @@ response = requests.post(events_url, headers=headers, json=data)
 print("Status Code:", response.status_code)
 
 if response.status_code >= 400:
-    print("❌ Failed to fetch transponder events.")
+    print("Failed to fetch transponder events.")
     print(response.text)
     sys.exit()
 
