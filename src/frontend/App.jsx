@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import CustomGeometry from "./utilities/CustomGeometry";
 import ToolsUI from "./utilities/ToolsUI";
 import ZoneSettingsUI from "./utilities/ZoneSettingsUI";
-import FiltersUI from "./utilities/filters/FiltersUI";
+// import FiltersUI from "./utilities/filters/FiltersUI";
 import ConfirmationDialog from "./utilities/ConfirmationDialog";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/ReactToastify.css";
@@ -13,7 +13,8 @@ import { Viewer } from "resium";
 // import axios from "axios";
 import OverlaysUI from "./utilities/overlays/OverlaysUI";
 import { fetchVessels } from "./utilities/apiFetch";
-import { zoning } from "./utilities/zoning"; import {
+import { zoning } from "./utilities/zoning";
+import {
   handleUndo,
   handleToggleDrawing,
   handleToggleOverlays,
@@ -43,14 +44,15 @@ function App() {
   const [viewerReady, setViewerReady] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
+  
   const viewerRef = useRef(null);
+  const customGeomRef = useRef(null);
   const URL = window.location.href.split(":");
   const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
   const filtersAPI = "http:" + URL[1] + ":8000/filters/";
-
+  
   useCesiumViewer(viewerRef, setViewerReady);
-
+  
   const handleFilterApply = async (filters) => {
     console.log("Filters selected:");
     console.log(filters);
@@ -142,21 +144,20 @@ function App() {
   // );
 
   // SHIP DATA
-  console.log("SHIP DATA:");
-  console.log(vessels);
-  console.log("SHIP NAME:");
-  if (selectedGeometry?.name) {
-    console.log(selectedGeometry.name.split(": ")[1]);
-  } else {
-    console.log("No ship selected.");
-  }
-  const vesselData = vessels.find(
-    (vessel) => vessel.vessel_name === selectedGeometry?.name.split(": ")[1]
-  );
-  console.log("Selected Ship data: ", vesselData);
-  console.log("Selected ship position:");
-  console.log(vesselData?.geom);
-
+  // console.log("SHIP DATA:");
+  // console.log(vessels);
+  // console.log("SHIP NAME:");
+  // if (selectedGeometry?.name) {
+  //   console.log(selectedGeometry.name.split(": ")[1]);
+  // } else {
+  //   console.log("No ship selected.");
+  // }
+  // const vesselData = vessels.find(
+  //   (vessel) => vessel.vessel_name === selectedGeometry?.name.split(": ")[1]
+  // );
+  // console.log("Selected Ship data: ", vesselData);
+  // console.log("Selected ship position:");
+  // console.log(vesselData?.geom);
   return (
     <div className="cesium-viewer">
       <ToastContainer />
@@ -186,6 +187,7 @@ function App() {
         )}
 
         <CustomGeometry
+          ref={customGeomRef}
           viewer={viewerRef}
           viewerReady={viewerReady}
           isDrawing={isDrawing}
@@ -203,7 +205,8 @@ function App() {
         apiEndpoint={filtersAPI}
         onFilterApply={handleFilterApply}
         onToggleDrawing={() => handleToggleDrawing(isDrawing, setIsDrawing)}
-        onUndo={() => handleUndo(setGeometries)}
+        onUndo={() => {console.log("Undo function passed to handleUndo:", customGeomRef.current?.undoLastPoint);
+          handleUndo(customGeomRef.current?.undoLastPoint)}}
         onClear={() => handleClear(setShowClearDialog)}
         onToggleOverlays={() => handleToggleOverlays(showOverlays, setShowOverlays)}
       />
@@ -213,7 +216,7 @@ function App() {
           className="context-menu"
           style={{ top: contextMenuPosition.y, left: contextMenuPosition.x }}
         >
-          <button onClick={() => {setShowSettings(true); setShowContextMenu(false);}}>Settings</button>
+          <button onClick={() => { setShowSettings(true); setShowContextMenu(false); }}>Settings</button>
           <button onClick={() => handleDelete(setShowContextMenu, setShowDeleteDialog)}>
             Delete
           </button>

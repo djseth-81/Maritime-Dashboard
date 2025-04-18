@@ -8,7 +8,7 @@ export const zoning = async (polygonData, filters = {}, setVessels) => {
     const payload = {};
 
     // If zone is selected, apply geospatial filtering
-    console.log("ZONE SELECTED:");
+    console.log("ZONE SELECTED:", polygonData);
     // console.log(polygonData);
 
     let polygonVerticies = polygonData?.positions.map((point) =>
@@ -33,6 +33,7 @@ export const zoning = async (polygonData, filters = {}, setVessels) => {
     if (filters.statuses && filters.statuses.length > 0) {
         payload.status = filters.statuses.join(",");
     }
+    console.log("Payload for zoning API:", payload);
 
     try {
         const zoneAPI = "http:" + URL[1] + ":8000/zoning/";
