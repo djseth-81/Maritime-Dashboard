@@ -578,6 +578,16 @@ if __name__ == "__main__":
     Scratch work
     """
 
+    # FIXME: TopologyError when trying to check zones containing this station's point?
+    # # Getting zone
+    # zone = ZoneOp.query([{'src_id': 'ILM'}])[0]
+    # pprint(zone)
+    # # Getting station
+    # station = StationOp.query([{'id': 'ILM'}])[0]
+    # pprint(station)
+    # zone = ZoneOp.contains(loads(station['geom']))
+    # nws_alerts(zone)
+    # input()
 
     print(f"Entities in table: {operator.get_count()}")
     results = operator.query([{'type':'NOAA-NWS'}])

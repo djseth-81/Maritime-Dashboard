@@ -113,20 +113,8 @@ if __name__ == "__main__":
     alerts = []
     StationOp = DBOperator(table='sources')
     stations = StationOp.query([{'type': 'NOAA-NWS'}])
+    StationOp.close()
     ZoneOp = DBOperator(table='zones')
-
-    """
-    """
-    # FIXME: TopologyError when trying to check zones containing this station's point?
-    # # Getting zone
-    # zone = ZoneOp.query([{'src_id': 'ILM'}])[0]
-    # pprint(zone)
-    # # Getting station
-    # station = StationOp.query([{'id': 'ILM'}])[0]
-    # pprint(station)
-    # zone = ZoneOp.contains(loads(station['geom']))
-    # nws_alerts(zone)
-    # input()
 
     for station in stations:
         print(f"Station: {station['id']}")
@@ -144,6 +132,7 @@ if __name__ == "__main__":
         entity.update(guh) if guh is not None else print("guh!")
 
         alerts.append(entity)
+    ZoneOp.close()
 
     failures = []
     events = DBOperator(table='events')
