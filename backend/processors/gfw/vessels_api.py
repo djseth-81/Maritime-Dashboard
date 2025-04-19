@@ -30,7 +30,7 @@ def query(url: str) -> dict:
 
 GFW_TOKEN = os.environ.get("TOKEN")
 
-if GFW_TOKEN == None:
+if GFW_TOKEN is None:
     sys.exit("No GFW API Token provided.")
 
 headers = {

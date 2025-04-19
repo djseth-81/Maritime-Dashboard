@@ -420,9 +420,10 @@ class DBOperator():
 
         results = [i[0] for i in self.__cursor.fetchall()]
 
-        for r in results:  # quick formatting to remove binary Geom data
-            tmp = r.pop('st_asgeojson')
-            r['geom'] = tmp
+        if 'geom' in self.attrs.keys():
+            for r in results:  # quick formatting to remove binary Geom data
+                tmp = r.pop('st_asgeojson')
+                r['geom'] = tmp
 
         return results
 
@@ -441,8 +442,7 @@ class DBOperator():
 
     def proximity(self, var: str, range=5000.0):
         """
-        Gets vessels witihin a specified range of a geometry
-        ST_DWithin(geom, var, range)
+        Gets geometry witihin a specified range of a geometry
         """
         if "geom" not in self.attrs.keys():
             raise AttributeError(
@@ -466,8 +466,7 @@ class DBOperator():
 
     def within(self, var: dict) -> list:
         """
-        Gets vessels within a specified geometry
-        ST_Contains(var, geom)
+        Gets entity within a (Multi) Polygon
         """
         if "geom" not in self.attrs.keys():
             raise AttributeError(
@@ -490,9 +489,44 @@ class DBOperator():
 
         return results
 
-    def borders(self, var):
+    def contains(self, var: dict):
         """
-        Gets vessels that border/touches a specified geometry
+        Gets entity that contains geometry
+        """
+        if "geom" not in self.attrs.keys():
+            raise AttributeError(
+                "Cannot call GIS function on table with no 'geom' attrubute")
+
+        query = f"""
+                SELECT *,ST_AsGeoJson(geom)
+                FROM {self.table}
+                WHERE ST_Contains(geom::geometry, ST_GeomFromGeoJSON(%s))
+            """
+
+        self.__cursor.execute(
+            f"SELECT row_to_json(data) FROM ({query}) AS data", (dumps(var),))
+
+        results = [i[0] for i in self.__cursor.fetchall()]
+
+        for r in results:  # quick formatting to remove binary Geom data
+            tmp = r.pop('st_asgeojson')
+            r['geom'] = tmp
+
+        return results
+
+    def meets(self, var):
+        """
+        Gets a geometry that touches the broundary of (Multi) Polygon
+        """
+        if "geom" not in self.attrs.keys():
+            raise AttributeError(
+                "Cannot call GIS function on table with no 'geom' attrubute")
+
+        pass
+
+    def overlaps(self, var):
+        """
+        Gets (Multi) Polygon that overlaps a (Multi) Polygon
         """
         if "geom" not in self.attrs.keys():
             raise AttributeError(
@@ -505,8 +539,8 @@ if __name__ == "__main__":
 
     # operator = DBOperator(table='vessels')  # For me :)
     # operator = DBOperator(table='zones')
-    # operator = DBOperator(table='sources')
-    operator = DBOperator(table='meteorology')
+    operator = DBOperator(table='sources')
+    # operator = DBOperator(table='meteorology')
     # operator = DBOperator(table='oceanography')
     # operator = DBOperator(table='events')
 
@@ -544,9 +578,16 @@ if __name__ == "__main__":
     Scratch work
     """
 
-    print(f"Entities in table: {operator.get_count()}")
-    pprint(operator.query([{'src_id':'1611400'}]))
 
+    print(f"Entities in table: {operator.get_count()}")
+    results = operator.query([{'type':'NOAA-NWS'}])
+    # print(results[5])
+
+    zoneOp = DBOperator(table='zones')
+    print(f"Entities in table: {zoneOp.get_count()}")
+    zones = zoneOp.contains({"type":"Point", "coordinates":[-104.5848,38.2879]})
+
+    pprint(zones)
 
     operator.close()
 

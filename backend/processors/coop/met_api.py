@@ -17,7 +17,6 @@ from ...DBOperator import DBOperator
     - improve logging
     - error handling
     - Adding/modifying DB entries
-
 """
 
 
@@ -48,9 +47,9 @@ for station in stations:
 
     # Metadata for met weather_report
     # print(f"# Station {station['name']} ({station['id']})")
-    weather_report.update({'src_id': station['id']})
     # print(f"timestamp: {timestamp.strftime('%Y-%m-%dT%H:%M:%S')}")
-    weather_report.update({'timestamp': timestamp.strftime('%Y-%m-%dT%H:%M:%S')})
+    weather_report.update({'src_id': station['id'],
+                           'timestamp': timestamp.strftime('%Y-%m-%dT%H:%M:%S')})
 
     # Iterates through expected datums, and sees if station reports it. If so,
     # report. Otherwise, set as NULL. This is the better outcome, becasue it
@@ -59,14 +58,18 @@ for station in stations:
         # If expected datum is not recorded by station, continue
         if thing not in station['datums']:
             print(f"No {thing} to report from {station['name']}")
-            # weather_report.update({f'{thing}': None})  # datum is entered as null
+            if thing == 'wind':
+                weather_report.update({'wind_heading': None,
+                                       'wind_speed': None})
+            else:
+                weather_report.update({f'{thing}': None})  # datum is entered as null
             continue
 
         # Executes API call to pull datum
         data = request(station['id'], thing)
 
         # If client or server error, quit while we're ahead and print out returned error
-        if type(data) is not type({"1":1}) and data.status_code >= 400:
+        if type(data) is not type({"1":1}) and data.status_code not in [200, 201]:
             print(f"### COOP-Meteorology API: HTTP ERROR {data.status_code}")
             # pprint(data.json())
             break
@@ -78,27 +81,26 @@ for station in stations:
             # I am in a panic for seemingly no reason because I feel like I'm
             # behind for STILL processing API data, so this is just gross
             if thing == 'wind':
-                weather_report.update({'wind_heading': None})
-                weather_report.update({'wind_speed': None})
+                weather_report.update({'wind_heading': None,
+                                       'wind_speed': None})
             else:
                 weather_report.update({f'{thing}': None})  # datum is entered as null
-
             continue
 
         # The JSON for wind datums is structured differently than the others...
         if thing == 'wind':
             # deg?
             # print(f"Wind direction: {data['data'][0]['dr']} ({data['data'][0]['d']})")
-            weather_report.update({f'wind_heading': data['data'][0]['d']})
             # print(f"Wind speed: {data['data'][0]['s']}")  # kts?
-            weather_report.update({f'wind_speed': data['data'][0]['s']})
+            weather_report.update({'wind_heading': data['data'][0]['d'],
+                                   'wind_speed': data['data'][0]['s']})
         else:
             # print(f"{thing}: {data['data'][0]['v']}")  # F/nautical mi/bar?
             weather_report.update({f'{thing}': data['data'][0]['v']})
 
-    weather_report.update({'percipitation': None})
-    weather_report.update({'forecast': None})
-    weather_report.update({'event_id': None})  # Is this even necessary?
+    weather_report.update({'precipitation': None,
+                           'forecast': None,
+                           'event_id': None})  # Is this even necessary?
     # pprint(weather_report)
     pprint("### COOP Meteorology API: Queuing weather report...") # Printing for logs
     weather_reports.append(weather_report)
@@ -109,9 +111,9 @@ for station in stations:
         f"https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/{station['id']}/notices.json")
     # print(res.status_code)
     # If a client or server error occurs, quit while we're ahead and print out error
-    if res.status_code >= 400:
-        print("### COOP-Meteorology API: HTTP ERROR:")
-        pprint(res.json())
+    if res.status_code not in [200,201]:
+        print(f"### COOP-Meteorology API: HTTP ERROR {res.status_code}:")
+        pprint(res.text)
         break
     data = res.json()
     if len(data['notices']) > 0:
