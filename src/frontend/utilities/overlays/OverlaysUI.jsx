@@ -53,4 +53,4 @@ const OverlaysUI = ({ onClose, onToggleWeather, onToggleOceanConditions, onToggl
     );
 };
 
-export default OverlaysUI
+export default OverlaysUI;

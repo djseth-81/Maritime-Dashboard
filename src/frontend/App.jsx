@@ -174,6 +174,8 @@ function App() {
         geocoder={true}
         infoBox={true}
         selectionIndicator={true}
+        infoBoxViewModel={{sanitizeHtml: false,
+        }}
       >
         {vessels.map((vessel) =>
           placeVessel(

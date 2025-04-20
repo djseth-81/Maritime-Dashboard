@@ -26,13 +26,38 @@ export function placeVessel(longitude, latitude, heading, elevation = 0, type = 
     const encodedSvg = encodeURIComponent(svgString);
     const dataUrl = `data:image/svg+xml;charset=utf-8,${encodedSvg}`;
 
+    // Create a fully custom HTML description with inline styles
+    const description = `
+        <div style="background-color:#1a1a1a; color:#ffffff; font-family:Arial; padding:10px; margin:-10px; width:calc(100% + 20px);">
+            <h3 style="margin-top:0; color:#ffffff;">${type} Details</h3>
+            <table style="width:100%; color:#ffffff;">
+                <tr>
+                    <td style="color:#ffffff; padding:3px 0;">Name:</td>
+                    <td style="color:#ffffff; padding:3px 0;"><strong>${name}</strong></td>
+                </tr>
+                <tr>
+                    <td style="color:#ffffff; padding:3px 0;">Type:</td>
+                    <td style="color:#ffffff; padding:3px 0;">${type}</td>
+                </tr>
+                <tr>
+                    <td style="color:#ffffff; padding:3px 0;">Position:</td>
+                    <td style="color:#ffffff; padding:3px 0;">${numLatitude.toFixed(4)}°, ${numLongitude.toFixed(4)}°</td>
+                </tr>
+                <tr>
+                    <td style="color:#ffffff; padding:3px 0;">Heading:</td>
+                    <td style="color:#ffffff; padding:3px 0;">${heading}°</td>
+                </tr>
+            </table>
+        </div>
+    `;
+
     return (
         <Entity
             key={`${name}-${longitude}-${latitude}`}
             position={position}
             billboard={{
                 image: dataUrl,
-                scale: 2.0,
+                scale: 1.5,
                 distanceDisplayCondition: new DistanceDisplayCondition(0, 20.0e6),
                 scaleByDistance: new NearFarScalar(1.5e5, 1.5, 1.5e6, 0.5),
                 heightReference: HeightReference.None,
@@ -42,7 +67,7 @@ export function placeVessel(longitude, latitude, heading, elevation = 0, type = 
                 pixelOffset: new Cartesian3(0, 0, 0),
             }}
             name={`${type.charAt(0).toUpperCase() + type.slice(1)} Vessel: ${name}`}
-            description={`This is a ${type} vessel named "${name}".`}
+            description={description}
         />
     );
 }

@@ -25,13 +25,17 @@ export default function BoatIcon({
     return baseColor + "B3"; // 80 in hex is 50% opacity
   };
   
-  // Calculate the points for a simple angle shape like <
-  const getAnglePoints = () => {
-    // Simple angle shape (like <)
+  // Calculate the points for an arrow with indented back
+  const getArrowPoints = () => {
+    const quarter = size / 4;
+    const half = size / 2;
+    
+    // Arrow pointing right with indented back
     return `
-      0,${size/2}
-      ${size},0 
-      ${size},${size}
+      0,0
+      ${size},${half}
+      0,${size}
+      ${quarter},${half}
     `;
   };
 
@@ -45,10 +49,10 @@ export default function BoatIcon({
     >
       {/* Simple angle shape (like <) */}
       <polygon
-        points={getAnglePoints()}
+        points={getArrowPoints()}
         fill={getVesselColor()}
         stroke={vesselColors[type] || vesselColors.cargo}
-        strokeWidth="3" // Bolder border
+        strokeWidth="1.5" // Bolder border
         strokeLinejoin="round" // Rounded corners on the stroke
       />
     </svg>
