@@ -108,8 +108,6 @@ def nws_alerts(zone: dict):
 
 
 if __name__ == "__main__":
-
-
     alerts = []
     StationOp = DBOperator(table='sources')
     stations = StationOp.query([{'type': 'NOAA-NWS'}])
@@ -119,7 +117,6 @@ if __name__ == "__main__":
     for station in stations:
         print(f"Station: {station['id']}")
         entity = {}
-        entity.update({'src_id': station['id']})
 
         # zones = ZoneOp.contains(loads(station['geom']))
         zones = ZoneOp.query([{'src_id': station['id']}])
@@ -129,7 +126,9 @@ if __name__ == "__main__":
                 print(f"Zone contatining station: {zone['id']}")
                 guh = nws_alerts(zone)
 
-        entity.update(guh) if guh is not None else print("guh!")
+        if guh is not None:
+            entity.update({'src_id': station['id']})
+            entity.update(guh)
 
         alerts.append(entity)
     ZoneOp.close()
@@ -137,7 +136,6 @@ if __name__ == "__main__":
     failures = []
     events = DBOperator(table='events')
     for entity in alerts:
-        pprint(entity)
         try:
             print("Adding NWS weather report to met table")
             events.add(entity.copy())
@@ -146,7 +144,7 @@ if __name__ == "__main__":
             print(f"An error occured saving weather report...\n{e}")
             print("This report caused the failure:")
             pprint(entity)
-            # input()  # DEBUG
+            input()  # DEBUG
             if entity is not None:
                 failures.append(entity)
     events.close()
