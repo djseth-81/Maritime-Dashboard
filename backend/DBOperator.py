@@ -24,23 +24,6 @@ class DBOperator():
     #   - Want a better fix than that^ !!!
     # WARN: Expecting fetch_filter_options() to not work with tables other than vessels
 
-    """
-    // POSTGIS
-        - Zone stuff
-            - ST_Equals() (to check zone existence)
-            - ST_Touches() (For bordering ships/zones)
-            - ST_Intersect() (for a custom zone on EEZ/NOAA?)
-            - ST_Overlaps(for a custom zone intersecting with EEZ/NOAA, to pull data wrt EEZ/NOAA)
-        - Vessel prediction
-            - ST_Crosses() (If a projected route crosses another, or if a ship enters a zone)
-            - ST_Distance() path prediction
-        - Things I think might be useful
-            - ST_Disjoint() for zones
-            - ST_Area()
-            - ST_NRing() == 0
-            - ST_ExteriorRing()
-            - ST_Perimeter()
-    """
 
     ''' For Yolvin :) 
     def __init__(self, table: str, host='localhost', port='5432', user='postgres',
@@ -83,7 +66,7 @@ class DBOperator():
         Expects a dict = {key: value} to enter as attribute and value
         Expects keys to match attrs. If attr is missing from key, ''/0/0.0 is provided.
         Unnacceptable Missing Attrs:
-            ID reference values (vessels.mmsi, user.id, user.hash, zone.id, event.id, report.id)
+            ID reference values (vessels.mmsi, user.id, user.hash, zone.id)
             Geometry
         """
         # TODO: Handle multiple entities for bulk additions
@@ -306,7 +289,6 @@ class DBOperator():
 
         return result
 
-    # Fetching tables in DB --> Dev option!
     def __get_tables(self) -> list:
         """
         Fetching tables in DB
@@ -537,16 +519,6 @@ class DBOperator():
 
 if __name__ == "__main__":
 
-    # operator = DBOperator(table='vessels')  # For me :)
-    # operator = DBOperator(table='zones')
-    operator = DBOperator(table='sources')
-    # operator = DBOperator(table='meteorology')
-    # operator = DBOperator(table='oceanography')
-    # operator = DBOperator(table='events')
-
-    # operator = DBOperator(table='vessels', host='localhost', port='5432',
-    #                       user='postgres', passwd='gres', schema='public',
-    #                       db='ships')  # For Sean, db='capstone' otherwise
 
     # pprint(operator.query([{'id':'AKC013'}]))
     # operator.close()
@@ -577,30 +549,38 @@ if __name__ == "__main__":
     """
     Scratch work
     """
+    # operator = DBOperator(table='vessels')
+    # operator = DBOperator(table='zones')
+    operator = DBOperator(table='sources')
+    # operator = DBOperator(table='meteorology')
+    # operator = DBOperator(table='oceanography')
+    # operator = DBOperator(table='events')
 
-    # FIXME: TopologyError when trying to check zones containing this station's point?
-    # # Getting zone
-    # zone = ZoneOp.query([{'src_id': 'ILM'}])[0]
-    # pprint(zone)
-    # # Getting station
-    # station = StationOp.query([{'id': 'ILM'}])[0]
-    # pprint(station)
-    # zone = ZoneOp.contains(loads(station['geom']))
-    # nws_alerts(zone)
-    # input()
+    # FIXME: TopologyError when trying to check zones containing some stations
+    #        Following stations threwe TopologyException:
+    #          - ILM
+    #          - CHS
+    #          - LWX
+    #          - AKQ
+    #          - TBW
 
     print(f"Entities in table: {operator.get_count()}")
     results = operator.query([{'type':'NOAA-NWS'}])
-    # print(results[5])
-
-    zoneOp = DBOperator(table='zones')
-    print(f"Entities in table: {zoneOp.get_count()}")
-    zones = zoneOp.contains({"type":"Point", "coordinates":[-104.5848,38.2879]})
-
-    pprint(zones)
-
     operator.close()
+    zoneOp = DBOperator(table='zones')
 
+    for station in results:
+        print(f"Checking Station: {station['id']}")
+        try:
+            print(len(zoneOp.contains(loads(station['geom']))))
+        except Exception as e:
+            print(f"Station {station['id']} threw error:\n{e}")
+            zoneOp.rollback()
+            input()
+
+    print(len(results))
+
+    zoneOp.close()
 
 
 

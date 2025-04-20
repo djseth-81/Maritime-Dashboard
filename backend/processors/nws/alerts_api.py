@@ -7,20 +7,6 @@ from json import loads, dumps
 from ...DBOperator import DBOperator
 
 """
-id = Alert ID (??)
-src_id ??? <- Reprots Source name, but I'd prefer source CWA
-timestamp = sent time
-effective = Effective time
-end_time = End time
-active = '{if effective <= current_time < end_time}'
-type = '{Category}-{messageType}'
-description = Description
-expires = Alert Expiration time
-instructions = Instructions
-urgency = Urgency
-severity = Severity
-headline = Headline
-
 NOAA NWS Alerts API
 - Currently uses Zone ID to pull relevant active zones, but would be cool to
   search by station
@@ -40,7 +26,7 @@ def nws_alerts(zone: dict):
     if res.status_code not in [200, 201]:
         print(
             f"Error trying to retrieve alerts from {zone['id']}:\n{res.text}")
-        return
+        return None
 
     # Pagination which I think would be helpful. Sometime in the future
     # pagination_url = res.json()['pagination']['next']
@@ -53,10 +39,8 @@ def nws_alerts(zone: dict):
 
     if len(res.json()['features']) < 1:
         print(f"{zone['id']} has no events to report.")
-        return
+        return None
 
-    # Checking out bug since alert['properties']['parameters']['NWSheadline'][0]
-    # throws an error sometimes
     alert = res.json()['features'][0]
     # pprint(alert['properties'])
     # input()
@@ -103,7 +87,6 @@ def nws_alerts(zone: dict):
         "urgency": alert['properties']['urgency'],
         "severity": alert['properties']['severity'],
         "headline": alert['properties']['headline'],
-
     }
 
 
@@ -118,24 +101,24 @@ if __name__ == "__main__":
         print(f"Station: {station['id']}")
         entity = {}
 
-        # zones = ZoneOp.contains(loads(station['geom']))
         zones = ZoneOp.query([{'src_id': station['id']}])
         pprint(len(zones))
         for zone in zones:
             if zone['type'] == 'COUNTY':
                 print(f"Zone contatining station: {zone['id']}")
                 guh = nws_alerts(zone)
+                if guh is not None:
+                    entity.update({'src_id': station['id']})
+                    entity.update(guh)
 
-        if guh is not None:
-            entity.update({'src_id': station['id']})
-            entity.update(guh)
+        alerts.append(entity) if (len(entity) > 0) else print("guh!")
 
-        alerts.append(entity)
     ZoneOp.close()
 
     failures = []
     events = DBOperator(table='events')
     for entity in alerts:
+        pprint(entity)
         try:
             print("Adding NWS weather report to met table")
             events.add(entity.copy())
@@ -144,7 +127,6 @@ if __name__ == "__main__":
             print(f"An error occured saving weather report...\n{e}")
             print("This report caused the failure:")
             pprint(entity)
-            input()  # DEBUG
             if entity is not None:
                 failures.append(entity)
     events.close()
