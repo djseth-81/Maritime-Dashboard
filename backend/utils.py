@@ -8,11 +8,13 @@ def connect(table: str) -> DBOperator:
     Attempt DB connection
     """
     try:
-        instance = DBOperator(table=table)
+        print(f"### Fast Server: Attempting to connect to {table}, table with: user=postgres, host=localhost, port=5432")
+        #instance = DBOperator(table=table)
+        instance = DBOperator(table=table, db='capstone', user='postgres', passwd='Jimenez3128', host='localhost', port='5432',schema='public')
         print(f"### Fast Server: Connected to {table} table")
         return instance
     except Exception as e:
-        print(f"### Fast Server: Unable connect to {table} table")
+        print(f"### Fast Server: Unable connect to {table} table, Error: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="Unable to connect to database."
