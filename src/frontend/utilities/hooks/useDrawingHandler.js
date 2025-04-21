@@ -36,6 +36,7 @@ const useDrawingHandler = (scene, isDrawing, positions, setPositions, viewer, ge
         handler.setInputAction((click) => {
             const currentTime = Date.now();
 
+            // Detect double-click
             if (currentTime - lastClickTimeRef.current < 300) {
                 doubleClickDetectedRef.current = true;
                 return;
@@ -45,75 +46,79 @@ const useDrawingHandler = (scene, isDrawing, positions, setPositions, viewer, ge
             lastClickTimeRef.current = currentTime;
 
             setTimeout(() => {
-                if (!doubleClickDetectedRef.current) {
-                    let cartesian = scene.pickPosition(click.position);
-                    if (!cartesian) {
-                        cartesian = scene.camera.pickEllipsoid(click.position, scene.globe.ellipsoid);
-                    }
-                    if (cartesian) {
-                        convertCartesianToDegrees(cartesian);
+                // Prevent adding a point if a double-click was detected
+                if (doubleClickDetectedRef.current) {
+                    return;
+                }
 
-                        if (!activeZone) {
-                            const zoneEntity = viewer.current.cesiumElement.entities.add({
-                                polygon: {
-                                    hierarchy: new Cesium.PolygonHierarchy([]),
-                                    material: Cesium.Color.RED.withAlpha(0.5),
-                                },
-                                name: `Zone ${geometries.length + 1}`,
-                                isGeometry: true,
-                            });
+                let cartesian = scene.pickPosition(click.position);
+                if (!cartesian) {
+                    cartesian = scene.camera.pickEllipsoid(click.position, scene.globe.ellipsoid);
+                }
+                if (cartesian) {
+                    convertCartesianToDegrees(cartesian);
 
-                            const newActiveZone = { id: zoneEntity.id, entity: zoneEntity, points: [] };
-                            setActiveZone(newActiveZone);
-                            console.log("New active zone created:", newActiveZone);
+                    if (!activeZone) {
+                        const zoneEntity = viewer.current.cesiumElement.entities.add({
+                            polygon: {
+                                hierarchy: new Cesium.PolygonHierarchy([]),
+                                material: Cesium.Color.RED.withAlpha(0.5),
+                            },
+                            name: `Zone ${geometries.length + 1}`,
+                            isGeometry: true,
+                        });
 
-                            const pointEntity = viewer.current.cesiumElement.entities.add({
-                                position: cartesian,
-                                point: {
-                                    pixelSize: 10,
-                                    color: Cesium.Color.RED,
-                                    outlineColor: Cesium.Color.WHITE,
-                                    outlineWidth: 2,
-                                },
-                                name: `Point ${positions.length + 1}`,
-                                label: {
-                                    text: `Point ${positions.length + 1}`,
-                                    font: "14px Helvetica",
-                                    scale: 0.8,
-                                    pixelOffset: new Cesium.Cartesian2(0, -20),},
-                                
-                                parent: zoneEntity,
-                            });
+                        const newActiveZone = { id: zoneEntity.id, entity: zoneEntity, points: [] };
+                        setActiveZone(newActiveZone);
+                        console.log("New active zone created:", newActiveZone);
 
-                            setPositions((prevPositions) => [...prevPositions, cartesian]);
-                            setActiveZone((prevZone) => ({
-                                ...newActiveZone,
-                                points: [...(prevZone?.points || []), pointEntity],
-                            }));
-                        } else {
-                            const pointEntity = viewer.current.cesiumElement.entities.add({
-                                position: cartesian,
-                                point: {
-                                    pixelSize: 10,
-                                    color: Cesium.Color.RED,
-                                    outlineColor: Cesium.Color.WHITE,
-                                    outlineWidth: 2,
-                                },
-                                name: `Point ${positions.length + 1}`,
-                                label: {
-                                    text: `Point ${positions.length + 1}`,
-                                    font: "14px Helvetica",
-                                    scale: 0.8,
-                                    pixelOffset: new Cesium.Cartesian2(0, -20),},
-                                parent: activeZone.entity,
-                            });
+                        const pointEntity = viewer.current.cesiumElement.entities.add({
+                            position: cartesian,
+                            point: {
+                                pixelSize: 10,
+                                color: Cesium.Color.RED,
+                                outlineColor: Cesium.Color.WHITE,
+                                outlineWidth: 2,
+                            },
+                            name: `Point ${positions.length + 1}`,
+                            label: {
+                                text: `Point ${positions.length + 1}`,
+                                font: "14px Helvetica",
+                                scale: 0.8,
+                                pixelOffset: new Cesium.Cartesian2(0, -20),
+                            },
+                            parent: zoneEntity,
+                        });
 
-                            setPositions((prevPositions) => [...prevPositions, cartesian]);
-                            setActiveZone((prevZone) => ({
-                                ...prevZone,
-                                points: [...(prevZone?.points || []), pointEntity],
-                            }));
-                        }
+                        setPositions((prevPositions) => [...prevPositions, cartesian]);
+                        setActiveZone((prevZone) => ({
+                            ...newActiveZone,
+                            points: [...(prevZone?.points || []), pointEntity],
+                        }));
+                    } else {
+                        const pointEntity = viewer.current.cesiumElement.entities.add({
+                            position: cartesian,
+                            point: {
+                                pixelSize: 10,
+                                color: Cesium.Color.RED,
+                                outlineColor: Cesium.Color.WHITE,
+                                outlineWidth: 2,
+                            },
+                            name: `Point ${positions.length + 1}`,
+                            label: {
+                                text: `Point ${positions.length + 1}`,
+                                font: "14px Helvetica",
+                                scale: 0.8,
+                                pixelOffset: new Cesium.Cartesian2(0, -20),
+                            },
+                            parent: activeZone.entity,
+                        });
+
+                        setPositions((prevPositions) => [...prevPositions, cartesian]);
+                        setActiveZone((prevZone) => ({
+                            ...prevZone,
+                            points: [...(prevZone?.points || []), pointEntity],
+                        }));
                     }
                 }
             }, 300);

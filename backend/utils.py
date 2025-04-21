@@ -1,16 +1,23 @@
 import base64
 from Crypto.Cipher import AES
 from fastapi import HTTPException
-from backend.DBOperator import DBOperator
+from DBOperator import DBOperator
 
 def connect(table: str) -> DBOperator:
     """
     Attempt DB connection
     """
+    # Seans credentials - CHANGE THIS FOR YOUR OWN
+    db = 'capstonev2'
+    user = 'postgres'
+    passwd = 'gres'
+    host = 'localhost'
+    port = '5432'
+
     try:
         print(f"### Fast Server: Attempting to connect to {table}, table with: user=postgres, host=localhost, port=5432")
         #instance = DBOperator(table=table)
-        instance = DBOperator(table=table, db='capstone', user='postgres', passwd='Jimenez3128', host='localhost', port='5432',schema='public')
+        instance = DBOperator(table=table, db=db, user=user, passwd=passwd, host=host, port=port,schema='public')
         print(f"### Fast Server: Connected to {table} table")
         return instance
     except Exception as e:

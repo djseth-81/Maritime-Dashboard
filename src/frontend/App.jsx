@@ -44,89 +44,85 @@ function App() {
   const [viewerReady, setViewerReady] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  
+
   const viewerRef = useRef(null);
   const customGeomRef = useRef(null);
   const URL = window.location.href.split(":");
   const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
   const filtersAPI = "http:" + URL[1] + ":8000/filters/";
-  
+
   useCesiumViewer(viewerRef, setViewerReady);
-  
+
+  // const handleFilterApply = async (filters) => {
+  //   console.log("Filters selected:");
+  //   console.log(filters);
+  //   await fetchVessels(vesselsAPI, filters, setVessels);
+  //   await selectedGeometry ? zoning(polygonData, filters, setVessels) : console.log("NO ZONE SELECTED");
+  // };
   const handleFilterApply = async (filters) => {
-    console.log("Filters selected:");
-    console.log(filters);
-    await fetchVessels(vesselsAPI, filters, setVessels);
-    await selectedGeometry ? zoning(polygonData, filters, setVessels) : console.log("NO ZONE SELECTED");
+    console.log("Applying filters...", filters);
+    try {
+      await fetchVessels(vesselsAPI, filters, setVessels);
+      if (selectedGeometry) {
+        await zoning(polygonData, filters, setVessels);
+      } else {
+        console.log("NO ZONE SELECTED");
+      }
+    } catch (error) {
+      console.error("Error applying filters:", error.message);
+      toast.error("Failed to apply filters.");
+    }
   };
-    const polygonData = geometries?.find(
-        (geo) => geo.id === selectedGeometry?.id
-    );
+  const polygonData = geometries?.find(
+    (geo) => geo.id === selectedGeometry?.id
+  );
 
+  // Default filters for vessels
+  const defaultFilters = {
+    types: ["CARGO", "FISHING", "TANKER", "TUG", "PASSENGER",
+      "RECREATIONAL", "OTHER"],
+    statuses: [
+      "UNDERWAY", "ANCHORED", "MOORED", "IN TOW", "FISHING",
+      "UNMANNED", "LIMITED MOVEMENT", "HAZARDOUS CARGO",
+      "AGROUND", "EMERGENCY", "UNKNOWN",
+    ],
+  }
+
+  // Fetch vessels when the viewer is ready and the API endpoint is available
   useEffect(() => {
-    const defaultFilters = {}; // or add initial filter values here
-    fetchVessels(vesselsAPI, {}, setVessels);
-
-
-    if (selectedGeometry) {
-      zoning(polygonData, defaultFilters, setVessels);
-    } else {
-      console.log("NO ZONE SELECTED");
-    }
-    
-    selectedGeometry ? zoning(polygonData, setVessels) : console.log("NO ZONE SELECTED"); // Dunno whether or not this actually does anything...
-
-    if (viewerRef.current && viewerRef.current.cesiumElement) {
-      const viewer = viewerRef.current.cesiumElement;
-      setViewerReady(true);
-      // Create a scene mode change event handler
-      const sceneModeChangeHandler = () => {
-        // If there's a selected entity, re-select it to update the info box position
-        if (viewer.selectedEntity) {
-          const currentEntity = viewer.selectedEntity;
-          viewer.selectedEntity = undefined; // Deselect
-          setTimeout(() => {
-            viewer.selectedEntity = currentEntity; // Re-select after a brief delay
-          }, 100);
-        }
+    const loadVessels = async () => {
+      try {
+        console.log("Fetching vessels...");
+        await fetchVessels(vesselsAPI, defaultFilters, setVessels);
+      } catch (error) {
+        console.error("Error fetching vessels:", error.message);
+        toast.error("Failed to load vessels.");
       };
-
-      // Add event listener for scene mode changes
-      viewer.scene.morphComplete.addEventListener(sceneModeChangeHandler);
-
-      // Clean up event listener when component unmounts
-      return () => {
-        if (viewer && viewer.scene && !viewer.isDestroyed()) {
-          viewer.scene.morphComplete.removeEventListener(
-            sceneModeChangeHandler
-          );
-        }
-      };
-    }
-    const ws = new WebSocket("ws://localhost:8000/ws");
-  
-    ws.onopen = () => {
-      console.log("WebSocket connected from React");  //displays message showing websocket is connected (shows on F12 + console)
-      ws.send("Hello from React WebSocket client!");  //dispalys on backend log
     };
-  
-    ws.onmessage = (event) => {
-      console.log("Message from WebSocket server:", event.data);  //echos the response from backend log (shows on F12 + console)
-    };
-  
-    ws.onerror = (err) => {
-      console.error("WebSocket error:", err); //error handling
-    };
-  
-    ws.onclose = () => {
-      console.log("WebSocket disconnected");  //error handling
-    };
-  
-    return () => ws.close();
-    
+    loadVessels();
 
+    // const ws = new WebSocket("ws://localhost:8000/ws");
 
-  }, [viewerReady]);
+    // ws.onopen = () => {
+    //   console.log("WebSocket connected from React");  //displays message showing websocket is connected (shows on F12 + console)
+    //   ws.send("Hello from React WebSocket client!");  //dispalys on backend log
+    // };
+
+    // ws.onmessage = (event) => {
+    //   console.log("Message from WebSocket server:", event.data);  //echos the response from backend log (shows on F12 + console)
+    // };
+
+    // ws.onerror = (err) => {
+    //   console.error("WebSocket error:", err); //error handling
+    // };
+
+    // ws.onclose = () => {
+    //   console.log("WebSocket disconnected");  //error handling
+    // };
+
+    // return () => ws.close();
+
+  }, [viewerReady, vesselsAPI]);
 
   // Debug
   // console.log("Show Context Menu:", showContextMenu);
@@ -174,7 +170,8 @@ function App() {
         geocoder={true}
         infoBox={true}
         selectionIndicator={true}
-        infoBoxViewModel={{sanitizeHtml: false,
+        infoBoxViewModel={{
+          sanitizeHtml: false,
         }}
       >
         {vessels.map((vessel) =>
@@ -207,8 +204,10 @@ function App() {
         apiEndpoint={filtersAPI}
         onFilterApply={handleFilterApply}
         onToggleDrawing={() => handleToggleDrawing(isDrawing, setIsDrawing)}
-        onUndo={() => {console.log("Undo function passed to handleUndo:", customGeomRef.current?.undoLastPoint);
-          handleUndo(customGeomRef.current?.undoLastPoint)}}
+        onUndo={() => {
+          console.log("Undo function passed to handleUndo:", customGeomRef.current?.undoLastPoint);
+          handleUndo(customGeomRef.current?.undoLastPoint)
+        }}
         onClear={() => handleClear(setShowClearDialog)}
         onToggleOverlays={() => handleToggleOverlays(showOverlays, setShowOverlays)}
       />
