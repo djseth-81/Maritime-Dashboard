@@ -121,6 +121,7 @@ class DBOperator():
             print(f"### DBOperator ERROR: Unable to add entity: {e}")
             raise UniqueViolation
 
+    # TODO: Finish!
     def modify(self, entity: dict, data: dict) -> None:
         """
         Modifys a singular exisitng entity
@@ -179,6 +180,7 @@ class DBOperator():
             self.rollback()  # Uhm... Why are you necessary so other commands don't break?
             raise UndefinedColumn
 
+    # TODO: TEST!
     def delete(self, entity: dict) -> None:
         """
         deletes entry that has matching attributes ONLY.
@@ -219,14 +221,6 @@ class DBOperator():
             self.rollback()  # Uhm... Why are you necessary so other commands don't break?
             raise UndefinedColumn
 
-    def clear(self) -> tuple:
-        """
-        Clears all entries from table
-        """
-        self.__cursor.execute(f"DELETE FROM {self.table}")
-        print(f"### DBOperator: {self.table} Cleared.")
-        return ("message", "table cleared.")
-
     def custom_cmd(self, cmd: str, call: str) -> list:
         """
         This is here in case you wanna submit custom SQL commands that are not currently supported
@@ -239,6 +233,15 @@ class DBOperator():
             return [("Message", "Committed.")]
         else:
             return self.__cursor.fetchall()
+
+    # NOTE: Do these need to return anything?
+    def clear(self) -> tuple:
+        """
+        Clears all entries from table
+        """
+        self.__cursor.execute(f"DELETE FROM {self.table}")
+        print(f"### DBOperator: {self.table} Cleared.")
+        return ("message", "table cleared.")
 
     # commit command
     def commit(self) -> tuple:
@@ -316,6 +319,7 @@ class DBOperator():
 
         return result
 
+    # TODO: FIXME
     def fetch_filter_options(self) -> dict:
         """
         Fetches distinct filter options for vessel types, origins, and statuses.
@@ -446,6 +450,7 @@ class DBOperator():
 
         return results
 
+    # TODO: TEST
     def within(self, var: dict) -> list:
         """
         Gets entity within a (Multi) Polygon
@@ -471,6 +476,33 @@ class DBOperator():
 
         return results
 
+    # TODO: TEST
+    def overlaps(self, var: dict):
+        """
+        Gets (Multi) Polygon that overlaps a (Multi) Polygon
+        """
+        if "geom" not in self.attrs.keys():
+            raise AttributeError(
+                "Cannot call GIS function on table with no 'geom' attrubute")
+
+        query = f"""
+                SELECT *,ST_AsGeoJson(geom)
+                FROM {self.table}
+                WHERE ST_Overlaps(geom::geometry, ST_MakeValid(ST_GeomFromGeoJSON(%s)))
+            """
+
+        self.__cursor.execute(
+            f"SELECT row_to_json(data) FROM ({query}) AS data", (dumps(var),))
+
+        results = [i[0] for i in self.__cursor.fetchall()]
+
+        for r in results:  # quick formatting to remove binary Geom data
+            tmp = r.pop('st_asgeojson')
+            r['geom'] = tmp
+
+        return results
+
+    # TODO: TEST
     def contains(self, var: dict):
         """
         Gets entity that contains geometry
@@ -499,16 +531,6 @@ class DBOperator():
     def meets(self, var):
         """
         Gets a geometry that touches the broundary of (Multi) Polygon
-        """
-        if "geom" not in self.attrs.keys():
-            raise AttributeError(
-                "Cannot call GIS function on table with no 'geom' attrubute")
-
-        pass
-
-    def overlaps(self, var):
-        """
-        Gets (Multi) Polygon that overlaps a (Multi) Polygon
         """
         if "geom" not in self.attrs.keys():
             raise AttributeError(
@@ -550,8 +572,8 @@ if __name__ == "__main__":
     Scratch work
     """
     # operator = DBOperator(table='vessels')
-    # operator = DBOperator(table='zones')
-    operator = DBOperator(table='sources')
+    operator = DBOperator(table='zones')
+    # operator = DBOperator(table='sources')
     # operator = DBOperator(table='meteorology')
     # operator = DBOperator(table='oceanography')
     # operator = DBOperator(table='events')
@@ -564,23 +586,37 @@ if __name__ == "__main__":
     #          - AKQ
     #          - TBW
 
-    print(f"Entities in table: {operator.get_count()}")
-    results = operator.query([{'type':'NOAA-NWS'}])
+    # print(f"Entities in table: {operator.get_count()}")
+    # results = operator.query([{'type':'NOAA-NWS'}])
+    # operator.close()
+    # zoneOp = DBOperator(table='zones')
+
+    # for station in results:
+    #     print(f"Checking Station: {station['id']}")
+    #     try:
+    #         print(len(zoneOp.contains(loads(station['geom']))))
+    #     except Exception as e:
+    #         print(f"Station {station['id']} threw error:\n{e}")
+    #         zoneOp.rollback()
+    #         input()
+
+    # print(len(results))
+
+    geom = {'coordinates': [[['-83.5959', '27.9413'],
+                             ['-83.5968', '27.4006'],
+                             ['-82.9061', '27.3887'],
+                             ['-82.9911', '27.9317']]],
+            'type': 'Polygon'}
+    zones = operator.overlaps(geom)
     operator.close()
-    zoneOp = DBOperator(table='zones')
 
-    for station in results:
-        print(f"Checking Station: {station['id']}")
-        try:
-            print(len(zoneOp.contains(loads(station['geom']))))
-        except Exception as e:
-            print(f"Station {station['id']} threw error:\n{e}")
-            zoneOp.rollback()
-            input()
+    operator = DBOperator(table='sources')
+    # Does the zone overlap known zones, and do those zones contain stations?
+    stations = []
+    for zone in zones:
+        stations.extend(operator.within(loads(zone['geom'])))
 
-    print(len(results))
-
-    zoneOp.close()
+    pprint(stations)
 
 
 
