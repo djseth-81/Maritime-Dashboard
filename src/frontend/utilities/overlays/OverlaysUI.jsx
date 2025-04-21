@@ -14,6 +14,7 @@ const OverlaysUI = ({ onClose, onToggleWeather, onToggleOceanConditions, onToggl
     const [showWeather, setShowWeather] = useState(false);
     const [showOceanConditions, setShowOceanConditions] = useState(false);
     const [showTrafficHeatmaps, setShowTrafficHeatmaps] = useState(false);
+    const [showEEZ, setShowEEZ] = useState(false);
 
     const handleWeatherToggle = () => {
         console.log("Weather Overlay Toggled");
@@ -25,6 +26,10 @@ const OverlaysUI = ({ onClose, onToggleWeather, onToggleOceanConditions, onToggl
 
     const handleTrafficToggle = () => {
         console.log("Traffic Heatmaps Toggled");
+    };
+
+    const handleEEZToggle = () => {
+        console.log("EEZ Toggled");
     };
 
     return (
@@ -41,8 +46,11 @@ const OverlaysUI = ({ onClose, onToggleWeather, onToggleOceanConditions, onToggl
             <button onClick={handleTrafficToggle}>
                 {showTrafficHeatmaps ? "Hide Traffic Heatmaps" : "Show Traffic Heatmaps"}
             </button>
+            <button onClick={handleEEZToggle}>
+                {showTrafficHeatmaps ? "Hide EEZ" : "Show EEZ"}
+            </button>
         </div>
     );
 };
 
-export default OverlaysUI
+export default OverlaysUI;

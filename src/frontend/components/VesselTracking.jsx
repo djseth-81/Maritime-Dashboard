@@ -108,6 +108,13 @@ const useVesselTracking = (viewerRef, apiEndpoint) => {
         const newSceneMode = viewer.scene.mode;
         setCurrentSceneMode(newSceneMode);
         
+        // Log detailed information about the mode change
+        console.log("Scene Mode Change Detected:");
+        console.log(`  Mode Number: ${newSceneMode}`);
+        console.log(`  Mode Name: ${getSceneModeName(newSceneMode)}`);
+        console.log(`  Is 3D: ${newSceneMode === SceneMode.SCENE3D}`);
+        console.log(`  Is 2D: ${newSceneMode === SceneMode.SCENE2D}`);
+        console.log(`  Is Columbus: ${newSceneMode === SceneMode.COLUMBUS_VIEW}`);
         
         // Handle selected entity
         if (viewer.selectedEntity) {

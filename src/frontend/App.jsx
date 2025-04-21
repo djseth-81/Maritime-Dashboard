@@ -13,7 +13,8 @@ import { Viewer } from "resium";
 // import axios from "axios";
 import OverlaysUI from "./utilities/overlays/OverlaysUI";
 import { fetchVessels } from "./utilities/apiFetch";
-import { zoning } from "./utilities/zoning"; import {
+import { zoning } from "./utilities/zoning";
+import {
   handleUndo,
   handleToggleDrawing,
   handleToggleOverlays,
@@ -45,12 +46,19 @@ function App() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const viewerRef = useRef(null);
+  const customGeomRef = useRef(null);
   const URL = window.location.href.split(":");
   const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
   const filtersAPI = "http:" + URL[1] + ":8000/filters/";
 
   useCesiumViewer(viewerRef, setViewerReady);
 
+  // const handleFilterApply = async (filters) => {
+  //   console.log("Filters selected:");
+  //   console.log(filters);
+  //   await fetchVessels(vesselsAPI, filters, setVessels);
+  //   await selectedGeometry ? zoning(polygonData, filters, setVessels) : console.log("NO ZONE SELECTED");
+  // };
   const handleFilterApply = async (filters) => {
     console.log("Applying filters...", filters);
     try {
@@ -71,7 +79,7 @@ function App() {
 
   // Default filters for vessels
   const defaultFilters = {
-    types: ["CARGO", "FISHING", "TANKER", "TUG", "PASSENGER", 
+    types: ["CARGO", "FISHING", "TANKER", "TUG", "PASSENGER",
       "RECREATIONAL", "OTHER"],
     statuses: [
       "UNDERWAY", "ANCHORED", "MOORED", "IN TOW", "FISHING",
@@ -80,10 +88,10 @@ function App() {
     ],
   }
 
+  // Fetch vessels when the viewer is ready and the API endpoint is available
   useEffect(() => {
     const defaultFilters = {}; // or add initial filter values here
     fetchVessels(vesselsAPI, {}, setVessels);
-
 
     if (selectedGeometry) {
       zoning(polygonData, defaultFilters, setVessels);
@@ -140,23 +148,8 @@ function App() {
   
     return () => ws.close();
     
-
-
   }, [viewerReady]);
 
-  // Fetch vessels when the viewer is ready and the API endpoint is available
-  useEffect(() => {
-    const loadVessels = async () => {
-      try {
-        console.log("Fetching vessels...");
-        await fetchVessels(vesselsAPI, defaultFilters, setVessels);
-      } catch (error) {
-        console.error("Error fetching vessels:", error.message);
-        toast.error("Failed to load vessels.");
-      };
-    };
-    loadVessels();
-  }, [viewerReady, vesselsAPI]);
 
   // Debug
   // console.log("Show Context Menu:", showContextMenu);
@@ -188,7 +181,6 @@ function App() {
   // console.log("Selected Ship data: ", vesselData);
   // console.log("Selected ship position:");
   // console.log(vesselData?.geom);
-
   return (
     <div className="cesium-viewer">
       <ToastContainer />
@@ -205,6 +197,9 @@ function App() {
         geocoder={true}
         infoBox={true}
         selectionIndicator={true}
+        infoBoxViewModel={{
+          sanitizeHtml: false,
+        }}
       >
         {vessels.map((vessel) =>
           placeVessel(
@@ -218,6 +213,7 @@ function App() {
         )}
 
         <CustomGeometry
+          ref={customGeomRef}
           viewer={viewerRef}
           viewerReady={viewerReady}
           isDrawing={isDrawing}
@@ -235,7 +231,10 @@ function App() {
         apiEndpoint={filtersAPI}
         onFilterApply={handleFilterApply}
         onToggleDrawing={() => handleToggleDrawing(isDrawing, setIsDrawing)}
-        onUndo={() => handleUndo(setGeometries)}
+        onUndo={() => {
+          console.log("Undo function passed to handleUndo:", customGeomRef.current?.undoLastPoint);
+          handleUndo(customGeomRef.current?.undoLastPoint)
+        }}
         onClear={() => handleClear(setShowClearDialog)}
         onToggleOverlays={() => handleToggleOverlays(showOverlays, setShowOverlays)}
       />
