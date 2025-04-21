@@ -239,7 +239,6 @@ async def get_filtered_vessels(
 
 # FIXME: Weird bug where selecting a vessel and then selecting apply filters assumes zoning
 # FIXME: Bug where entities inside/outside zone appear to behave as uninteded (read bug report for more)
-# FIXME: Bug where zoning throws 500 error when no stations are detected
 @app.post("/zoning/", response_model=dict)
 async def zone_vessels(data: dict):
     '''
@@ -289,6 +288,7 @@ async def zone_vessels(data: dict):
         # If the original geometry doesn't encompass stations, does it overlap
         # with known geometries?
         if len(stations) < 1:
+            print("### Websocket: Couldn't find stations inside zone provided by client")
             waah = [eek for eek in zones.overlaps(geom)]
             # pprint(waah)
             for wah in waah:
