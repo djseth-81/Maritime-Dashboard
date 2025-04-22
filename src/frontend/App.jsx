@@ -101,26 +101,26 @@ function App() {
     };
     loadVessels();
 
-    // const ws = new WebSocket("ws://localhost:8000/ws");
+    const ws = new WebSocket("ws://localhost:8000/ws");
 
-    // ws.onopen = () => {
-    //   console.log("WebSocket connected from React");  //displays message showing websocket is connected (shows on F12 + console)
-    //   ws.send("Hello from React WebSocket client!");  //dispalys on backend log
-    // };
+    ws.onopen = () => {
+      console.log("WebSocket connected from React");  //displays message showing websocket is connected (shows on F12 + console)
+      ws.send("Hello from React WebSocket client!");  //dispalys on backend log
+    };
 
-    // ws.onmessage = (event) => {
-    //   console.log("Message from WebSocket server:", event.data);  //echos the response from backend log (shows on F12 + console)
-    // };
+    ws.onmessage = (event) => {
+      console.log("Message from WebSocket server:", event.data);  //echos the response from backend log (shows on F12 + console)
+    };
 
-    // ws.onerror = (err) => {
-    //   console.error("WebSocket error:", err); //error handling
-    // };
+    ws.onerror = (err) => {
+      console.error("WebSocket error:", err); //error handling
+    };
 
-    // ws.onclose = () => {
-    //   console.log("WebSocket disconnected");  //error handling
-    // };
+    ws.onclose = () => {
+      console.log("WebSocket disconnected");  //error handling
+    };
 
-    // return () => ws.close();
+    return () => ws.close();
 
   }, [viewerReady, vesselsAPI]);
 
