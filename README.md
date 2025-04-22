@@ -109,6 +109,41 @@ bin/kafka-server-start.sh config/kraft/server.properties
 
 fast interact with frontend directly
 
+
+
+
+## Notes for Yolvin
+const ws = new WebSocket("ws://localhost:8000/ws");
+
+ws.onmessage = (msg) => console.log("Message from server:", msg.data);
+ws.onopen = () => {
+  console.log("WebSocket connection opened");
+};
+ws.onclose = () => console.log("WebSocket closed");
+ws.onerror = (e) => console.error("WebSocket error:", e);
+
+
+
+ws.send(JSON.stringify({ key: "shipX", status: "All clear" }));
+
+
+## GFW Token
+$env:TOKEN="x"
+
+## Consumer Listner
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic maritime-events --from-beginning
+
+
+python -m backend.processors.gfw.loitering_api
+python -m backend.processors.gfw.fishing_api
+python -m backend.processors.gfw.encounters_api
+python -m backend.processors.gfw.ports_api
+python -m backend.processors.gfw.transponder_api
+python -m backend.processors.gfw.vessels_api
+
+
+
+
 <br />
 
 # Release Notes
