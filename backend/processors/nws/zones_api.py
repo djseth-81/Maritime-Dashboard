@@ -5,6 +5,10 @@ from time import sleep
 from pprint import pprint
 from json import loads, dumps
 
+"""
+IGNORE ME
+"""
+
 zones_url = "https://api.weather.gov/zones"
 zones = requests.get(zones_url)
 
