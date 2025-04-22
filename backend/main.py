@@ -238,6 +238,7 @@ async def get_filtered_vessels(
     db.close()
 
 # FIXME: Weird bug where selecting a vessel and then selecting apply filters assumes zoning
+# FIXME: Bug where entities inside/outside zone appear to behave as uninteded (read bug report for more)
 @app.post("/zoning/", response_model=dict)
 async def zone_vessels(data: dict):
     '''
@@ -249,6 +250,7 @@ async def zone_vessels(data: dict):
     oce = connect('oceanography')
     events = connect('events')
     sources = connect('sources')
+    zones = connect('zones')
 
     try:
         payload = {
@@ -281,20 +283,30 @@ async def zone_vessels(data: dict):
 
         # Pulling stations
         stations = [i['id'] for i in sources.within(geom)]
-        # print("### Websocket: stations found:")
-        # pprint(stations)
-        payload['payload'].update({'stations': stations})
 
-        ### Getting Meteorology
-        # print("### Websocket: querying meteorology data matching station id:")
-        # pprint(met.query([{'src_id': i} for i in stations]))
-        payload['payload'].update({'weather': met.query([{'src_id': i} for i in stations])})
+        # Give them another chance :)
+        # If the original geometry doesn't encompass stations, does it overlap
+        # with known geometries?
+        if len(stations) < 1:
+            print("### Websocket: Couldn't find stations inside zone provided by client")
+            waah = [eek for eek in zones.overlaps(geom)]
+            # pprint(waah)
+            for wah in waah:
+                stations.extend([i['id'] for i in sources.within(loads(wah['geom']))])
 
-        ### Getting Oceanography
-        payload['payload'].update({'oceanography': oce.query([{'src_id': i} for i in stations])})
+        if len(stations) > 0:
+            payload['payload'].update({'stations': stations} if len(stations) > 0 else {'guh!': "No stations found."})
 
-        ### Getting events
-        payload['payload'].update({'alerts': events.query([{'src_id': i} for i in stations])})
+            ### Getting Meteorology
+            # print("### Websocket: querying meteorology data matching station id:")
+            # pprint(met.query([{'src_id': i} for i in stations]))
+            payload['payload'].update({'weather': met.query([{'src_id': i} for i in stations])})
+
+            ### Getting Oceanography
+            payload['payload'].update({'oceanography': oce.query([{'src_id': i} for i in stations])})
+
+            ### Getting events
+            payload['payload'].update({'alerts': events.query([{'src_id': i} for i in stations])})
 
         return payload
 
@@ -365,6 +377,25 @@ async def query_metadata():
         db.close() # Closes table instance
         return payload
 
+@app.get("/eezs/", response_model=dict)
+async def fetch_eezs():
+    db = connect('zones')
+    print("### Websocket: Collecting EEZs")
+    try:
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attributes": [i for i in db.attrs.keys()],
+            "payload": db.query([{'type':'EEZ'}]),
+        }
+        print("### Websocket: EEZs collected.")
+        payload.update({"size": len(payload['payload'])})
+        return payload
+    except Exception as e:
+        print(f"### Websocket: Error fetching data for EEZs:\n{e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching data for EEZs: {str(e)}")
+    finally:
+        db.close()
 
 # Frontend Websocket > FastAPI backend > Kafka > Consumer
 # @app.websocket("/ws")
