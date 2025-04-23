@@ -505,7 +505,7 @@ class DBOperator():
 if __name__ == "__main__":
 
     # operator = DBOperator(table='vessels')  # For me :)
-    # operator = DBOperator(table='zones')
+    operator = DBOperator(table='zones')
     # operator = DBOperator(table='sources')
     operator = DBOperator(table='meteorology')
     # operator = DBOperator(table='oceanography')
@@ -517,6 +517,9 @@ if __name__ == "__main__":
 
     # pprint(operator.query([{'id':'AKC013'}]))
     # operator.close()
+
+    # Query all EEZ zones
+    eez_data = operator.query([{'type': 'EEZ'}])
 
     # print(operator.permissions)
     # pprint(operator.attrs)
