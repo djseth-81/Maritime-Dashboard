@@ -5,10 +5,10 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from backend.utils import connect, filter_parser
+from utils import connect, filter_parser
 from fastapi import WebSocket, WebSocketDisconnect
-from backend.kafka_service.kafka_ws_bridge import connected_clients, kafka_listener
-from backend.kafka_service.producer import send_message
+from kafka_service.kafka_ws_bridge import connected_clients, kafka_listener
+from kafka_service.producer import send_message
 
 
 app = FastAPI()

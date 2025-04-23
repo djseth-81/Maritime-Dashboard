@@ -30,6 +30,7 @@ import {
 } from "./utilities/eventHandlers";
 import { useCesiumViewer } from "./utilities/hooks/useCesiumViewer";
 import "./App.css";
+import { generateZoneDescription } from "./utilities/zoning/ZoneInfobox";
 
 function App() {
   const [isDrawing, setIsDrawing] = useState(false);
@@ -44,6 +45,11 @@ function App() {
   const [viewerReady, setViewerReady] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [currentFilters, setCurrentFilters] = useState({  // Tracks current filters
+    types:[],
+    statuses: [],
+    origin:""
+  })
   
   const viewerRef = useRef(null);
   const customGeomRef = useRef(null);
@@ -54,15 +60,80 @@ function App() {
   useCesiumViewer(viewerRef, setViewerReady);
   
   const handleFilterApply = async (filters) => {
-    console.log("Filters selected:");
-    console.log(filters);
-    await fetchVessels(vesselsAPI, filters, setVessels);
-    await selectedGeometry ? zoning(polygonData, filters, setVessels) : console.log("NO ZONE SELECTED");
+    console.log("Applying filters...", filters);
+
+    // Set current filters
+    setCurrentFilters(filters);
+
+    try {
+      await fetchVessels(vesselsAPI, filters, setVessels);
+      if (selectedGeometry) {
+        await zoning(polygonData, filters, setVessels);
+      } else {
+        console.log("NO ZONE SELECTED");
+      }
+    } catch (error) {
+      console.error("Error applying filters:", error.message);
+      toast.error("Failed to apply filters.");
+    }
   };
     const polygonData = geometries?.find(
         (geo) => geo.id === selectedGeometry?.id
     );
 
+  // Default filters for vessels
+  const defaultFilters = {
+    types: ["CARGO", "FISHING", "TANKER", "TUG", "PASSENGER",
+      "RECREATIONAL", "OTHER"],
+    statuses: [
+      "UNDERWAY", "ANCHORED", "MOORED", "IN TOW", "FISHING",
+      "UNMANNED", "LIMITED MOVEMENT", "HAZARDOUS CARGO",
+      "AGROUND", "EMERGENCY", "UNKNOWN",
+    ],
+  }
+
+
+  // Set currentFilters based on defaultFilters once component is mounted
+  useEffect(() => {
+    setCurrentFilters({
+      types: defaultFilters.types,
+      statuses: defaultFilters.statuses,
+      origin: ""
+    });
+  }, []);
+
+  // useEffect(() => { Redudant code for scene mode change event handler
+  //   if (viewerRef.current && viewerRef.current.cesiumElement) {
+  //     const viewer = viewerRef.current.cesiumElement;
+  //     setViewerReady(true);
+  //     // Create a scene mode change event handler
+  //     const sceneModeChangeHandler = () => {
+  //       // If there's a selected entity, re-select it to update the info box position
+  //       if (viewer.selectedEntity) {
+  //         const currentEntity = viewer.selectedEntity;
+  //         viewer.selectedEntity = undefined; // Deselect
+  //         setTimeout(() => {
+  //           viewer.selectedEntity = currentEntity; // Re-select after a brief delay
+  //         }, 100);
+  //       }
+  //     };
+
+  //     // Add event listener for scene mode changes
+  //     viewer.scene.morphComplete.addEventListener(sceneModeChangeHandler);
+
+  //     // Clean up event listener when component unmounts
+  //     return () => {
+  //       if (viewer && viewer.scene && !viewer.isDestroyed()) {
+  //         viewer.scene.morphComplete.removeEventListener(
+  //           sceneModeChangeHandler
+  //         );
+  //       }
+  //     };
+  //   }
+  // }, [viewerRef.current]);
+
+
+  // Fetch vessels when the viewer is ready and the API endpoint is available
   useEffect(() => {
     const defaultFilters = {}; // or add initial filter values here
     fetchVessels(vesselsAPI, {}, setVessels);
@@ -158,6 +229,55 @@ function App() {
   // console.log("Selected Ship data: ", vesselData);
   // console.log("Selected ship position:");
   // console.log(vesselData?.geom);
+
+
+  const handleRefreshZoneData = async () => {
+    if (!selectedGeometry) return;
+
+    try{
+      // Get the polygon data for the selected geometry
+      const polygonData = geometries.find(geo => geo.id === selectedGeometry.id);
+      if (!polygonData){
+        toast.error("Selected zone data not found.");
+        return;
+      }
+
+      // Use the current filters
+      const zoneData = await zoning(polygonData, currentFilters);
+
+      if (!zoneData) {
+        toast.warning("No data found for this zone.");
+        return;
+      }
+
+      // Update Geometries state to include the zone data
+      setGeometries(prevGeometries =>
+        prevGeometries.map(geo => {
+          if (geo.id === selectedGeometry.id) {
+            return{
+              ...geo,
+              zoneData: zoneData
+            };
+          }
+          return geo;
+        })
+      );
+
+
+      // Update the entity's description with the new data
+      if (viewerRef.current && viewerRef.current.cesiumElement) {
+        const entity = viewerRef.current.cesiumElement.entities.getById(selectedGeometry.id);
+        if (entity) {
+          entity.description = generateZoneDescription(selectedGeometry.name, zoneData);
+          toast.success("Zone data refreshed successfully!");
+        }
+      }
+    } catch (error){
+      console.error("Error refreshing zone data: ", error);
+      toast.error("Failed to refresh zone data.");
+    }
+  };
+  
   return (
     <div className="cesium-viewer">
       <ToastContainer />
@@ -237,6 +357,7 @@ function App() {
           }
           onDelete={() => handleDelete(setShowContextMenu, setShowDeleteDialog)}
           onSave={() => handleSave(setShowSettings)}
+          onRefreshData={handleRefreshZoneData} //Refreshes data in zone
         />
       )}
 

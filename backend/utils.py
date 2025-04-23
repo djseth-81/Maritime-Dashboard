@@ -1,7 +1,7 @@
 import base64
 from Crypto.Cipher import AES
 from fastapi import HTTPException
-from backend.DBOperator import DBOperator
+from DBOperator import DBOperator
 
 def connect(table: str) -> DBOperator:
     """
