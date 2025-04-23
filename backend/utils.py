@@ -15,9 +15,9 @@ def connect(table: str) -> DBOperator:
     port = '5432'
 
     try:
-        print(f"### Fast Server: Attempting to connect to {table}, table with: user=postgres, host=localhost, port=5432")
-        #instance = DBOperator(table=table)z
-        instance = DBOperator(table=table, db=db, user=user, passwd=passwd, host=host, port=port,schema='public')
+        # print(f"### Fast Server: Attempting to connect to {table}, table with: user=postgres, host=localhost, port=5432")
+        instance = DBOperator(table=table)
+        # instance = DBOperator(table=table, db=db, user=user, passwd=passwd, host=host, port=port,schema='public')
         print(f"### Fast Server: Connected to {table} table")
         return instance
     except Exception as e:
@@ -52,3 +52,4 @@ def filter_parser(p: dict, result: list) -> None:
             filter_parser(q,result)
         x.update({k: val[0]})
     result.append(x)
+ 

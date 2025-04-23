@@ -50,6 +50,7 @@ function App() {
   const URL = window.location.href.split(":");
   const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
   const filtersAPI = "http:" + URL[1] + ":8000/filters/";
+  const eezAPI = "http:" + URL[1] + ":8000/eez/";
 
   useCesiumViewer(viewerRef, setViewerReady);
 
