@@ -507,7 +507,7 @@ if __name__ == "__main__":
     # operator = DBOperator(table='vessels')  # For me :)
     operator = DBOperator(table='zones')
     # operator = DBOperator(table='sources')
-    operator = DBOperator(table='meteorology')
+    #operator = DBOperator(table='meteorology')
     # operator = DBOperator(table='oceanography')
     # operator = DBOperator(table='events')
 
