@@ -126,12 +126,13 @@ ws.onerror = (e) => console.error("WebSocket error:", e);
 
 ws.send(JSON.stringify({ key: "shipX", status: "All clear" }));
 
-
+----------------------------------------GFW--------------------------------------------------------
 ## GFW Token
 $env:TOKEN="x"
 
 ## Consumer Listner
-bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic maritime-events --from-beginning
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic GFW --from-beginning
+
 
 
 python -m backend.processors.gfw.loitering_api
@@ -140,6 +141,26 @@ python -m backend.processors.gfw.encounters_api
 python -m backend.processors.gfw.ports_api
 python -m backend.processors.gfw.transponder_api
 python -m backend.processors.gfw.vessels_api
+
+
+----------------------------------------NWS--------------------------------------------------------
+## Consumer Listner
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic NWS --from-beginning
+
+
+
+python -m backend.processors.nws.alerts_api
+python -m backend.processors.nws.met_api
+
+
+----------------------------------------Live Vessel Tracking Startup--------------------------------------------------------
+.\.venv\Scripts\activate 
+pip install pytz requests kafka-python
+
+python -m backend.processors.gfw.gfw_runner
+
+
+
 
 
 

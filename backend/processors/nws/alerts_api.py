@@ -1,10 +1,13 @@
 import csv
 import pytz
+import os
+import sys
 import requests
 from pprint import pprint
 from datetime import datetime
-from json import loads, dumps
+from json import dumps
 from ...DBOperator import DBOperator
+from kafka import KafkaProducer
 
 """
 NOAA NWS Alerts API
@@ -18,14 +21,19 @@ NOAA NWS Alerts API
 now = datetime.now()
 utc = pytz.UTC
 
+# Kafka Producer
+producer = KafkaProducer(
+    bootstrap_servers='localhost:9092',
+    value_serializer=lambda v: dumps(v).encode('utf-8'),
+    key_serializer=lambda k: k.encode('utf-8'),
+)
 
 def nws_alerts(zone: dict):
 
     alerts_url = f"https://api.weather.gov/alerts?zone={zone['id']}"
     res = requests.get(alerts_url)
     if res.status_code not in [200, 201]:
-        print(
-            f"Error trying to retrieve alerts from {zone['id']}:\n{res.text}")
+        print(f"Error retrieving alerts from {zone['id']}:\n{res.text}")
         return None
 
     # Pagination which I think would be helpful. Sometime in the future
@@ -89,7 +97,6 @@ def nws_alerts(zone: dict):
         "headline": alert['properties']['headline'],
     }
 
-
 if __name__ == "__main__":
     alerts = []
     StationOp = DBOperator(table='sources')
@@ -98,43 +105,21 @@ if __name__ == "__main__":
     ZoneOp = DBOperator(table='zones')
 
     for station in stations:
-        print(f"Station: {station['id']}")
         entity = {}
-
         zones = ZoneOp.query([{'src_id': station['id']}])
-        pprint(len(zones))
         for zone in zones:
             if zone['type'] == 'COUNTY':
-                print(f"Zone contatining station: {zone['id']}")
                 guh = nws_alerts(zone)
                 if guh is not None:
                     entity.update({'src_id': station['id']})
                     entity.update(guh)
 
-        alerts.append(entity) if (len(entity) > 0) else print("guh!")
-
+                    try:
+                        producer.send("NWS", key=station['id'], value=entity)
+                        print(f"Kafka: Sent alert for station {station['id']}")
+                    except Exception as e:
+                        print(f"Failed to send alert for {station['id']}: {e}")
+        if len(entity) > 0:
+            alerts.append(entity)
+    producer.flush()
     ZoneOp.close()
-
-    failures = []
-    events = DBOperator(table='events')
-    for entity in alerts:
-        pprint(entity)
-        try:
-            print("Adding NWS weather report to met table")
-            events.add(entity.copy())
-            events.commit()
-        except Exception as e:
-            print(f"An error occured saving weather report...\n{e}")
-            print("This report caused the failure:")
-            pprint(entity)
-            if entity is not None:
-                failures.append(entity)
-    events.close()
-
-    if len(failures) > 0:
-        with open('nws-weather-failures.csv', 'w', newline='') as outFile:
-            writer = csv.DictWriter(outFile, delimiter=',',
-                                    fieldnames=failures[0].keys())
-            writer.writeheader()
-            for goob in failures:
-                writer.writerow(goob)
