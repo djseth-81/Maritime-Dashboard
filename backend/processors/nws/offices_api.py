@@ -1,32 +1,71 @@
+import os
+import csv
+import sys
 import requests
 from pprint import pprint
+from ...DBOperator import DBOperator
 
-for wfo in "OAX, ALY, BGM, BOX, BTV, BUF, CAE, CAR, CHS, CLE, CTP, GSP, GYX, ILM, ILN, LWX, MHX, OKX, PBZ, PHI, RAH, RLX, RNK, ABQ, AMA, BMX, BRO, CRP, EPZ, EWX, FFC, FWD, HGX, HUN, JAN, JAX, KEY, LCH, LIX, LUB, LZK, MAF, MEG, MFL, MLB, MOB, MRX, OHX, OUN, SHV, SJT, SJU, TAE, TBW, TSA, ABR, APX, ARX, BIS, BOU, CYS, DDC, DLH, DMX, DTX, DVN, EAX, FGF, FSD, GID, GJT, GLD, GRB, GRR, ICT, ILX, IND, IWX, JKL, LBF, LMK, LOT, LSX, MKX, MPX, MQT, AKQ, PAH, PUB, RIW, SGF, TOP, UNR, BOI, BYZ, EKA, FGZ, GGW, HNX, LKN, LOX, MFR, MSO, MTR, OTX, PDT, PIH, PQR, PSR, REV, SEW, SGX, SLC, STO, TFX, TWC, VEF, AER, AFC, AFG, AJK, ALU, GUM, HPA, HFO, PPG, STU, NH1, NH2, ONA, ONP".split(', '):
+"""
+IGNORE ME! Just getting details for stations, not used for consistent API calls!
+"""
+# Retrieve OpenWeather API Token
+# https://openweathermap.org/api/geocoding-api#direct
+TOKEN = os.environ.get("TOKEN")
+if TOKEN is None:
+    sys.exit("No API Token provided.")
+
+wfos = "afc,afg,ajk,bou,gjt,pub,lot,ilx,ind,iwx,dvn,dmx,ddc,gld,top,ict,jkl,lmk,pah,dtx,apx,grr,mqt,dlh,mpx,eax,sgf,lsx,gid,lbf,oax,bis,fgf,abr,unr,fsd,grb,arx,mkx,cys,riw,car,gyx,box,phi,aly,bgm,buf,okx,mhx,rah,ilm,cle,iln,pbz,ctp,chs,cae,gsp,btv,lwx,rnk,akq,rlx,gum,hfo,bmx,hun,mob,lzk,jax,key,mlb,mfl,tae,tbw,ffc,lch,lix,shv,jan,abq,oun,tsa,sju,meg,mrx,ohx,ama,ewx,bro,crp,epz,fwd,hgx,lub,maf,sjt,fgz,psr,twc,eka,lox,sto,sgx,mtr,hnx,boi,pih,byz,ggw,tfx,mso,lkn,vef,rev,mfr,pdt,pqr,slc,sew,otx".upper().split(',')
+
+stations = []
+failures = []
+
+for wfo in wfos:
     station_url = f"https://api.weather.gov/offices/{wfo}"
     station = requests.get(station_url)
-    print(f"STATUS: {station.status_code}")
-    pprint(station.json())
+    if station.status_code not in [200, 201]:
+        print(f"Error trying to retrieve timezone for {wfo}:\n{station.text}")
+        # failures.append(wfo)
+        continue
+    # pprint(station.json())
 
     # TODO: Format and port into DB
-
     address = station.json()['address']
     tele = station.json()['telephone']
-    observation_stations = station.json()['approvedObservationStations']
+    # observation_stations = station.json()['approvedObservationStations']
     station_id = station.json()['id']
     station_name = station.json()['name']
-    forecast_zones = [i.split('/')[-1] for i in station.json()['responsibleForecastZones']]
+    # forecast_zones = [i.split('/')[-1] for i in station.json()['responsibleForecastZones']]
     # responsible_zones = station.json()['responsibleCounties']
 
-    print(f"Station ID: {station_id}")
-    print(f"Station Name: {station_name}")
-    print(f"Region: USA-{address['addressRegion']}")
-    print("Timezone: ???") # TODO: Dunno how to retrieve
-    print("Type: NOAA-NWS")
-    print("Geometry: ???") # TODO: How to retrieve?
-    print(f"Datums: {['Events', 'Meteorology']}")
+    # Using OpenWeather API to geocode address provided by WFO station
+    guh = requests.get(f"http://api.openweathermap.org/geo/1.0/zip?zip={address['postalCode'].split('-')[0]},US&appid={TOKEN}")
+    if guh.status_code not in [200, 201]:
+        print(f"Error trying to retrieve timezone for {wfo}:\n{guh.text}")
+        # failures.append(wfo)
+        continue
+    # pprint(guh.json())
+
+    waaah = requests.get(f"https://api.weather.gov/points/{guh.json()['lat']},{guh.json()['lon']}")
+    print(f'STATUS: {waaah.status_code}')
+    if waaah.status_code not in [200, 201]:
+        print(f"Error trying to retrieve timezone for {wfo}:\n{waaah.text}")
+        # failures.append(wfo)
+        continue
+    # pprint(waaah.json()['properties']['timeZone'])
+
+    stations.append({
+            'id': station_id,
+            'name': station_name,
+            'region': f"USA-{address['addressRegion']}",
+            'timezone': waaah.json()['properties']['timeZone'],
+            'type': "NOAA-NWS",
+            'geom': f"Point({guh.json()['lon']} {guh.json()['lat']})",
+            'datums': ['Events', 'Meteorology']
+        })
+
     # Do I save ???
-    print("Responsible forecast zones:") # datums ???
-    pprint(forecast_zones)
+    # print("Responsible forecast zones:") # datums ???
+    # pprint(forecast_zones)
 
     # Do I save the following?
     # print("Address:")
@@ -37,10 +76,33 @@ for wfo in "OAX, ALY, BGM, BOX, BTV, BUF, CAE, CAR, CHS, CLE, CTP, GSP, GYX, ILM
     # pprint(fire_zones)
     # print("Approved subsidiary stations:")
     # pprint(observation_stations)
+    # input("### API Script: Continue?")
 
-    input("### API Script: Continue?")
+print(f"{len(stations)}/{len(wfos)} stations are set to be added")
+input()
 
+operator = DBOperator(table='sources')
 
+for entity in stations:
+    try:
+        print("Adding NWS station to sources table")
+        operator.add(entity.copy())
+        operator.commit()
+    except Exception as e:
+        print(f"An error occured adding station to DB...\n{e}")
+        print("This station caused the failure:")
+        pprint(entity)
+        input() # DEBUG
+        failures.append(entity)
+operator.close()
+
+if len(failures) > 0:
+    with open('nws-stations-failures.csv', 'w', newline='') as outFile:
+        writer = csv.DictWriter(outFile, delimiter=',',
+                                fieldnames=failures[0].keys())
+        writer.writeheader()
+        for goob in failures:
+            writer.writerow(goob)
 
 
 

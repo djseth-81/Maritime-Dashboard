@@ -31,6 +31,7 @@ import {
 import { useCesiumViewer } from "./utilities/hooks/useCesiumViewer";
 import "./App.css";
 import { generateZoneDescription } from "./utilities/zoning/ZoneInfobox";
+import { fetchEEZZones, loadEEZZonesToGlobe, toggleEEZVisibility } from "./utilities/zoning/eezFetch"; // EEZ Functions
 
 function App() {
   const [isDrawing, setIsDrawing] = useState(false);
@@ -50,15 +51,23 @@ function App() {
     statuses: [],
     origin:""
   })
+  const [showEEZ, setShowEEZ] = useState(false);
   
   const viewerRef = useRef(null);
   const customGeomRef = useRef(null);
   const URL = window.location.href.split(":");
   const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
   const filtersAPI = "http:" + URL[1] + ":8000/filters/";
-  
+  const eezAPI = "http:" + URL[1] + ":8000/eezs/";
+
   useCesiumViewer(viewerRef, setViewerReady);
-  
+
+  // const handleFilterApply = async (filters) => {
+  //   console.log("Filters selected:");
+  //   console.log(filters);
+  //   await fetchVessels(vesselsAPI, filters, setVessels);
+  //   await selectedGeometry ? zoning(polygonData, filters, setVessels) : console.log("NO ZONE SELECTED");
+  // };
   const handleFilterApply = async (filters) => {
     console.log("Applying filters...", filters);
 
@@ -77,9 +86,9 @@ function App() {
       toast.error("Failed to apply filters.");
     }
   };
-    const polygonData = geometries?.find(
-        (geo) => geo.id === selectedGeometry?.id
-    );
+  const polygonData = geometries?.find(
+    (geo) => geo.id === selectedGeometry?.id
+  );
 
   // Default filters for vessels
   const defaultFilters = {
@@ -92,7 +101,6 @@ function App() {
     ],
   }
 
-
   // Set currentFilters based on defaultFilters once component is mounted
   useEffect(() => {
     setCurrentFilters({
@@ -101,135 +109,6 @@ function App() {
       origin: ""
     });
   }, []);
-
-  // useEffect(() => { Redudant code for scene mode change event handler
-  //   if (viewerRef.current && viewerRef.current.cesiumElement) {
-  //     const viewer = viewerRef.current.cesiumElement;
-  //     setViewerReady(true);
-  //     // Create a scene mode change event handler
-  //     const sceneModeChangeHandler = () => {
-  //       // If there's a selected entity, re-select it to update the info box position
-  //       if (viewer.selectedEntity) {
-  //         const currentEntity = viewer.selectedEntity;
-  //         viewer.selectedEntity = undefined; // Deselect
-  //         setTimeout(() => {
-  //           viewer.selectedEntity = currentEntity; // Re-select after a brief delay
-  //         }, 100);
-  //       }
-  //     };
-
-  //     // Add event listener for scene mode changes
-  //     viewer.scene.morphComplete.addEventListener(sceneModeChangeHandler);
-
-  //     // Clean up event listener when component unmounts
-  //     return () => {
-  //       if (viewer && viewer.scene && !viewer.isDestroyed()) {
-  //         viewer.scene.morphComplete.removeEventListener(
-  //           sceneModeChangeHandler
-  //         );
-  //       }
-  //     };
-  //   }
-  // }, [viewerRef.current]);
-
-
-  // Fetch vessels when the viewer is ready and the API endpoint is available
-  useEffect(() => {
-    const defaultFilters = {}; // or add initial filter values here
-    fetchVessels(vesselsAPI, {}, setVessels);
-
-
-    if (selectedGeometry) {
-      zoning(polygonData, defaultFilters, setVessels);
-    } else {
-      console.log("NO ZONE SELECTED");
-    }
-    
-    selectedGeometry ? zoning(polygonData, setVessels) : console.log("NO ZONE SELECTED"); // Dunno whether or not this actually does anything...
-
-    if (viewerRef.current && viewerRef.current.cesiumElement) {
-      const viewer = viewerRef.current.cesiumElement;
-      setViewerReady(true);
-      // Create a scene mode change event handler
-      const sceneModeChangeHandler = () => {
-        // If there's a selected entity, re-select it to update the info box position
-        if (viewer.selectedEntity) {
-          const currentEntity = viewer.selectedEntity;
-          viewer.selectedEntity = undefined; // Deselect
-          setTimeout(() => {
-            viewer.selectedEntity = currentEntity; // Re-select after a brief delay
-          }, 100);
-        }
-      };
-
-      // Add event listener for scene mode changes
-      viewer.scene.morphComplete.addEventListener(sceneModeChangeHandler);
-
-      // Clean up event listener when component unmounts
-      return () => {
-        if (viewer && viewer.scene && !viewer.isDestroyed()) {
-          viewer.scene.morphComplete.removeEventListener(
-            sceneModeChangeHandler
-          );
-        }
-      };
-    }
-    const ws = new WebSocket("ws://localhost:8000/ws");
-  
-    ws.onopen = () => {
-      console.log("WebSocket connected from React");  //displays message showing websocket is connected (shows on F12 + console)
-      ws.send("Hello from React WebSocket client!");  //dispalys on backend log
-    };
-  
-    ws.onmessage = (event) => {
-      console.log("Message from WebSocket server:", event.data);  //echos the response from backend log (shows on F12 + console)
-    };
-  
-    ws.onerror = (err) => {
-      console.error("WebSocket error:", err); //error handling
-    };
-  
-    ws.onclose = () => {
-      console.log("WebSocket disconnected");  //error handling
-    };
-  
-    return () => ws.close();
-    
-
-
-  }, [viewerReady]);
-
-  // Debug
-  // console.log("Show Context Menu:", showContextMenu);
-  // console.log("Context Menu Position:", contextMenuPosition);
-  // console.log("showSettings:", showSettings);
-
-  // console.log("Selected Geometry:", selectedGeometry);
-  // console.log("selectedGeometry Name: ", selectedGeometry?.name);
-  // console.log("Selected Geometry ID:", selectedGeometry?.id);
-  // console.log("Selected Geometry Positions:");
-  // console.log(
-  //   geometries.find((geo) => geo.id === selectedGeometry?.id)?.positions.map((point) =>
-  //     convertCartesianToDegrees(point)
-  //   )
-  // );
-
-  // SHIP DATA
-  // console.log("SHIP DATA:");
-  // console.log(vessels);
-  // console.log("SHIP NAME:");
-  // if (selectedGeometry?.name) {
-  //   console.log(selectedGeometry.name.split(": ")[1]);
-  // } else {
-  //   console.log("No ship selected.");
-  // }
-  // const vesselData = vessels.find(
-  //   (vessel) => vessel.vessel_name === selectedGeometry?.name.split(": ")[1]
-  // );
-  // console.log("Selected Ship data: ", vesselData);
-  // console.log("Selected ship position:");
-  // console.log(vesselData?.geom);
-
 
   const handleRefreshZoneData = async () => {
     if (!selectedGeometry) return;
@@ -264,6 +143,8 @@ function App() {
       );
 
 
+
+
       // Update the entity's description with the new data
       if (viewerRef.current && viewerRef.current.cesiumElement) {
         const entity = viewerRef.current.cesiumElement.entities.getById(selectedGeometry.id);
@@ -277,7 +158,87 @@ function App() {
       toast.error("Failed to refresh zone data.");
     }
   };
-  
+
+  // Handler for toggling EEZ
+  const handleToggleEEZ = () => {
+    if (!viewerRef.current?.cesiumElement) return;
+
+    toggleEEZVisibility(
+      viewerRef.current.cesiumElement,
+      showEEZ,
+      setShowEEZ,
+      eezAPI
+    );
+
+  };
+
+  // Fetch vessels when the viewer is ready and the API endpoint is available
+  useEffect(() => {
+    const loadVessels = async () => {
+      try {
+        console.log("Fetching vessels...");
+        await fetchVessels(vesselsAPI, defaultFilters, setVessels);
+      } catch (error) {
+        console.error("Error fetching vessels:", error.message);
+        toast.error("Failed to load vessels.");
+      };
+    };
+    loadVessels();
+
+    const ws = new WebSocket("ws://localhost:8000/ws");
+
+    ws.onopen = () => {
+      console.log("WebSocket connected from React");  //displays message showing websocket is connected (shows on F12 + console)
+      ws.send("Hello from React WebSocket client!");  //dispalys on backend log
+    };
+
+    ws.onmessage = (event) => {
+      console.log("Message from WebSocket server:", event.data);  //echos the response from backend log (shows on F12 + console)
+    };
+
+    ws.onerror = (err) => {
+      console.error("WebSocket error:", err); //error handling
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket disconnected");  //error handling
+    };
+
+    return () => ws.close();
+
+  }, [viewerReady, vesselsAPI]);
+
+  // Debug
+  // console.log("Show Context Menu:", showContextMenu);
+  // console.log("Context Menu Position:", contextMenuPosition);
+  // console.log("showSettings:", showSettings);
+
+  // console.log("Selected Geometry:", selectedGeometry);
+  // console.log("selectedGeometry Name: ", selectedGeometry?.name);
+  // console.log("Selected Geometry ID:", selectedGeometry?.id);
+  // console.log("Selected Geometry Positions:");
+  // console.log(
+  //   geometries.find((geo) => geo.id === selectedGeometry?.id)?.positions.map((point) =>
+  //     convertCartesianToDegrees(point)
+  //   )
+  // );
+
+  // SHIP DATA
+  // console.log("SHIP DATA:");
+  // console.log(vessels);
+  // console.log("SHIP NAME:");
+  // if (selectedGeometry?.name) {
+  //   console.log(selectedGeometry.name.split(": ")[1]);
+  // } else {
+  //   console.log("No ship selected.");
+  // }
+  // const vesselData = vessels.find(
+  //   (vessel) => vessel.vessel_name === selectedGeometry?.name.split(": ")[1]
+  // );
+  // console.log("Selected Ship data: ", vesselData);
+  // console.log("Selected ship position:");
+  // console.log(vesselData?.geom);
+
   return (
     <div className="cesium-viewer">
       <ToastContainer />
@@ -294,7 +255,8 @@ function App() {
         geocoder={true}
         infoBox={true}
         selectionIndicator={true}
-        infoBoxViewModel={{sanitizeHtml: false,
+        infoBoxViewModel={{
+          sanitizeHtml: false,
         }}
       >
         {vessels.map((vessel) =>
@@ -327,10 +289,14 @@ function App() {
         apiEndpoint={filtersAPI}
         onFilterApply={handleFilterApply}
         onToggleDrawing={() => handleToggleDrawing(isDrawing, setIsDrawing)}
-        onUndo={() => {console.log("Undo function passed to handleUndo:", customGeomRef.current?.undoLastPoint);
-          handleUndo(customGeomRef.current?.undoLastPoint)}}
+        onUndo={() => {
+          console.log("Undo function passed to handleUndo:", customGeomRef.current?.undoLastPoint);
+          handleUndo(customGeomRef.current?.undoLastPoint)
+        }}
         onClear={() => handleClear(setShowClearDialog)}
         onToggleOverlays={() => handleToggleOverlays(showOverlays, setShowOverlays)}
+        onToggleEEZ={handleToggleEEZ}
+        showEEZState={showEEZ}
       />
 
       {showContextMenu && selectedGeometry && (
@@ -365,12 +331,14 @@ function App() {
         <FiltersUI apiEndpoint={filtersAPI} onFilterApply={handleFilterApply} />
       )} */}
 
-      {showOverlays && (
+      {/*showOverlays && (
         <OverlaysUI
           onClose={() => handleToggleOverlays(showOverlays, setShowOverlays)}
           onToggleWeather={() => console.log("Weather Overlay Toggled")}
+          onToggleEEZ={handleToggleEEZ}
+          showEEZState={showEEZ}
         />
-      )}
+      )*/}
 
       {showClearDialog && (
         <ConfirmationDialog

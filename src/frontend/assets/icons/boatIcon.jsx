@@ -30,12 +30,12 @@ export default function BoatIcon({
     const quarter = size / 4;
     const half = size / 2;
     
-    // Arrow pointing right with indented back
+    // Chevron oriented at 0 degrees
     return `
-      0,0
-      ${size},${half}
+      ${half},0
       0,${size}
-      ${quarter},${half}
+      ${half},${3 * quarter}
+      ${size},${size}
     `;
   };
 

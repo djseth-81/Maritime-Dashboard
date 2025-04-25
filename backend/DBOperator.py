@@ -24,34 +24,16 @@ class DBOperator():
     #   - Want a better fix than that^ !!!
     # WARN: Expecting fetch_filter_options() to not work with tables other than vessels
 
-    """
-    // POSTGIS
-        - Zone stuff
-            - ST_Equals() (to check zone existence)
-            - ST_Touches() (For bordering ships/zones)
-            - ST_Intersect() (for a custom zone on EEZ/NOAA?)
-            - ST_Overlaps(for a custom zone intersecting with EEZ/NOAA, to pull data wrt EEZ/NOAA)
-        - Vessel prediction
-            - ST_Crosses() (If a projected route crosses another, or if a ship enters a zone)
-            - ST_Distance() path prediction
-        - Things I think might be useful
-            - ST_Disjoint() for zones
-            - ST_Area()
-            - ST_NRing() == 0
-            - ST_ExteriorRing()
-            - ST_Perimeter()
-    """
 
     ''' For Yolvin :) 
     def __init__(self, table: str, host='localhost', port='5432', user='postgres',
                  passwd='1234', schema='public', db='capstone') -> None:
     '''
+    # def __init__(self, table: str, host='localhost', port='5432', user='postgres',
+    #                 passwd='', schema='public', db='capstone') -> None:
+
     def __init__(self, table: str, host='localhost', port='5432', user='postgres',
-                    passwd='gres', schema='public', db='capstonev2') -> None:
-
-
-    # def __init__(self, table: str, host='', port='', user='',
-    #              passwd='', schema='public', db='capstone') -> None:
+                 passwd='Jimenez3128', schema='public', db='capstone') -> None:
 
         self.table = table
         self.__host = host
@@ -84,7 +66,7 @@ class DBOperator():
         Expects a dict = {key: value} to enter as attribute and value
         Expects keys to match attrs. If attr is missing from key, ''/0/0.0 is provided.
         Unnacceptable Missing Attrs:
-            ID reference values (vessels.mmsi, user.id, user.hash, zone.id, event.id, report.id)
+            ID reference values (vessels.mmsi, user.id, user.hash, zone.id)
             Geometry
         """
         # TODO: Handle multiple entities for bulk additions
@@ -139,6 +121,7 @@ class DBOperator():
             print(f"### DBOperator ERROR: Unable to add entity: {e}")
             raise UniqueViolation
 
+    # TODO: Finish!
     def modify(self, entity: dict, data: dict) -> None:
         """
         Modifys a singular exisitng entity
@@ -197,6 +180,7 @@ class DBOperator():
             self.rollback()  # Uhm... Why are you necessary so other commands don't break?
             raise UndefinedColumn
 
+    # TODO: TEST!
     def delete(self, entity: dict) -> None:
         """
         deletes entry that has matching attributes ONLY.
@@ -237,14 +221,6 @@ class DBOperator():
             self.rollback()  # Uhm... Why are you necessary so other commands don't break?
             raise UndefinedColumn
 
-    def clear(self) -> tuple:
-        """
-        Clears all entries from table
-        """
-        self.__cursor.execute(f"DELETE FROM {self.table}")
-        print(f"### DBOperator: {self.table} Cleared.")
-        return ("message", "table cleared.")
-
     def custom_cmd(self, cmd: str, call: str) -> list:
         """
         This is here in case you wanna submit custom SQL commands that are not currently supported
@@ -257,6 +233,15 @@ class DBOperator():
             return [("Message", "Committed.")]
         else:
             return self.__cursor.fetchall()
+
+    # NOTE: Do these need to return anything?
+    def clear(self) -> tuple:
+        """
+        Clears all entries from table
+        """
+        self.__cursor.execute(f"DELETE FROM {self.table}")
+        print(f"### DBOperator: {self.table} Cleared.")
+        return ("message", "table cleared.")
 
     # commit command
     def commit(self) -> tuple:
@@ -307,7 +292,6 @@ class DBOperator():
 
         return result
 
-    # Fetching tables in DB --> Dev option!
     def __get_tables(self) -> list:
         """
         Fetching tables in DB
@@ -335,6 +319,7 @@ class DBOperator():
 
         return result
 
+    # TODO: FIXME
     def fetch_filter_options(self) -> dict:
         """
         Fetches distinct filter options for vessel types, origins, and statuses.
@@ -421,9 +406,10 @@ class DBOperator():
 
         results = [i[0] for i in self.__cursor.fetchall()]
 
-        for r in results:  # quick formatting to remove binary Geom data
-            tmp = r.pop('st_asgeojson')
-            r['geom'] = tmp
+        if 'geom' in self.attrs.keys():
+            for r in results:  # quick formatting to remove binary Geom data
+                tmp = r.pop('st_asgeojson')
+                r['geom'] = tmp
 
         return results
 
@@ -442,8 +428,7 @@ class DBOperator():
 
     def proximity(self, var: str, range=5000.0):
         """
-        Gets vessels witihin a specified range of a geometry
-        ST_DWithin(geom, var, range)
+        Gets geometry witihin a specified range of a geometry
         """
         if "geom" not in self.attrs.keys():
             raise AttributeError(
@@ -465,10 +450,10 @@ class DBOperator():
 
         return results
 
+    # TODO: TEST
     def within(self, var: dict) -> list:
         """
-        Gets vessels within a specified geometry
-        ST_Contains(var, geom)
+        Gets entity within a (Multi) Polygon
         """
         if "geom" not in self.attrs.keys():
             raise AttributeError(
@@ -491,9 +476,61 @@ class DBOperator():
 
         return results
 
-    def borders(self, var):
+    # TODO: TEST
+    def overlaps(self, var: dict):
         """
-        Gets vessels that border/touches a specified geometry
+        Gets (Multi) Polygon that overlaps a (Multi) Polygon
+        """
+        if "geom" not in self.attrs.keys():
+            raise AttributeError(
+                "Cannot call GIS function on table with no 'geom' attrubute")
+
+        query = f"""
+                SELECT *,ST_AsGeoJson(geom)
+                FROM {self.table}
+                WHERE ST_Overlaps(geom::geometry, ST_MakeValid(ST_GeomFromGeoJSON(%s)))
+            """
+
+        self.__cursor.execute(
+            f"SELECT row_to_json(data) FROM ({query}) AS data", (dumps(var),))
+
+        results = [i[0] for i in self.__cursor.fetchall()]
+
+        for r in results:  # quick formatting to remove binary Geom data
+            tmp = r.pop('st_asgeojson')
+            r['geom'] = tmp
+
+        return results
+
+    # TODO: TEST
+    def contains(self, var: dict):
+        """
+        Gets entity that contains geometry
+        """
+        if "geom" not in self.attrs.keys():
+            raise AttributeError(
+                "Cannot call GIS function on table with no 'geom' attrubute")
+
+        query = f"""
+                SELECT *,ST_AsGeoJson(geom)
+                FROM {self.table}
+                WHERE ST_Contains(geom::geometry, ST_GeomFromGeoJSON(%s))
+            """
+
+        self.__cursor.execute(
+            f"SELECT row_to_json(data) FROM ({query}) AS data", (dumps(var),))
+
+        results = [i[0] for i in self.__cursor.fetchall()]
+
+        for r in results:  # quick formatting to remove binary Geom data
+            tmp = r.pop('st_asgeojson')
+            r['geom'] = tmp
+
+        return results
+
+    def meets(self, var):
+        """
+        Gets a geometry that touches the broundary of (Multi) Polygon
         """
         if "geom" not in self.attrs.keys():
             raise AttributeError(
@@ -504,22 +541,11 @@ class DBOperator():
 
 if __name__ == "__main__":
 
-    # operator = DBOperator(table='vessels')  # For me :)
-    operator = DBOperator(table='zones')
-    # operator = DBOperator(table='sources')
-    #operator = DBOperator(table='meteorology')
-    # operator = DBOperator(table='oceanography')
-    # operator = DBOperator(table='events')
-
-    # operator = DBOperator(table='vessels', host='localhost', port='5432',
-    #                       user='postgres', passwd='gres', schema='public',
-    #                       db='ships')  # For Sean, db='capstone' otherwise
 
     # pprint(operator.query([{'id':'AKC013'}]))
     # operator.close()
 
     # Query all EEZ zones
-    eez_data = operator.query([{'type': 'EEZ'}])
 
     # print(operator.permissions)
     # pprint(operator.attrs)
@@ -547,13 +573,53 @@ if __name__ == "__main__":
     """
     Scratch work
     """
+    # operator = DBOperator(table='vessels')
+    operator = DBOperator(table='zones')
+    print(operator.query([{'type':'EEZ'}]))
+    # operator = DBOperator(table='sources')
+    # operator = DBOperator(table='meteorology')
+    # operator = DBOperator(table='oceanography')
+    # operator = DBOperator(table='events')
 
-    print(f"Entities in table: {operator.get_count()}")
-    pprint(operator.query([{'src_id':'1611400'}]))
+    # FIXME: TopologyError when trying to check zones containing some stations
+    #        Following stations threwe TopologyException:
+    #          - ILM
+    #          - CHS
+    #          - LWX
+    #          - AKQ
+    #          - TBW
 
+    # print(f"Entities in table: {operator.get_count()}")
+    # results = operator.query([{'type':'NOAA-NWS'}])
+    # operator.close()
+    # zoneOp = DBOperator(table='zones')
 
-    operator.close()
+    # for station in results:
+    #     print(f"Checking Station: {station['id']}")
+    #     try:
+    #         print(len(zoneOp.contains(loads(station['geom']))))
+    #     except Exception as e:
+    #         print(f"Station {station['id']} threw error:\n{e}")
+    #         zoneOp.rollback()
+    #         input()
 
+    # print(len(results))
+
+    # geom = {'coordinates': [[['-83.5959', '27.9413'],
+    #                          ['-83.5968', '27.4006'],
+    #                          ['-82.9061', '27.3887'],
+    #                          ['-82.9911', '27.9317']]],
+    #         'type': 'Polygon'}
+    # zones = operator.overlaps(geom)
+    # operator.close()
+
+    # operator = DBOperator(table='sources')
+    # # Does the zone overlap known zones, and do those zones contain stations?
+    # stations = []
+    # for zone in zones:
+    #     stations.extend(operator.within(loads(zone['geom'])))
+
+    # pprint(stations)
 
 
 

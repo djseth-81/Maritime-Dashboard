@@ -45,8 +45,8 @@ const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
   // Temporary state for filters
   const [tempFilters, setTempFilters] = useState({
     types: [],
-    statuses: [],
     origin: "",
+    statuses: [],
   });
 
   useEffect(() => {

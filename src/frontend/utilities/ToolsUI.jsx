@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Overlays from "./overlays/OverlaysUI";
+import OverlaysUI from "./overlays/OverlaysUI"; // Make sure the import path is correct
 import FiltersUI from "./filters/FiltersUI";
 import useFetchFilters from "./filters/Filters";
 
@@ -14,6 +14,11 @@ import useFetchFilters from "./filters/Filters";
 * @param {function} onSelectShape - Function to select a shape type.
 * @param {string} apiEndpoint - API endpoint for fetching filter options.
 * @param {function} onFilterApply - Function to apply selected filters.
+* @param {function} onToggleWeather - Function to toggle weather overlay.
+* @param {function} onToggleOceanConditions - Function to toggle ocean conditions overlay.
+* @param {function} onToggleTrafficHeatmaps - Function to toggle traffic heatmaps overlay.
+* @param {function} onToggleEEZ - Function to toggle EEZ overlay.
+* @param {boolean} showEEZState - Current state of the EEZ overlay visibility.
 *
 * @returns {JSX.Element} The rendered ToolsUI component.
 * @description This component manages the state of the UI controls,
@@ -21,15 +26,21 @@ import useFetchFilters from "./filters/Filters";
 * It uses the useFetchFilters hook to fetch filter options from the API.
 */
 
-const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape, apiEndpoint, onFilterApply }) => {
+const ToolsUI = ({ 
+    onToggleDrawing, 
+    onUndo, 
+    onClear, 
+    onSelectShape, 
+    apiEndpoint, 
+    onFilterApply,
+    onToggleWeather,
+    onToggleOceanConditions,
+    onToggleTrafficHeatmaps,
+    onToggleEEZ,
+    showEEZState
+}) => {
     const [openPanel, setOpenPanel] = useState(false);
-    // const [selectedShape, setSelectedShape] = useState("polygon");
     const { loading, error } = useFetchFilters(apiEndpoint);
-
-    // const handleShapeChange = (event) => {
-    //     setSelectedShape(event.target.value);
-    //     onSelectShape(event.target.value);
-    // };
 
     const handleToggle = (panel) => {
         setOpenPanel((prev) => (prev === panel ? null : panel));
@@ -58,18 +69,19 @@ const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape, apiEndpoint,
                     <button onClick={onToggleDrawing}>Toggle Zoning Tool</button>
                     <button onClick={onUndo}>Undo</button>
                     <button onClick={onClear}>Clear</button>
-
                 </div>
             )}
 
+            {/* Use the OverlaysUI component instead of hardcoded panel */}
             {openPanel === "overlays" && (
-                <div className="overlay-panel">
-                    <h3>Overlays</h3>
-                    <button>Weather</button>
-                    <button>Ocean Conditions</button>
-                    <button>Traffic Heatmap</button>
-                    <button onClick={() => handleToggle(null)}>Close</button>
-                </div>
+                <OverlaysUI
+                    onClose={() => handleToggle(null)}
+                    onToggleWeather={onToggleWeather}
+                    onToggleOceanConditions={onToggleOceanConditions}
+                    onToggleTrafficHeatmaps={onToggleTrafficHeatmaps}
+                    onToggleEEZ={onToggleEEZ}
+                    showEEZState={showEEZState}
+                />
             )}
 
             {openPanel === "filters" && (

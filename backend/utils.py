@@ -7,10 +7,17 @@ def connect(table: str) -> DBOperator:
     """
     Attempt DB connection
     """
+    # Seans credentials - CHANGE THIS FOR YOUR OWN
+    db = 'capstonev2'
+    user = 'postgres'
+    passwd = 'gres'
+    host = 'localhost'
+    port = '5432'
+
     try:
-        print(f"### Fast Server: Attempting to connect to {table}, table with: user=postgres, host=localhost, port=5432")
-        #instance = DBOperator(table=table)
-        instance = DBOperator(table=table, db='capstone', user='postgres', passwd='Jimenez3128', host='localhost', port='5432',schema='public')
+        # print(f"### Fast Server: Attempting to connect to {table}, table with: user=postgres, host=localhost, port=5432")
+        instance = DBOperator(table=table)
+        # instance = DBOperator(table=table, db=db, user=user, passwd=passwd, host=host, port=port,schema='public')
         print(f"### Fast Server: Connected to {table} table")
         return instance
     except Exception as e:
@@ -45,3 +52,4 @@ def filter_parser(p: dict, result: list) -> None:
             filter_parser(q,result)
         x.update({k: val[0]})
     result.append(x)
+ 
