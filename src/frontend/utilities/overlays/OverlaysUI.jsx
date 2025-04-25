@@ -47,7 +47,7 @@ const OverlaysUI = ({ onClose, onToggleWeather, onToggleOceanConditions, onToggl
                 {showTrafficHeatmaps ? "Hide Traffic Heatmaps" : "Show Traffic Heatmaps"}
             </button>
             <button onClick={handleEEZToggle}>
-                {showTrafficHeatmaps ? "Hide EEZ" : "Show EEZ"}
+                {showEEZ ? "Hide EEZ" : "Show EEZ"}
             </button>
         </div>
     );
