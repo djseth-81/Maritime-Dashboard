@@ -9,10 +9,11 @@ import { convertCartesianToDegrees } from "./coordUtils";
  * @param {Function} props.onSave - Callback function to save the zone settings.
  * @param {Function} props.onDelete - Callback function to delete the zone.
  * @param {Function} props.onRename - Callback function to rename the zone.
+ * @param {Function} props.onRefreshData - Callback function to refresh the zone data
  * @returns {JSX.Element} - Rendered component.
  * @description This component displays the settings for a zone, including coordinates and options to save, delete, or rename the zone.
  */
-const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename }) => {
+const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename, onRefreshData }) => {
     const [isRenaming, setIsRenaming] = useState(false);
     const [newName, setNewName] = useState(zoneName);
 
@@ -77,8 +78,11 @@ const ZoneSettingsUI = ({ zoneName, positions = [], onSave, onDelete, onRename }
                         );
                     })}
                 </ul>
-                <button className="save-btn" onClick={onSave}>Save</button>
-                <button className="delete-btn" onClick={onDelete}>Delete</button>
+                <div className="button-group">
+                    <button className="save-btn" onClick={onSave}>Save</button>
+                    <button className="delete-btn" onClick={onDelete}>Delete</button>
+                    <button className="refresh-btn" onClick={onRefreshData}>Refresh Zone Data</button>
+                </div>
             </div>
         </div>
     );

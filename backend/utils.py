@@ -52,3 +52,4 @@ def filter_parser(p: dict, result: list) -> None:
             filter_parser(q,result)
         x.update({k: val[0]})
     result.append(x)
+ 
