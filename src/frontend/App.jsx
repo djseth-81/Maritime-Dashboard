@@ -30,6 +30,8 @@ import {
 } from "./utilities/eventHandlers";
 import { useCesiumViewer } from "./utilities/hooks/useCesiumViewer";
 import "./App.css";
+import { generateZoneDescription } from "./utilities/zoning/ZoneInfobox";
+import { fetchEEZZones, loadEEZZonesToGlobe, toggleEEZVisibility } from "./utilities/zoning/eezFetch"; // EEZ Functions
 
 function App() {
   const [isDrawing, setIsDrawing] = useState(false);
@@ -44,13 +46,19 @@ function App() {
   const [viewerReady, setViewerReady] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
+  const [currentFilters, setCurrentFilters] = useState({  // Tracks current filters
+    types:[],
+    statuses: [],
+    origin:""
+  })
+  const [showEEZ, setShowEEZ] = useState(false);
+  
   const viewerRef = useRef(null);
   const customGeomRef = useRef(null);
   const URL = window.location.href.split(":");
   const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
   const filtersAPI = "http:" + URL[1] + ":8000/filters/";
-  const eezAPI = "http:" + URL[1] + ":8000/eez/";
+  const eezAPI = "http:" + URL[1] + ":8000/eezs/";
 
   useCesiumViewer(viewerRef, setViewerReady);
 
@@ -62,6 +70,10 @@ function App() {
   // };
   const handleFilterApply = async (filters) => {
     console.log("Applying filters...", filters);
+
+    // Set current filters
+    setCurrentFilters(filters);
+
     try {
       await fetchVessels(vesselsAPI, filters, setVessels);
       if (selectedGeometry) {
@@ -88,6 +100,77 @@ function App() {
       "AGROUND", "EMERGENCY", "UNKNOWN",
     ],
   }
+
+  // Set currentFilters based on defaultFilters once component is mounted
+  useEffect(() => {
+    setCurrentFilters({
+      types: defaultFilters.types,
+      statuses: defaultFilters.statuses,
+      origin: ""
+    });
+  }, []);
+
+  const handleRefreshZoneData = async () => {
+    if (!selectedGeometry) return;
+
+    try{
+      // Get the polygon data for the selected geometry
+      const polygonData = geometries.find(geo => geo.id === selectedGeometry.id);
+      if (!polygonData){
+        toast.error("Selected zone data not found.");
+        return;
+      }
+
+      // Use the current filters
+      const zoneData = await zoning(polygonData, currentFilters);
+
+      if (!zoneData) {
+        toast.warning("No data found for this zone.");
+        return;
+      }
+
+      // Update Geometries state to include the zone data
+      setGeometries(prevGeometries =>
+        prevGeometries.map(geo => {
+          if (geo.id === selectedGeometry.id) {
+            return{
+              ...geo,
+              zoneData: zoneData
+            };
+          }
+          return geo;
+        })
+      );
+
+
+
+
+      // Update the entity's description with the new data
+      if (viewerRef.current && viewerRef.current.cesiumElement) {
+        const entity = viewerRef.current.cesiumElement.entities.getById(selectedGeometry.id);
+        if (entity) {
+          entity.description = generateZoneDescription(selectedGeometry.name, zoneData);
+          toast.success("Zone data refreshed successfully!");
+        }
+      }
+    } catch (error){
+      console.error("Error refreshing zone data: ", error);
+      toast.error("Failed to refresh zone data.");
+    }
+  };
+
+  // Handler for toggling EEZ
+  const handleToggleEEZ = () => {
+    if (!viewerRef.current?.cesiumElement) return;
+
+    toggleEEZVisibility(
+      viewerRef.current.cesiumElement,
+      showEEZ,
+      setShowEEZ,
+      eezAPI
+    );
+
+  };
 
   // Fetch vessels when the viewer is ready and the API endpoint is available
   useEffect(() => {
@@ -155,6 +238,7 @@ function App() {
   // console.log("Selected Ship data: ", vesselData);
   // console.log("Selected ship position:");
   // console.log(vesselData?.geom);
+
   return (
     <div className="cesium-viewer">
       <ToastContainer />
@@ -211,6 +295,8 @@ function App() {
         }}
         onClear={() => handleClear(setShowClearDialog)}
         onToggleOverlays={() => handleToggleOverlays(showOverlays, setShowOverlays)}
+        onToggleEEZ={handleToggleEEZ}
+        showEEZState={showEEZ}
       />
 
       {showContextMenu && selectedGeometry && (
@@ -237,6 +323,7 @@ function App() {
           }
           onDelete={() => handleDelete(setShowContextMenu, setShowDeleteDialog)}
           onSave={() => handleSave(setShowSettings)}
+          onRefreshData={handleRefreshZoneData} //Refreshes data in zone
         />
       )}
 
@@ -244,12 +331,14 @@ function App() {
         <FiltersUI apiEndpoint={filtersAPI} onFilterApply={handleFilterApply} />
       )} */}
 
-      {showOverlays && (
+      {/*showOverlays && (
         <OverlaysUI
           onClose={() => handleToggleOverlays(showOverlays, setShowOverlays)}
           onToggleWeather={() => console.log("Weather Overlay Toggled")}
+          onToggleEEZ={handleToggleEEZ}
+          showEEZState={showEEZ}
         />
-      )}
+      )*/}
 
       {showClearDialog && (
         <ConfirmationDialog

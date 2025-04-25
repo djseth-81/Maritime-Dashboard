@@ -32,8 +32,8 @@ class DBOperator():
     # def __init__(self, table: str, host='localhost', port='5432', user='postgres',
     #                 passwd='', schema='public', db='capstone') -> None:
 
-    def __init__(self, table: str, host='', port='', user='',
-                 passwd='', schema='public', db='capstone') -> None:
+    def __init__(self, table: str, host='localhost', port='5432', user='postgres',
+                 passwd='Jimenez3128', schema='public', db='capstone') -> None:
 
         self.table = table
         self.__host = host
@@ -545,6 +545,8 @@ if __name__ == "__main__":
     # pprint(operator.query([{'id':'AKC013'}]))
     # operator.close()
 
+    # Query all EEZ zones
+
     # print(operator.permissions)
     # pprint(operator.attrs)
     # print("Table attributes:")
@@ -573,6 +575,7 @@ if __name__ == "__main__":
     """
     # operator = DBOperator(table='vessels')
     operator = DBOperator(table='zones')
+    print(operator.query([{'type':'EEZ'}]))
     # operator = DBOperator(table='sources')
     # operator = DBOperator(table='meteorology')
     # operator = DBOperator(table='oceanography')
@@ -602,21 +605,21 @@ if __name__ == "__main__":
 
     # print(len(results))
 
-    geom = {'coordinates': [[['-83.5959', '27.9413'],
-                             ['-83.5968', '27.4006'],
-                             ['-82.9061', '27.3887'],
-                             ['-82.9911', '27.9317']]],
-            'type': 'Polygon'}
-    zones = operator.overlaps(geom)
-    operator.close()
+    # geom = {'coordinates': [[['-83.5959', '27.9413'],
+    #                          ['-83.5968', '27.4006'],
+    #                          ['-82.9061', '27.3887'],
+    #                          ['-82.9911', '27.9317']]],
+    #         'type': 'Polygon'}
+    # zones = operator.overlaps(geom)
+    # operator.close()
 
-    operator = DBOperator(table='sources')
-    # Does the zone overlap known zones, and do those zones contain stations?
-    stations = []
-    for zone in zones:
-        stations.extend(operator.within(loads(zone['geom'])))
+    # operator = DBOperator(table='sources')
+    # # Does the zone overlap known zones, and do those zones contain stations?
+    # stations = []
+    # for zone in zones:
+    #     stations.extend(operator.within(loads(zone['geom'])))
 
-    pprint(stations)
+    # pprint(stations)
 
 
 
