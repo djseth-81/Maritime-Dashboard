@@ -346,37 +346,6 @@ async def add_vessel(data: dict):
     finally:
         db.close()
 
-@app.get("/metadata/")
-# WARNING: it brokie. Not important enough for me to figure out why imo
-async def query_metadata():
-    '''
-    <query_description>
-    '''
-    ### Attempt DB connection
-    db = connect('spatial_ref_sys')
-
-    ### IF DB connection successful, attempt assembling payload
-    print("### Server: Assembling Payload...")
-    try:
-        payload = {
-            "retrieved": datetime.now(),
-            "privileges": db.permissions,
-            "attributes": [i for i in db.attrs.keys()],
-            # "filters": db.fetch_filter_options(),
-            "payload": db.query([{'srid',4326}]) # Spatial reference system, Global scope (https://spatialreference.org/ref/epsg/4326/)
-                   }
-        print("### Server: Payload assembled.")
-    except Exception as e:
-        print(f"### Server: Error retrieving metadata:\n{e}")
-        print("### Fast Server: Error assembling payload.")
-        payload = JSONResponse(
-            status_code=500,
-            content={"Error": "Error assembling payload."}
-        )
-    finally:
-        db.close() # Closes table instance
-        return payload
-
 @app.get("/eezs/", response_model=dict)
 async def fetch_eezs():
     db = connect('zones')
