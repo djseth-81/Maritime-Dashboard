@@ -33,7 +33,7 @@ class DBOperator():
     #                 passwd='', schema='public', db='capstone') -> None:
 
     def __init__(self, table: str, host='localhost', port='5432', user='postgres',
-                 passwd='Jimenez3128', schema='public', db='capstone') -> None:
+                 passwd='1234', schema='public', db='capstone') -> None:
 
         self.table = table
         self.__host = host

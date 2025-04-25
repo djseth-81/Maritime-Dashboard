@@ -76,7 +76,7 @@ for event in events_data:
             "headline": f"{vessel_name} fishing event"
         }
 
-        producer.send("maritime-events", key=mmsi, value=entity)
+        producer.send("GFW", key=mmsi, value=entity)
         print(f"Kafka: Sent fishing event for vessel {mmsi}")
 
     except Exception as e:

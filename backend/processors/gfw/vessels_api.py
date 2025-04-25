@@ -145,7 +145,7 @@ for entry in entries:
         'geom': dumps({'type': "Point", 'coordinates': [lon, lat]}),
     })
 
-    producer.send("maritime-vessels", key=mmsi, value=entity)
+    producer.send("GFW", key=mmsi, value=entity)
     print(f"Kafka: Sent vessel info for {mmsi}")
 
 producer.flush()

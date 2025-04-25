@@ -77,7 +77,7 @@ for event in events_data:
         }
 
         # Send to Kafka
-        producer.send("maritime-events", key=mmsi, value=entity)
+        producer.send("GFW", key=mmsi, value=entity)
         print(f"Kafka: Sent transponder event for vessel {mmsi}")
 
     except Exception as e:

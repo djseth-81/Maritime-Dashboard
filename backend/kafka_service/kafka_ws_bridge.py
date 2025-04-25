@@ -2,12 +2,13 @@ from kafka import KafkaConsumer
 import json
 import asyncio
 from threading import Thread
+from datetime import datetime
 
 connected_clients = set()
 
 def get_consumer():
     return KafkaConsumer(
-        'maritime-events',
+        'GFW',
         bootstrap_servers='localhost:9092',
         auto_offset_reset='latest',
         enable_auto_commit=True,
@@ -18,7 +19,7 @@ def get_consumer():
 
 kafka_to_ws_queue = asyncio.Queue()
 
-def kafka_consumer_thread():
+def kafka_consumer_thread(loop):
     consumer = get_consumer()
     print("### Kafka Bridge: Listening for Kafka messages (thread)...")
     for message in consumer:
@@ -29,7 +30,9 @@ def kafka_consumer_thread():
             "timestamp": message.timestamp
         }
         print(f"### Kafka Bridge: Queuing message for WS clients: {msg}")
-        asyncio.run_coroutine_threadsafe(kafka_to_ws_queue.put(msg), asyncio.get_event_loop())
+        asyncio.run_coroutine_threadsafe(kafka_to_ws_queue.put(msg), loop)
+
+
 
 async def kafka_listener():
     while True:
@@ -47,5 +50,6 @@ async def notify_clients(message: str):
     connected_clients.difference_update(to_remove)
 
 def start_kafka_consumer():
-    thread = Thread(target=kafka_consumer_thread, daemon=True)
+    loop = asyncio.get_event_loop()
+    thread = Thread(target=kafka_consumer_thread, args=(loop,), daemon=True)
     thread.start()
