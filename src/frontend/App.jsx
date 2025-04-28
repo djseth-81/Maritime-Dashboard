@@ -2,15 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import CustomGeometry from "./utilities/CustomGeometry";
 import ToolsUI from "./utilities/ToolsUI";
 import ZoneSettingsUI from "./utilities/ZoneSettingsUI";
-// import FiltersUI from "./utilities/filters/FiltersUI";
 import ConfirmationDialog from "./utilities/ConfirmationDialog";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/ReactToastify.css";
 import "./App.css";
 import { placeVessel } from "./utilities/shippingVessels/Vessels";
 import { Viewer } from "resium";
-// import { SceneMode, Cartographic, Math } from "cesium";
-// import axios from "axios";
 import OverlaysUI from "./utilities/overlays/OverlaysUI";
 import { fetchVessels } from "./utilities/apiFetch";
 import { zoning } from "./utilities/zoning";
@@ -32,6 +29,11 @@ import { useCesiumViewer } from "./utilities/hooks/useCesiumViewer";
 import "./App.css";
 import { generateZoneDescription } from "./utilities/zoning/ZoneInfobox";
 import { fetchEEZZones, loadEEZZonesToGlobe, toggleEEZVisibility } from "./utilities/zoning/eezFetch"; // EEZ Functions
+import axios from "axios";
+import { Cartesian3, Color, HeightReference } from "cesium";
+import * as Cesium from "cesium";
+import { Entity } from "resium";
+import { ImageryLayer } from "resium";
 
 function App() {
   const [isDrawing, setIsDrawing] = useState(false);
@@ -53,12 +55,18 @@ function App() {
   })
   const [showEEZ, setShowEEZ] = useState(false);
   
+  const [entityName, setEntityName] = useState(null);
+  const [predictions, setPredictions] = useState([]);
+  const [activeWeatherLayer, setActiveWeatherLayer] = useState(null);
+  const [weatherLayers, setWeatherLayers] = useState(null);
+
   const viewerRef = useRef(null);
   const customGeomRef = useRef(null);
   const URL = window.location.href.split(":");
   const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
   const filtersAPI = "http:" + URL[1] + ":8000/filters/";
   const eezAPI = "http:" + URL[1] + ":8000/eezs/";
+  const openWeatherAPIKEY = "";
 
   useCesiumViewer(viewerRef, setViewerReady);
 
@@ -184,6 +192,7 @@ function App() {
       };
     };
     loadVessels();
+    loadWeatherLayers();
 
     const ws = new WebSocket("ws://localhost:8000/ws");
 
@@ -208,6 +217,166 @@ function App() {
 
   }, [viewerReady, vesselsAPI]);
 
+  const performPrediction = async () => {
+
+    function convertToRadians(degrees) {
+      return degrees * (Math.PI / 180);
+    }
+
+    function convertToDegrees(radians) {
+      return radians * (180 / Math.PI);
+    }
+
+    function getDistanceInMeters(sog) {
+      const nauticalMileInMeters = 1852; 
+      return sog * nauticalMileInMeters;  
+    }
+
+    function adjustCoordinates(lat, lon, sog, heading) {
+      const R = 6371000; 
+
+      const distance = getDistanceInMeters(sog);
+
+      const headingRad = convertToRadians(heading);
+
+      const deltaLat = (distance * Math.cos(headingRad)) / R;
+      const deltaLon = (distance * Math.sin(headingRad)) / (R * Math.cos(Math.PI * lat / 180));
+
+      const newLat = lat + convertToDegrees(deltaLat);
+      const newLon = lon + convertToDegrees(deltaLon);
+
+      return { newLat, newLon };
+    }
+
+    function predictCoordinates(lat, lon, sog, heading) {
+      let predictions = [];
+
+      for (let hour = 1; hour <= 24; hour++) {
+        const { newLat, newLon } = adjustCoordinates(lat, lon, sog, heading);
+
+        predictions.push({
+          "Hours Ahead": hour,
+          "Predicted LAT": newLat,
+          "Predicted LON": newLon
+        });
+
+        lat = newLat;
+        lon = newLon;
+      }
+
+      return predictions;
+    }
+
+    const vesselData = vessels.find(
+      (vessel) => vessel.vessel_name === selectedGeometry?.name.split(": ")[1]
+    );
+
+    if (vesselData == null) {
+      toast.info("No vessel data available");
+      return;
+    }
+
+    var lat = String(vesselData.lat);
+    var lon = String(vesselData.lon);
+    var sog = String(vesselData.speed);
+    // var cog = String(vesselData.cog);
+    var heading = String(vesselData.heading);
+    // if backend hosted on a different server than replace url with correct one
+    // var url = "http://127.0.0.1:8000/predict/" + lat + "/" + lon + "/" + sog + "/" + heading;
+    // const res = await axios.get(url);
+    // console.log("Selected Ship data: ", res.data);  
+    const predictedCoordinates = predictCoordinates(Number(lat), Number(lon), Number(sog), Number(heading));
+    setPredictions(predictedCoordinates);
+  }
+
+  function plotPredictedPath(data) {
+    // console.log("data: ", data)
+    const { 'Predicted LAT': latitude, 'Predicted LON': longitude, 'Hours Ahead': hoursAhead } = data;
+
+    const numLongitude = Number(longitude);
+    const numLatitude = Number(latitude);
+
+    if (isNaN(numLongitude) || isNaN(numLatitude)) {
+        console.warn(`Invalid coordinates for prediction at T+${hoursAhead}h`, { latitude, longitude });
+        return null;
+    }
+    
+    const position = Cartesian3.fromDegrees(numLongitude, numLatitude);
+
+    return (
+      <Entity
+          key={`dot-${hoursAhead}-${longitude}-${latitude}`}
+          position={position}
+          point={{
+              pixelSize: 10,
+              color: Color.AQUA,
+              outlineWidth: 2,
+              heightReference: HeightReference.CLAMP_TO_GROUND,
+          }}
+          label={{
+              text: `${hoursAhead}h`,
+              font: "10pt sans-serif",
+              fillColor: Color.LIGHTBLUE,
+              outlineColor: Color.BLACK,
+              outlineWidth: 2,
+              pixelOffset: new Cartesian3(0, -20, 15),
+          }}
+      />
+    );
+  }
+
+  function loadWeatherLayers() {
+    if (openWeatherAPIKEY == "" || openWeatherAPIKEY == null) {
+      return
+    }
+    // IOWA WEATHER MAP (ONLY U.S. BASED)
+    let currentTime = new Date();  
+    const radarLayer = new Cesium.WebMapServiceImageryProvider({
+      url: "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi?",
+      layers: "nexrad-n0r",
+      credit: "Radar data courtesy Iowa Environmental Mesonet",
+      parameters: {
+        transparent: "true",
+        format: "image/png",
+        TIME: currentTime.toISOString(),
+      },
+    });
+
+    // cloud layer from OpenWeatherMap
+    const cloudLayer = new Cesium.UrlTemplateImageryProvider({
+      url: `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${openWeatherAPIKEY}`,
+      credit: "Cloud layer © OpenWeatherMap",
+    });
+
+    // precipitation layer from OpenWeatherMap
+    const precipitationLayer = new Cesium.UrlTemplateImageryProvider({
+      url: `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${openWeatherAPIKEY}`,
+      credit: "Cloud layer © OpenWeatherMap",
+    });
+
+    // wind layer from OpenWeatherMap
+    const windLayer = new Cesium.UrlTemplateImageryProvider({
+      url: `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${openWeatherAPIKEY}`,
+      credit: "Cloud layer © OpenWeatherMap",
+    });
+
+    // temperature layer from OpenWeatherMap
+    const temperatureLayer = new Cesium.UrlTemplateImageryProvider({
+      url: `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${openWeatherAPIKEY}`,
+      credit: "Cloud layer © OpenWeatherMap",
+    });
+    
+    const layerOptions = {
+      Clouds: cloudLayer,
+      Precipitation: precipitationLayer,
+      Wind: windLayer,
+      Temperature: temperatureLayer,
+      "US Precipitation": radarLayer
+    };
+    
+    setWeatherLayers(layerOptions)
+  }
+
   // Debug
   // console.log("Show Context Menu:", showContextMenu);
   // console.log("Context Menu Position:", contextMenuPosition);
@@ -219,7 +388,7 @@ function App() {
   // console.log("Selected Geometry Positions:");
   // console.log(
   //   geometries.find((geo) => geo.id === selectedGeometry?.id)?.positions.map((point) =>
-  //     convertCartesianToDegrees(point)
+  //     convertCartesianconvertToDegrees(point)
   //   )
   // );
 
@@ -270,6 +439,8 @@ function App() {
           ) || <div key={vessel["mmsi"]}>Invalid Vessel Data</div>
         )}
 
+        {predictions && predictions.map((item, index) => plotPredictedPath(item))}
+
         <CustomGeometry
           ref={customGeomRef}
           viewer={viewerRef}
@@ -281,9 +452,12 @@ function App() {
           setShowContextMenu={setShowContextMenu}
           setContextMenuPosition={setContextMenuPosition}
           setShowSettings={setShowSettings}
+          setEntityName={setEntityName}
         />
+        {activeWeatherLayer && (
+          <ImageryLayer imageryProvider={weatherLayers[activeWeatherLayer]} />
+        )}
       </Viewer>
-
       <ToolsUI
         onToggleFilters={() => handleToggleFilters(setShowFilters)}
         apiEndpoint={filtersAPI}
@@ -297,6 +471,8 @@ function App() {
         onToggleOverlays={() => handleToggleOverlays(showOverlays, setShowOverlays)}
         onToggleEEZ={handleToggleEEZ}
         showEEZState={showEEZ}
+        activeWeatherLayer={activeWeatherLayer}
+        onActiveWeatherLayer={setActiveWeatherLayer}
       />
 
       {showContextMenu && selectedGeometry && (
@@ -309,6 +485,7 @@ function App() {
             Delete
           </button>
           <button onClick={() => setShowSettings(true)}>Rename</button>
+          <button onClick={() => performPrediction()}>Path Prediction</button>
         </div>
       )}
 
