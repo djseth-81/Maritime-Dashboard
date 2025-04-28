@@ -66,6 +66,7 @@ function App() {
   const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
   const filtersAPI = "http:" + URL[1] + ":8000/filters/";
   const eezAPI = "http:" + URL[1] + ":8000/eezs/";
+  const openWeatherAPIKEY = "";
 
   useCesiumViewer(viewerRef, setViewerReady);
 
@@ -325,6 +326,9 @@ function App() {
   }
 
   function loadWeatherLayers() {
+    if (openWeatherAPIKEY == "" || openWeatherAPIKEY == null) {
+      return
+    }
     // IOWA WEATHER MAP (ONLY U.S. BASED)
     let currentTime = new Date();  
     const radarLayer = new Cesium.WebMapServiceImageryProvider({
@@ -340,25 +344,25 @@ function App() {
 
     // cloud layer from OpenWeatherMap
     const cloudLayer = new Cesium.UrlTemplateImageryProvider({
-      url: "https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=16715bb8e86fa5dc2e93f343ecf966cf",
+      url: `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${openWeatherAPIKEY}`,
       credit: "Cloud layer © OpenWeatherMap",
     });
 
     // precipitation layer from OpenWeatherMap
     const precipitationLayer = new Cesium.UrlTemplateImageryProvider({
-      url: "https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=16715bb8e86fa5dc2e93f343ecf966cf",
+      url: `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${openWeatherAPIKEY}`,
       credit: "Cloud layer © OpenWeatherMap",
     });
 
     // wind layer from OpenWeatherMap
     const windLayer = new Cesium.UrlTemplateImageryProvider({
-      url: "https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=16715bb8e86fa5dc2e93f343ecf966cf",
+      url: `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${openWeatherAPIKEY}`,
       credit: "Cloud layer © OpenWeatherMap",
     });
 
     // temperature layer from OpenWeatherMap
     const temperatureLayer = new Cesium.UrlTemplateImageryProvider({
-      url: "https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=16715bb8e86fa5dc2e93f343ecf966cf",
+      url: `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${openWeatherAPIKEY}`,
       credit: "Cloud layer © OpenWeatherMap",
     });
     
