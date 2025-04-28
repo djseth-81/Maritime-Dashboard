@@ -21,7 +21,7 @@ function WeatherRadar() {
   const [selectedLayer, setSelectedLayer] = useState("clouds_new");
 
   const imageryProvider = new Cesium.UrlTemplateImageryProvider({
-    url: `https://tile.openweathermap.org/map/${selectedLayer}/{z}/{x}/{y}.png?appid=YOUR_API_KEY`,
+    url: `https://tile.openweathermap.org/map/${selectedLayer}/{z}/{x}/{y}.png?appid=16715bb8e86fa5dc2e93f343ecf966cf`,
     credit: `Weather data © OpenWeatherMap - ${selectedLayer}`,
   });
 
