@@ -26,8 +26,8 @@ import useFetchFilters from "./filters/Filters";
 * It uses the useFetchFilters hook to fetch filter options from the API.
 */
 
-const ToolsUI = ({ 
-    onToggleDrawing, 
+const ToolsUI = ({
+    onToggleDrawing,
     onUndo, 
     onClear, 
     onSelectShape, 
@@ -37,7 +37,8 @@ const ToolsUI = ({
     onToggleOceanConditions,
     onToggleTrafficHeatmaps,
     onToggleEEZ,
-    showEEZState
+    showEEZState,
+    onActiveWeatherLayer,
 }) => {
     const [openPanel, setOpenPanel] = useState(false);
     const { loading, error } = useFetchFilters(apiEndpoint);
@@ -81,6 +82,7 @@ const ToolsUI = ({
                     onToggleTrafficHeatmaps={onToggleTrafficHeatmaps}
                     onToggleEEZ={onToggleEEZ}
                     showEEZState={showEEZState}
+                    onActiveWeatherLayer={onActiveWeatherLayer}
                 />
             )}
 
