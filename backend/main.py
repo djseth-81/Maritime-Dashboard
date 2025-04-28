@@ -7,10 +7,10 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from backend.utils import connect, filter_parser
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket, WebSocketDisconnect, FastAPI
 from backend.kafka_service.kafka_ws_bridge import connected_clients, kafka_listener, start_kafka_consumer
 from backend.kafka_service.producer import send_message
-
+import linearRegressionPathPrediction
 
 app = FastAPI()
 
@@ -399,3 +399,9 @@ async def startup_event():
     start_kafka_consumer()
     asyncio.create_task(kafka_listener())
 
+@app.get("/predict/{lat}/{lon}/{sog}/{heading}")
+async def predict_path(lat: float, lon: float, sog: float, heading: float):
+    print(f"Received coordinates -  Latitude: {lat}, Longitude: {lon}")
+    predictions = linearRegressionPathPrediction.start_vessel_prediction(lat, lon, sog, heading)
+    print(predictions)
+    return predictions.to_dict(orient="records")
