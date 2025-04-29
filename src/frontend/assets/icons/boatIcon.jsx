@@ -2,7 +2,7 @@ import React from "react";
 
 export default function BoatIcon({
   type = "OTHER", // Default vessel type
-  size = 100, // Default size
+  size = 80, // Default size
   heading = 0, // Default orientation
 }) {
   // Define color schemes for different vessel types
@@ -10,10 +10,11 @@ export default function BoatIcon({
   const vesselColors = {
     CARGO: "#6B8E23", // Olive green
     FISHING: "#8B4513", // Brown
-    TANKER: "#CD5C5C", // Indian red
-    TUG: "#CD5C5C", // Indian red
-    RECREATIONAL: "#4682B4", // Steel blue
+    TANKER: "#FA6B05", // Indian red
+    TUG: "#F9C256", // Gold
+    RECREATIONAL: "#D31EFF", // Magenta
     PASSENGER: "#4682B4", // Steel blue
+    OTHER: "#CD5C5C" //  Indian red
   };
 
   // Get the color based on the vessel type
@@ -21,15 +22,19 @@ export default function BoatIcon({
     // Get the base color
     const baseColor = vesselColors[type] || vesselColors.cargo;
     // Return the color with 50% opacity
-    return baseColor + "90"; // 80 in hex is 50% opacity
+    return baseColor + "B3"; // 80 in hex is 50% opacity
   };
   
-  // Calculate the points for a simple angle shape like <
-  const getAnglePoints = () => {
-    // Simple angle shape (like <)
+  // Calculate the points for an arrow with indented back
+  const getArrowPoints = () => {
+    const quarter = size / 4;
+    const half = size / 2;
+    
+    // Chevron oriented at 0 degrees
     return `
-      0,${size/2}
-      ${size},0 
+      ${half},0
+      0,${size}
+      ${half},${3 * quarter}
       ${size},${size}
     `;
   };
@@ -44,10 +49,10 @@ export default function BoatIcon({
     >
       {/* Simple angle shape (like <) */}
       <polygon
-        points={getAnglePoints()}
+        points={getArrowPoints()}
         fill={getVesselColor()}
         stroke={vesselColors[type] || vesselColors.cargo}
-        strokeWidth="3" // Bolder border
+        strokeWidth="1.5" // Bolder border
         strokeLinejoin="round" // Rounded corners on the stroke
       />
     </svg>

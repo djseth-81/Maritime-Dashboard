@@ -1,10 +1,16 @@
+import asyncio
+import json
 from pprint import pprint
 from json import loads, dumps
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from utils import connect, decrypt_password, filter_parser
+from backend.utils import connect, filter_parser
+from fastapi import WebSocket, WebSocketDisconnect, FastAPI
+from backend.kafka_service.kafka_ws_bridge import connected_clients, kafka_listener, start_kafka_consumer
+from backend.kafka_service.producer import send_message
+from backend.linearRegressionPathPrediction import *
 
 app = FastAPI()
 
@@ -53,9 +59,77 @@ async def weather():
 
     :return: A weather message with the current timestamp.
     """
-    return {"Message": "Weather!",
-            "Retrieved": datetime.now(),
-           }
+    db = connect('meteorology')
+    try:
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            # Converting types to json throws an error now, so just providing
+            # attributes themselves...
+            "attributes": [i for i in db.attrs.keys()],
+            # "filters": db.fetch_filter_options(),
+            "payload": []
+    }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching metadata for weather: {str(e)}")
+
+    try:
+        payload['payload'] = db.get_table() # Should retrieve nothing rn
+        payload['size'] = len(payload['payload'])
+        return payload
+    except Exception as e:
+        # raise HTTPException(status_code=501, detail=f"Coming soon")
+        raise HTTPException(status_code=500, detail=f"Error fetching Weather data: {str(e)}")
+
+@app.get("/ocean/")
+async def ocean_data():
+    '''
+    Oceanography query
+    '''
+    db = connect('oceanography')
+    try:
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attributes": [i for i in db.attrs.keys()],
+            # "filters": db.fetch_filter_options(),
+            "payload": []
+    }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching metadata for ocean data: {str(e)}")
+
+    try:
+        payload['payload'] = db.get_table() # Should retrieve nothing rn
+        payload['size'] = len(payload['payload'])
+        return payload
+    except Exception as e:
+        # raise HTTPException(status_code=501, detail=f"Coming soon")
+        raise HTTPException(status_code=500, detail=f"Error fetching ocean data: {str(e)}")
+
+@app.get("/events/")
+async def pull_events():
+    '''
+    Events/Alerts query
+    '''
+    db = connect('events')
+    try:
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attributes": [i for i in db.attrs.keys()],
+            # "filters": db.fetch_filter_options(),
+            "payload": []
+    }
+    except Exception as e:
+        raise HTTPException(status_code=501, detail=f"Coming soon")
+        # raise HTTPException(status_code=500, detail=f"Error fetching metadata for events: {str(e)}")
+
+    try:
+        payload['payload'] = db.get_table() # Should retrieve nothing rn
+        payload['size'] = len(payload['payload'])
+        return payload
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching events: {str(e)}")
 
 @app.get("/users/")
 async def users():
@@ -68,19 +142,6 @@ async def users():
             "Retrieved": datetime.now(),
            }
 
-def decrypt_password(encrypted_password: str, secret_key: str) -> str:
-    """
-    Decrypts a password using AES encryption.
-
-    :param encrypted_password: The base64-encoded encrypted password.
-    :param secret_key: The encryption key used for decryption.
-    :return: The decrypted password as a string.
-    """
-    encrypted_data = base64.b64decode(encrypted_password)
-    cipher = AES.new(secret_key.encode('utf-8'), AES.MODE_ECB)
-    decrypted_bytes = cipher.decrypt(encrypted_data)
-    return decrypted_bytes.strip().decode('utf-8')
-
 @app.post("/addUser")
 async def add_user(formData: dict):
     """
@@ -89,6 +150,7 @@ async def add_user(formData: dict):
     :param formData: A dictionary containing user information.
     :return: The received form data.
     """
+    print("### Websocket: Form data:")
     print(formData)
     return formData
 
@@ -104,27 +166,31 @@ async def login(formData: dict):
     # email = formData["email"]
     # decrypted_password = decrypt_password(formData["password"], secret_key="my-secret-key")
     return formData
-    
 
-def filter_parser(p: dict, result: list) -> None:
-    """
-    Recursively generates query options from filter parameters.
-    ### WARNING: Creates some duplicate queries when more than one attribute
-    has more than 1 value. Pretty sure its cuz my recursive restraints suck. 
-    Shouldn't affect results since its a UNION query
+@app.get("/stations/", response_model=dict)
+async def get_stations():
+    '''
+    Stations query
+    '''
+    db = connect('sources')
+    try:
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attributes": [i for i in db.attrs.keys()],
+            # "filters": db.fetch_filter_options(),
+            "payload": []
+    }
+    except Exception as e:
+        print(f"### Websocket: Error fetching metadata for stations:\n{e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching metadata for stations: {str(e)}")
 
-    :param p: Dictionary containing filter criteria.
-    :param result: List to store the resulting filter options.
-    """
-    x = {}
-    for k, v in p.items():
-        val = v if isinstance(v, list) else v.split(',')
-        while len(val) > 1:
-            q = p.copy()
-            q[k] = val.pop(0)
-            filter_parser(q, result)
-        x.update({k: val[0]})
-    result.append(x)
+    try:
+        payload['payload'] = db.get_table() # Currently only NOAA-COOP stations in table
+        payload['size'] = len(payload['payload'])
+        return payload
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching stations: {str(e)}")
 
 @app.get("/vessels/", response_model=dict)
 async def get_filtered_vessels(
@@ -146,7 +212,7 @@ async def get_filtered_vessels(
         payload = {
             "retrieved": datetime.now(),
             "privileges": db.permissions,
-            "attribuets": db.attrs,
+            "attributes": [i for i in db.attrs.keys()],
             "filters": db.fetch_filter_options(),
             "payload": []
         }
@@ -179,7 +245,6 @@ async def get_filtered_vessels(
         "current_status": status if status else None
     }.items() if value}
 
-    print(f"### Websocket: Filters:\n{filters}")
     if len(filters) > 0:
         queries = []
         filter_parser(filters,queries)
@@ -188,9 +253,6 @@ async def get_filtered_vessels(
         # This is because my recursion sucks so there's a chance for duplicates
         # when more than 1 attribute has multiple values
         queries = [dict(t) for t in {tuple(d.items()) for d in queries}]
-
-        print(f"### Websocket: query array:")
-        pprint(queries)
 
         ### IF DB connection successful, attempt assembling payload
         try:
@@ -208,20 +270,29 @@ async def get_filtered_vessels(
     db.close()
 
 # FIXME: Weird bug where selecting a vessel and then selecting apply filters assumes zoning
-@app.post("/zoning/")
+# FIXME: Bug where entities inside/outside zone appear to behave as uninteded (read bug report for more)
+@app.post("/zoning/", response_model=dict)
 async def zone_vessels(data: dict):
+    '''
+    Zoning query. Collects Meteorological and oceanographic data, events,
+    and vessels that are sourced from inside zone
+    '''
     vessels = connect('vessels')
     met = connect('meteorology')
     oce = connect('oceanography')
     events = connect('events')
+    sources = connect('sources')
+    zones = connect('zones')
+
     try:
         payload = {
             "retrieved": datetime.now(),
             "privileges": vessels.permissions,
-            "attribuets": vessels.attrs,
-            "payload": []
+            "attributes": [i for i in vessels.attrs.keys()],
+            "payload": {}
         }
     except Exception as e:
+        print(f"### Websocket: Error fetching metadata for zoning:\n{e}")
         raise HTTPException(status_code=500, detail=f"Error fetching metadata for vessels: {str(e)}")
 
     geom = data['geom']
@@ -229,21 +300,48 @@ async def zone_vessels(data: dict):
     status = data['origin'].split(',') if 'origin' in data.keys() else []
     flags = data['flag'].split(',') if 'flag' in data.keys() else []
 
+    pprint(geom)
+
     try:
+        ### Getting Vessels
+        payload['payload'].update({'vessels':[]})
 
         # NOTE: I HATE this implemenetation.
-        # Would like to pop FROM query instead of append to results
-        # but it does some weird shit rn
-        query = vessels.within(geom)
-
-        for i in query:
+        for i in vessels.within(geom):
             if (i['type'] in types) or (i['flag'] in flags) or (i['current_status'] in status):
-                payload['payload'].append(i)
+                payload['payload']['vessels'].append(i)
 
         payload['size'] = len(payload['payload'])
+
+        # Pulling stations
+        stations = [i['id'] for i in sources.within(geom)]
+
+        # Give them another chance :)
+        # If the original geometry doesn't encompass stations, does it overlap
+        # with known geometries?
+        if len(stations) < 1:
+            print("### Websocket: Couldn't find stations inside zone provided by client")
+            waah = [eek for eek in zones.overlaps(geom)]
+            for wah in waah:
+                stations.extend([i['id'] for i in sources.within(loads(wah['geom']))])
+
+        if len(stations) > 0:
+            payload['payload'].update({'stations': stations} if len(stations) > 0 else {'guh!': "No stations found."})
+
+            ### Getting Meteorology
+            payload['payload'].update({'weather': met.query([{'src_id': i} for i in stations])})
+
+            ### Getting Oceanography
+            payload['payload'].update({'oceanography': oce.query([{'src_id': i} for i in stations])})
+
+            ### Getting events
+            payload['payload'].update({'alerts': events.query([{'src_id': i} for i in stations])})
+
         return payload
+
     except Exception as e:
-        raise HTTPException(status_code=501, detail=f"Zoning not implemeneted")
+        print(f"### Websocket: Error fetching zoning data:\n{e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching zone data: {str(e)}")
     finally:
         vessels.close()
 
@@ -290,55 +388,80 @@ async def add_vessel(data: dict):
     finally:
         db.close()
 
-@app.get("/metadata/")
-async def query_metadata():
-    """
-    Fetches metadata for spatial reference systems.
-
-    :return: Metadata payload including privileges, entity count, and attributes.
-    :raises HTTPException: If database interaction fails.
-    """
+@app.get("/eezs/", response_model=dict)
+async def fetch_eezs():
+    db = connect('zones')
+    print("### Websocket: Collecting EEZs")
     try:
-        operator = DBOperator(table='spatial_ref_sys')
-    except:
-        print("### Fast Server: Unable connect to spatial_ref_sys table")
-        return JSONResponse(
-            status_code=500,
-            content={"Error": "Unable to establish database connection"}
-        )
-
-    ### IF DB connection successful, attempt assembling payload
-    print("### Server: Assembling Payload...")
-    try:
-        payload = {"Message": "Metadata for Geometry",
-                   "Retrieved": datetime.now(),
-                   "Privileges": operator.get_privileges(),
-                   "Total entities": operator.get_count(),
-                   "Table attribuets": operator.get_attributes(),
-                   "payload": operator.query(('srid',4326)) # Spatial reference system, Global scope (https://spatialreference.org/ref/epsg/4326/)
-                   }
-        print("### Server: Payload assembled.")
-    except:
-        print("### Fast Server: Error assembling payload.")
-        payload = JSONResponse(
-            status_code=400,
-            content={"Error": "Error assembling payload."}
-        )
-    finally:
-        operator.close() # Closes table instance
+        payload = {
+            "retrieved": datetime.now(),
+            "privileges": db.permissions,
+            "attributes": [i for i in db.attrs.keys()],
+            "payload": [],
+        }
+        # Disgusting. FIXME
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (American Samoa)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Palmyra Atoll)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Puerto Rico)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (United States Virgin Islands)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Johnston Atoll)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Guam)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Northern Mariana Islands)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Jarvis Islands)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Howland and Baker Islands)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Hawaii)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Alaska)'}]))
+        print("### Websocket: EEZs collected.")
+        payload.update({"size": len(payload['payload'])})
         return payload
-    
-@app.get("/prediction/{lon}/{lat}")
-async def predict_path(lon: float, lat: float):
+
+@app.get("/predict/{lat}/{lon}/{sog}/{heading}")
+async def predict_path(lat: float, lon: float, sog: float, heading: float):
     """
     Predicts vessel path based on coordinates.
 
     :param lon: Longitude coordinate of the vessel.
     :param lat: Latitude coordinate of the vessel.
+    :param sog: Speed of vessel
+    :param heading: Heading of vessel
     :return: Predicted path data as a list of dictionaries.
     :raises HTTPException: If prediction fails.
     """
-    print(f"Received coordinates - Longitude: {lon}, Latitude: {lat}")
-    # linear_regression.perform_training_manually()
-    predictions = linear_regression_2.perform_vessel_prediction(lat, lon)
+    print(f"Received coordinates -  Latitude: {lat}, Longitude: {lon}")
+    predictions = start_vessel_prediction(lat, lon, sog, heading)
+    pprint(predictions)
     return predictions.to_dict(orient="records")
+
+# Frontend Websocket > FastAPI backend > Kafka > Consumer
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("### WebSocket: Client connected")
+    connected_clients.add(websocket)
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+            print("Received from client:", data)
+            await websocket.send_text(f"Echo: {data}")
+
+            try:
+                parsed = loads(data)
+                key = parsed.get("key", "default")
+                send_message(key, parsed)
+                print(f"Sent to Kafka | key: {key} | value: {parsed}")
+            except json.JSONDecodeError:
+                print(f"Received non-JSON message: {data}")
+            except Exception as e:
+                print(f"Error sending to Kafka: {e}")
+
+    except WebSocketDisconnect:
+        print("### WebSocket: Client disconnected")
+        connected_clients.remove(websocket)
+
+@app.on_event("startup")
+async def startup_event():
+    start_kafka_consumer()
+    asyncio.create_task(kafka_listener())
+

@@ -1,4 +1,4 @@
-from DBOperator import DBOperator
+from ...DBOperator import DBOperator
 import csv
 import requests
 from time import sleep
@@ -55,6 +55,7 @@ for zone in data:
         table.add(entity)
         table.commit()
         dubs += 1
+        # TODO: Implement topics
     except Exception as e:
         els += 1
         table.rollback()

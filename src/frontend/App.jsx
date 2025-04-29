@@ -2,27 +2,45 @@ import { useState, useRef, useEffect } from "react";
 import CustomGeometry from "./utilities/CustomGeometry";
 import ToolsUI from "./utilities/ToolsUI";
 import ZoneSettingsUI from "./utilities/ZoneSettingsUI";
-import FiltersUI from "./utilities/filters/FiltersUI";
 import ConfirmationDialog from "./utilities/ConfirmationDialog";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/ReactToastify.css";
 import "./App.css";
 import { placeVessel } from "./utilities/shippingVessels/Vessels";
 import { Viewer } from "resium";
-import { SceneMode, Cartographic, Math } from "cesium";
-import axios from "axios";
 import OverlaysUI from "./utilities/overlays/OverlaysUI";
-import { convertCartesianToDegrees } from "./utilities/coordUtils";
+import { fetchVessels } from "./utilities/apiFetch";
+import { zoning } from "./utilities/zoning";
+import {
+  handleUndo,
+  handleToggleDrawing,
+  handleToggleOverlays,
+  handleToggleFilters,
+  handleClear,
+  handleClearConfirmed,
+  handleClearCancelled,
+  handleRename,
+  handleDelete,
+  handleDeleteConfirm,
+  handleDeleteCancel,
+  handleSave,
+} from "./utilities/eventHandlers";
+import { useCesiumViewer } from "./utilities/hooks/useCesiumViewer";
+import "./App.css";
+import { generateZoneDescription } from "./utilities/zoning/ZoneInfobox";
+import { fetchEEZZones, loadEEZZonesToGlobe, toggleEEZVisibility } from "./utilities/zoning/eezFetch"; // EEZ Functions
+import axios from "axios";
+import { Cartesian3, Color, HeightReference } from "cesium";
+import * as Cesium from "cesium";
+import { Entity } from "resium";
+import { ImageryLayer } from "resium";
 
 function App() {
   const [isDrawing, setIsDrawing] = useState(false);
-  const [geometries, setGeometries] = useState([]); // Added state for geometries
+  const [geometries, setGeometries] = useState([]);
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   const [showContextMenu, setShowContextMenu] = useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = useState({
-    x: 0,
-    y: 0,
-  });
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const [showSettings, setShowSettings] = useState(false);
   const [showOverlays, setShowOverlays] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -30,320 +48,365 @@ function App() {
   const [viewerReady, setViewerReady] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [currentFilters, setCurrentFilters] = useState({  // Tracks current filters
+    types:[],
+    statuses: [],
+    origin:""
+  })
+  const [showEEZ, setShowEEZ] = useState(false);
+  
+  const [entityName, setEntityName] = useState(null);
+  const [predictions, setPredictions] = useState([]);
+  const [activeWeatherLayer, setActiveWeatherLayer] = useState(null);
+  const [weatherLayers, setWeatherLayers] = useState(null);
 
   const viewerRef = useRef(null);
+  const customGeomRef = useRef(null);
   const URL = window.location.href.split(":");
   const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
   const filtersAPI = "http:" + URL[1] + ":8000/filters/";
+  const eezAPI = "http:" + URL[1] + ":8000/eezs/";
+  const openWeatherAPIKEY = "";
 
-  // Fetch vessels from API
-  const fetchVessels = async (filters = {}) => {
-    const queryParams = {};
+  useCesiumViewer(viewerRef, setViewerReady);
 
-    // Apply filters to query
-    if (filters.types && filters.types.length > 0) {
-      queryParams.type = filters.types.join(",");
-    }
-    if (filters.origin) {
-      queryParams.origin = filters.origin;
-    }
-    if (filters.statuses && filters.statuses.length > 0) {
-      queryParams.status = filters.statuses.join(",");
-    }
-
-    try {
-      const response = await axios.get(vesselsAPI, { params: queryParams });
-
-      console.log("Table privileges");
-      console.log(response.data.privileges);
-
-      console.log("Response Timestamp");
-      console.log(response.data.retrieved);
-
-      console.log("Size of payload");
-      console.log(response.data.size);
-
-      console.log("Filterable items:");
-      console.log(response.data.filters);
-
-      console.log("Payload:");
-      console.log(response.data.payload);
-
-      if (response.data.length === 0) {
-        toast.info("No vessels found matching your filters.");
-        setVessels([]);
-        return;
-      }
-
-      const transformedVessels = response.data.payload.map((vessel) =>
-        Array.isArray(vessel)
-          ? {
-              id: vessel["mmsi"],
-              name: vessel["vessel_name"],
-              type: vessel["type"],
-              country_of_origin: vessel["flag"],
-              status: vessel["current_status"],
-              latitude: vessel["lat"],
-              longitude: vessel["lon"],
-            }
-          : vessel,
-      );
-
-      setVessels(transformedVessels);
-    } catch (error) {
-      console.error("Error fetching vessels:", error.message);
-      toast.error("Failed to load vessels.");
-      setVessels([]);
-    }
-  };
-
-  // FIXME: Weird bug where selecting a vessel and then selecting apply filters assumes zoning
-  const zoning = async (filters = {}) => {
-    const payload = {};
-
-    // If zone is selected, apply geospatial filtering
-    console.log("ZONE SELECTED:")
-    const polygonData = geometries.find(
-        (geo) => geo.id === selectedGeometry?.id,
-    );
-    let polygonVerticies = polygonData?.positions.map((point) =>
-        convertCartesianToDegrees(point) // This is sick tho
-    );
-
-    let geom = { 'type' : "Polygon",
-        "coordinates": [polygonVerticies?.map((point) => [point.longitude, point.latitude])],
-    }
-
-    console.log("Zone GeoJSON:");
-    console.log(geom);
-    payload.geom = geom;
-    const zoneAPI = "http:" + URL[1] + ":8000/zoning/";
-
-    // Apply filters to query
-    if (filters.types && filters.types.length > 0) {
-      payload.type = filters.types.join(",");
-    }
-    if (filters.origin) {
-      payload.origin = filters.origin;
-    }
-    if (filters.statuses && filters.statuses.length > 0) {
-      payload.status = filters.statuses.join(",");
-    }
-
-    try {
-      const response = await axios.post(zoneAPI, payload);
-
-      console.log("Zoning response:");
-      console.log(response);
-
-      console.log("Table privileges");
-      console.log(response.data.privileges);
-
-      console.log("Response Timestamp");
-      console.log(response.data.retrieved);
-
-      console.log("Size of payload");
-      console.log(response.data.size);
-
-      console.log("Payload:");
-      console.log(response.data.payload);
-
-      if (response.data.length === 0) {
-        toast.info("No vessels found matching your filters.");
-        setVessels([]);
-        return;
-      }
-
-      const transformedVessels = response.data.payload.map((vessel) =>
-        Array.isArray(vessel)
-          ? {
-              id: vessel["mmsi"],
-              name: vessel["vessel_name"],
-              type: vessel["type"],
-              country_of_origin: vessel["flag"],
-              status: vessel["current_status"],
-              latitude: vessel["lat"],
-              longitude: vessel["lon"],
-            }
-          : vessel,
-      );
-
-      setVessels(transformedVessels);
-    } catch (error) {
-      console.error("Error fetching vessels:", error.message);
-      toast.error("Failed to load vessels.");
-      setVessels([]);
-    }
-  };
-
-  useEffect(() => {
-    fetchVessels();
-    selectedGeometry ? zoning() : console.log("NO ZONE SELECTED"); // Dunno whether or not this actually does anything...
-
-    if (viewerRef.current && viewerRef.current.cesiumElement) {
-      const viewer = viewerRef.current.cesiumElement;
-      setViewerReady(true);
-      // Create a scene mode change event handler
-      const sceneModeChangeHandler = () => {
-        // If there's a selected entity, re-select it to update the info box position
-        if (viewer.selectedEntity) {
-          const currentEntity = viewer.selectedEntity;
-          viewer.selectedEntity = undefined; // Deselect
-          setTimeout(() => {
-            viewer.selectedEntity = currentEntity; // Re-select after a brief delay
-          }, 100);
-        }
-      };
-
-      // Add event listener for scene mode changes
-      viewer.scene.morphComplete.addEventListener(sceneModeChangeHandler);
-
-      // Clean up event listener when component unmounts
-      return () => {
-        if (viewer && viewer.scene && !viewer.isDestroyed()) {
-          viewer.scene.morphComplete.removeEventListener(
-            sceneModeChangeHandler,
-          );
-        }
-      };
-    }
-  }, [viewerRef.current]);
-
-  // Handler for ToolUI 'Toggle Zoning'
-  const handleToggleDrawing = () => {
-    console.log("Toggled Zoning:", !isDrawing);
-    setIsDrawing((prev) => {
-      const newState = !prev;
-
-      // notification of tool state
-      toast.info(`Zoning Tool ${newState ? "Enabled" : "Disabled"}`, {
-        position: "bottom-right",
-        autoClose: 2000,
-        hideProgressBar: true,
-        closeOnClick: true,
-        pauseOnHover: false,
-        draggable: false,
-      });
-      return newState;
-    });
-  };
-
-  const handleToggleOverlays = () => {
-    setShowOverlays((prev) => !prev);
-    console.log("Overlays toggled:", !showOverlays);
-  };
-
-  const handleToggleFilters = () => setShowFilters((prev) => !prev);
-
-  // Undos previous point placed, will undo until the stack is empty
-  const handleUndo = () => {
-    setGeometries((prev) => {
-      if (prev.length === 0) return prev;
-      const updated = [...prev];
-      updated[updated.length - 1].positions.pop();
-      return updated;
-    });
-  };
-
-  // Clears entire cesium viewer of geometries
-  const handleClear = () => {
-    setShowClearDialog(true);
-  };
-
-  const handleClearConfirmed = () => {
-    const entities = viewerRef.current.cesiumElement.entities.values;
-    for (let i = entities.length - 1; i >= 0; i--) {
-      if (entities[i].isGeometry) {
-        viewerRef.current.cesiumElement.entities.remove(entities[i]);
-      }
-    }
-    setGeometries([]);
-    setSelectedGeometry(null);
-    setShowContextMenu(false);
-    setShowClearDialog(false);
-  };
-
-  const handleClearCancelled = () => {
-    setShowClearDialog(false);
-  };
-
-  const handleRename = (newName) => {
-    // Update the name in the Cesium viewer
-    const entity = viewerRef.current.cesiumElement.entities.getById(
-      selectedGeometry.id,
-    );
-    if (entity) {
-      entity.name = newName;
-    }
-
-    // Update the name in the state
-    setGeometries((prev) =>
-      prev.map((geo) =>
-        geo.id === selectedGeometry.id ? { ...geo, name: newName } : geo,
-      ),
-    );
-    setSelectedGeometry((prev) => ({ ...prev, name: newName }));
-  };
-
-  const handleDelete = () => {
-    setShowContextMenu(false);
-    setShowDeleteDialog(true);
-  };
-
-  const handleDeleteConfirm = () => {
-    if (selectedGeometry) {
-      // Remove the selected geometry from the Cesium viewer
-      viewerRef.current.cesiumElement.entities.removeById(selectedGeometry.id);
-
-      // Update the state to remove the selected geometry
-      setGeometries((prev) =>
-        prev.filter((geo) => geo.id !== selectedGeometry.id),
-      );
-      setSelectedGeometry(null);
-    }
-    setShowDeleteDialog(false);
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteDialog(false);
-  };
-
-  // Placeholder for save functionality
-  const handleSave = () => {
-    console.log("Zone settings saved.");
-    setShowSettings(false);
-  };
-
+  // const handleFilterApply = async (filters) => {
+  //   console.log("Filters selected:");
+  //   console.log(filters);
+  //   await fetchVessels(vesselsAPI, filters, setVessels);
+  //   await selectedGeometry ? zoning(polygonData, filters, setVessels) : console.log("NO ZONE SELECTED");
+  // };
   const handleFilterApply = async (filters) => {
-    console.log("Filters selected:");
-    console.log(filters);
-    await fetchVessels(filters);
-    await selectedGeometry ? zoning(filters) : console.log("NO ZONE SELECTED");
+    console.log("Applying filters...", filters);
+
+    // Set current filters
+    setCurrentFilters(filters);
+
+    try {
+      await fetchVessels(vesselsAPI, filters, setVessels);
+      if (selectedGeometry) {
+        await zoning(polygonData, filters, setVessels);
+      } else {
+        console.log("NO ZONE SELECTED");
+      }
+    } catch (error) {
+      console.error("Error applying filters:", error.message);
+      toast.error("Failed to apply filters.");
+    }
   };
-
-  // Debug
-  console.log("Show Context Menu:", showContextMenu);
-  console.log("Context Menu Position:", contextMenuPosition);
-  console.log("showSettings:", showSettings);
-
-  console.log("Selected Geometry:", selectedGeometry);
-  console.log("selectedGeometry Name: ", selectedGeometry?.name);
-
-  // SHIP DATA
-  console.log("SHIP DATA:");
-
-  console.log(vessels);
-
-  console.log("SHIP NAME:");
-  console.log(selectedGeometry?.name.split(": ")[1]);
-  const vesselData = vessels.find((vessel) => 
-      vessel.vessel_name === selectedGeometry?.name.split(": ")[1]
+  const polygonData = geometries?.find(
+    (geo) => geo.id === selectedGeometry?.id
   );
 
-  console.log("Selected Ship data: ", vesselData);
-  console.log("Selected ship position:");
-  console.log(vesselData?.geom);
- 
+  // Default filters for vessels
+  const defaultFilters = {
+    types: ["CARGO", "FISHING", "TANKER", "TUG", "PASSENGER",
+      "RECREATIONAL", "OTHER"],
+    statuses: [
+      "UNDERWAY", "ANCHORED", "MOORED", "IN TOW", "FISHING",
+      "UNMANNED", "LIMITED MOVEMENT", "HAZARDOUS CARGO",
+      "AGROUND", "EMERGENCY", "UNKNOWN",
+    ],
+  }
+
+  // Set currentFilters based on defaultFilters once component is mounted
+  useEffect(() => {
+    setCurrentFilters({
+      types: defaultFilters.types,
+      statuses: defaultFilters.statuses,
+      origin: ""
+    });
+  }, []);
+
+  const handleRefreshZoneData = async () => {
+    if (!selectedGeometry) return;
+
+    try{
+      // Get the polygon data for the selected geometry
+      const polygonData = geometries.find(geo => geo.id === selectedGeometry.id);
+      if (!polygonData){
+        toast.error("Selected zone data not found.");
+        return;
+      }
+
+      // Use the current filters
+      const zoneData = await zoning(polygonData, currentFilters);
+
+      if (!zoneData) {
+        toast.warning("No data found for this zone.");
+        return;
+      }
+
+      // Update Geometries state to include the zone data
+      setGeometries(prevGeometries =>
+        prevGeometries.map(geo => {
+          if (geo.id === selectedGeometry.id) {
+            return{
+              ...geo,
+              zoneData: zoneData
+            };
+          }
+          return geo;
+        })
+      );
+
+
+
+
+      // Update the entity's description with the new data
+      if (viewerRef.current && viewerRef.current.cesiumElement) {
+        const entity = viewerRef.current.cesiumElement.entities.getById(selectedGeometry.id);
+        if (entity) {
+          entity.description = generateZoneDescription(selectedGeometry.name, zoneData);
+          toast.success("Zone data refreshed successfully!");
+        }
+      }
+    } catch (error){
+      console.error("Error refreshing zone data: ", error);
+      toast.error("Failed to refresh zone data.");
+    }
+  };
+
+  // Handler for toggling EEZ
+  const handleToggleEEZ = () => {
+    if (!viewerRef.current?.cesiumElement) return;
+
+    toggleEEZVisibility(
+      viewerRef.current.cesiumElement,
+      showEEZ,
+      setShowEEZ,
+      eezAPI
+    );
+
+  };
+
+  // Fetch vessels when the viewer is ready and the API endpoint is available
+  useEffect(() => {
+    const loadVessels = async () => {
+      try {
+        console.log("Fetching vessels...");
+        await fetchVessels(vesselsAPI, defaultFilters, setVessels);
+      } catch (error) {
+        console.error("Error fetching vessels:", error.message);
+        toast.error("Failed to load vessels.");
+      };
+    };
+    loadVessels();
+    loadWeatherLayers();
+
+    const ws = new WebSocket("ws://localhost:8000/ws");
+
+    ws.onopen = () => {
+      console.log("WebSocket connected from React");  //displays message showing websocket is connected (shows on F12 + console)
+      ws.send("Hello from React WebSocket client!");  //dispalys on backend log
+    };
+
+    ws.onmessage = (event) => {
+      console.log("Message from WebSocket server:", event.data);  //echos the response from backend log (shows on F12 + console)
+    };
+
+    ws.onerror = (err) => {
+      console.error("WebSocket error:", err); //error handling
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket disconnected");  //error handling
+    };
+
+    return () => ws.close();
+
+  }, [viewerReady, vesselsAPI]);
+
+  const performPrediction = async () => {
+
+    function convertToRadians(degrees) {
+      return degrees * (Math.PI / 180);
+    }
+
+    function convertToDegrees(radians) {
+      return radians * (180 / Math.PI);
+    }
+
+    function getDistanceInMeters(sog) {
+      const nauticalMileInMeters = 1852; 
+      return sog * nauticalMileInMeters;  
+    }
+
+    function adjustCoordinates(lat, lon, sog, heading) {
+      const R = 6371000; 
+
+      const distance = getDistanceInMeters(sog);
+
+      const headingRad = convertToRadians(heading);
+
+      const deltaLat = (distance * Math.cos(headingRad)) / R;
+      const deltaLon = (distance * Math.sin(headingRad)) / (R * Math.cos(Math.PI * lat / 180));
+
+      const newLat = lat + convertToDegrees(deltaLat);
+      const newLon = lon + convertToDegrees(deltaLon);
+
+      return { newLat, newLon };
+    }
+
+    function predictCoordinates(lat, lon, sog, heading) {
+      let predictions = [];
+
+      for (let hour = 1; hour <= 24; hour++) {
+        const { newLat, newLon } = adjustCoordinates(lat, lon, sog, heading);
+
+        predictions.push({
+          "Hours Ahead": hour,
+          "Predicted LAT": newLat,
+          "Predicted LON": newLon
+        });
+
+        lat = newLat;
+        lon = newLon;
+      }
+
+      return predictions;
+    }
+
+    const vesselData = vessels.find(
+      (vessel) => vessel.vessel_name === selectedGeometry?.name.split(": ")[1]
+    );
+
+    if (vesselData == null) {
+      toast.info("No vessel data available");
+      return;
+    }
+
+    var lat = String(vesselData.lat);
+    var lon = String(vesselData.lon);
+    var sog = String(vesselData.speed);
+    // var cog = String(vesselData.cog);
+    var heading = String(vesselData.heading);
+    // if backend hosted on a different server than replace url with correct one
+    // var url = "http://127.0.0.1:8000/predict/" + lat + "/" + lon + "/" + sog + "/" + heading;
+    // const res = await axios.get(url);
+    // console.log("Selected Ship data: ", res.data);  
+    const predictedCoordinates = predictCoordinates(Number(lat), Number(lon), Number(sog), Number(heading));
+    setPredictions(predictedCoordinates);
+  }
+
+  function plotPredictedPath(data) {
+    // console.log("data: ", data)
+    const { 'Predicted LAT': latitude, 'Predicted LON': longitude, 'Hours Ahead': hoursAhead } = data;
+
+    const numLongitude = Number(longitude);
+    const numLatitude = Number(latitude);
+
+    if (isNaN(numLongitude) || isNaN(numLatitude)) {
+        console.warn(`Invalid coordinates for prediction at T+${hoursAhead}h`, { latitude, longitude });
+        return null;
+    }
+    
+    const position = Cartesian3.fromDegrees(numLongitude, numLatitude);
+
+    return (
+      <Entity
+          key={`dot-${hoursAhead}-${longitude}-${latitude}`}
+          position={position}
+          point={{
+              pixelSize: 10,
+              color: Color.AQUA,
+              outlineWidth: 2,
+              heightReference: HeightReference.CLAMP_TO_GROUND,
+          }}
+          label={{
+              text: `${hoursAhead}h`,
+              font: "10pt sans-serif",
+              fillColor: Color.LIGHTBLUE,
+              outlineColor: Color.BLACK,
+              outlineWidth: 2,
+              pixelOffset: new Cartesian3(0, -20, 15),
+          }}
+      />
+    );
+  }
+
+  function loadWeatherLayers() {
+    if (openWeatherAPIKEY == "" || openWeatherAPIKEY == null) {
+      return
+    }
+    // IOWA WEATHER MAP (ONLY U.S. BASED)
+    let currentTime = new Date();  
+    const radarLayer = new Cesium.WebMapServiceImageryProvider({
+      url: "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi?",
+      layers: "nexrad-n0r",
+      credit: "Radar data courtesy Iowa Environmental Mesonet",
+      parameters: {
+        transparent: "true",
+        format: "image/png",
+        TIME: currentTime.toISOString(),
+      },
+    });
+
+    // cloud layer from OpenWeatherMap
+    const cloudLayer = new Cesium.UrlTemplateImageryProvider({
+      url: `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${openWeatherAPIKEY}`,
+      credit: "Cloud layer © OpenWeatherMap",
+    });
+
+    // precipitation layer from OpenWeatherMap
+    const precipitationLayer = new Cesium.UrlTemplateImageryProvider({
+      url: `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${openWeatherAPIKEY}`,
+      credit: "Cloud layer © OpenWeatherMap",
+    });
+
+    // wind layer from OpenWeatherMap
+    const windLayer = new Cesium.UrlTemplateImageryProvider({
+      url: `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${openWeatherAPIKEY}`,
+      credit: "Cloud layer © OpenWeatherMap",
+    });
+
+    // temperature layer from OpenWeatherMap
+    const temperatureLayer = new Cesium.UrlTemplateImageryProvider({
+      url: `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${openWeatherAPIKEY}`,
+      credit: "Cloud layer © OpenWeatherMap",
+    });
+    
+    const layerOptions = {
+      Clouds: cloudLayer,
+      Precipitation: precipitationLayer,
+      Wind: windLayer,
+      Temperature: temperatureLayer,
+      "US Precipitation": radarLayer
+    };
+    
+    setWeatherLayers(layerOptions)
+  }
+
+  // Debug
+  // console.log("Show Context Menu:", showContextMenu);
+  // console.log("Context Menu Position:", contextMenuPosition);
+  // console.log("showSettings:", showSettings);
+
+  // console.log("Selected Geometry:", selectedGeometry);
+  // console.log("selectedGeometry Name: ", selectedGeometry?.name);
+  // console.log("Selected Geometry ID:", selectedGeometry?.id);
+  // console.log("Selected Geometry Positions:");
+  // console.log(
+  //   geometries.find((geo) => geo.id === selectedGeometry?.id)?.positions.map((point) =>
+  //     convertCartesianconvertToDegrees(point)
+  //   )
+  // );
+
+  // SHIP DATA
+  // console.log("SHIP DATA:");
+  // console.log(vessels);
+  // console.log("SHIP NAME:");
+  // if (selectedGeometry?.name) {
+  //   console.log(selectedGeometry.name.split(": ")[1]);
+  // } else {
+  //   console.log("No ship selected.");
+  // }
+  // const vesselData = vessels.find(
+  //   (vessel) => vessel.vessel_name === selectedGeometry?.name.split(": ")[1]
+  // );
+  // console.log("Selected Ship data: ", vesselData);
+  // console.log("Selected ship position:");
+  // console.log(vesselData?.geom);
 
   return (
     <div className="cesium-viewer">
@@ -360,40 +423,56 @@ function App() {
         sceneModePicker={true}
         geocoder={true}
         infoBox={true}
-        selectionIndicator={true}>
-
+        selectionIndicator={true}
+        infoBoxViewModel={{
+          sanitizeHtml: false,
+        }}
+      >
         {vessels.map((vessel) =>
           placeVessel(
-            vessel['lon'],
-            vessel['lat'],
-            vessel['heading'],
-            0, //For elevation
-            vessel['type'],
-            vessel['vessel_name']
-          ) || <div key={vessel['mmsi']}>Invalid Vessel Data</div>
+            vessel["lon"],
+            vessel["lat"],
+            vessel["heading"],
+            0,
+            vessel["type"],
+            vessel["vessel_name"]
+          ) || <div key={vessel["mmsi"]}>Invalid Vessel Data</div>
         )}
 
+        {predictions && predictions.map((item, index) => plotPredictedPath(item))}
+
         <CustomGeometry
+          ref={customGeomRef}
           viewer={viewerRef}
           viewerReady={viewerReady}
           isDrawing={isDrawing}
-          geometries={geometries} // Pass geometries state
-          setGeometries={setGeometries} // Pass setGeometries function
+          geometries={geometries}
+          setGeometries={setGeometries}
           setSelectedGeometry={setSelectedGeometry}
           setShowContextMenu={setShowContextMenu}
           setContextMenuPosition={setContextMenuPosition}
           setShowSettings={setShowSettings}
+          setEntityName={setEntityName}
         />
+        {activeWeatherLayer && (
+          <ImageryLayer imageryProvider={weatherLayers[activeWeatherLayer]} />
+        )}
       </Viewer>
-
       <ToolsUI
-        onToggleFilters={handleToggleFilters}
+        onToggleFilters={() => handleToggleFilters(setShowFilters)}
         apiEndpoint={filtersAPI}
         onFilterApply={handleFilterApply}
-        onToggleDrawing={handleToggleDrawing}
-        onUndo={handleUndo}
-        onClear={handleClear}
-        onToggleOverlays={handleToggleOverlays}
+        onToggleDrawing={() => handleToggleDrawing(isDrawing, setIsDrawing)}
+        onUndo={() => {
+          console.log("Undo function passed to handleUndo:", customGeomRef.current?.undoLastPoint);
+          handleUndo(customGeomRef.current?.undoLastPoint)
+        }}
+        onClear={() => handleClear(setShowClearDialog)}
+        onToggleOverlays={() => handleToggleOverlays(showOverlays, setShowOverlays)}
+        onToggleEEZ={handleToggleEEZ}
+        showEEZState={showEEZ}
+        activeWeatherLayer={activeWeatherLayer}
+        onActiveWeatherLayer={setActiveWeatherLayer}
       />
 
       {showContextMenu && selectedGeometry && (
@@ -401,9 +480,12 @@ function App() {
           className="context-menu"
           style={{ top: contextMenuPosition.y, left: contextMenuPosition.x }}
         >
-          <button onClick={() => setShowSettings(true)}>Settings</button>
-          <button onClick={handleDelete}>Delete</button>
+          <button onClick={() => { setShowSettings(true); setShowContextMenu(false); }}>Settings</button>
+          <button onClick={() => handleDelete(setShowContextMenu, setShowDeleteDialog)}>
+            Delete
+          </button>
           <button onClick={() => setShowSettings(true)}>Rename</button>
+          <button onClick={() => performPrediction()}>Path Prediction</button>
         </div>
       )}
 
@@ -413,36 +495,57 @@ function App() {
           positions={
             geometries.find((geo) => geo.id === selectedGeometry.id)?.positions
           }
-          onRename={handleRename}
-          onDelete={handleDelete}
-          onSave={handleSave}
+          onRename={(newName) =>
+            handleRename(newName, selectedGeometry, viewerRef, setGeometries, setSelectedGeometry)
+          }
+          onDelete={() => handleDelete(setShowContextMenu, setShowDeleteDialog)}
+          onSave={() => handleSave(setShowSettings)}
+          onRefreshData={handleRefreshZoneData} //Refreshes data in zone
         />
       )}
 
-      {showFilters && (
+      {/* {showFilters && (
         <FiltersUI apiEndpoint={filtersAPI} onFilterApply={handleFilterApply} />
-      )}
+      )} */}
 
-      {showOverlays && (
+      {/*showOverlays && (
         <OverlaysUI
-          onClose={() => setShowOverlays(false)}
+          onClose={() => handleToggleOverlays(showOverlays, setShowOverlays)}
           onToggleWeather={() => console.log("Weather Overlay Toggled")}
+          onToggleEEZ={handleToggleEEZ}
+          showEEZState={showEEZ}
         />
-      )}
+      )*/}
 
       {showClearDialog && (
         <ConfirmationDialog
           message="Are you sure you want to clear all geometries?"
-          onConfirm={handleClearConfirmed}
-          onCancel={handleClearCancelled}
+          onConfirm={() =>
+            handleClearConfirmed(
+              viewerRef,
+              setGeometries,
+              setSelectedGeometry,
+              setShowContextMenu,
+              setShowClearDialog
+            )
+          }
+          onCancel={() => handleClearCancelled(setShowClearDialog)}
         />
       )}
 
       {showDeleteDialog && (
         <ConfirmationDialog
           message="Are you sure you want to delete the selected geometry?"
-          onConfirm={handleDeleteConfirm}
-          onCancel={handleDeleteCancel}
+          onConfirm={() =>
+            handleDeleteConfirm(
+              selectedGeometry,
+              viewerRef,
+              setGeometries,
+              setSelectedGeometry,
+              setShowDeleteDialog
+            )
+          }
+          onCancel={() => handleDeleteCancel(setShowDeleteDialog)}
         />
       )}
     </div>

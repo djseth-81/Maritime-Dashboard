@@ -11,6 +11,6 @@ def send_message(key, message):
     producer.send('maritime-events', key=key, value=message)
     producer.flush()
 
-if __name__ == "__main__":
+'''if __name__ == "__main__":
     send_message("ship1", {"status": "Arrived at port"})
-    send_message("ship2", {"status": "Departed for sea"})
+    send_message("ship2", {"status": "Departed for sea"})'''

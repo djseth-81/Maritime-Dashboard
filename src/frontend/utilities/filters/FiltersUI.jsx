@@ -1,124 +1,158 @@
 import { useState, useEffect } from 'react';
 import useFetchFilters from './Filters';
+import BoatIcon from "../../assets/icons/boatIcon";
+
+/**
+ * FiltersUI component to display and manage filter options for vessels.
+ * @param {Object} props - Component props.
+ * @param {string} props.apiEndpoint - API endpoint to fetch filter options.
+ * @param {Function} props.onFilterApply - Callback function to apply selected filters.
+ * @returns {JSX.Element} - Rendered component.
+ * @description This component fetches filter options from the API and allows users to select filters for vessel tracking.
+ */
 
 const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
-    const {
-        filterOptions,
-        selectedFilters,
-        setSelectedFilters,
-        loading,
-        error
-    } = useFetchFilters(apiEndpoint);
+  const {
+    filterOptions,
+    loading,
+    error,
+  } = useFetchFilters(apiEndpoint);
 
-    useEffect(() => {
-        if (filterOptions?.types) {
-            setSelectedFilters((prev) => ({
-                ...prev,
-                types: filterOptions.types
-            }));
-        }
-    }, [filterOptions]);
+  const vesselTypes = [
+    "CARGO",
+    "FISHING",
+    "TANKER",
+    "TUG",
+    "PASSENGER",
+    "RECREATIONAL",
+    "OTHER",
+  ];
 
-    const handleTypeChange = (event) => {
-        const { value, checked } = event.target;
+  const statusTypes = [
+    "UNDERWAY",
+    "ANCHORED",
+    "MOORED",
+    "IN TOW",
+    "FISHING",
+    "UNMANNED",
+    "LIMITED MOVEMENT",
+    "HAZARDOUS CARGO",
+    "AGROUND",
+    "EMERGENCY",
+    "UNKNOWN",
+  ];
 
-        const updatedFilters = checked
-            ? [...selectedFilters.types, value]
-            : selectedFilters.types.filter((type) => type !== value);
+  // Temporary state for filters
+  const [tempFilters, setTempFilters] = useState({
+    types: [],
+    origin: "",
+    statuses: [],
+  });
 
-        setSelectedFilters((prev) => ({
-            ...prev,
-            types: updatedFilters
-        }));
+  useEffect(() => {
+    if (filterOptions?.types) {
+      setTempFilters((prev) => ({
+        ...prev,
+        types: filterOptions.types,
+      }));
+    }
 
-        onFilterApply({
-            ...selectedFilters,
-            types: updatedFilters
-        });
-    };
+    if (filterOptions?.current_status) {
+      setTempFilters((prev) => ({
+        ...prev,
+        statuses: filterOptions.current_status,
+      }));
+    }
+  }, [filterOptions]);
 
-    const handleOriginChange = (event) => {
-        const { value } = event.target;
-        setSelectedFilters((prev) => ({
-            ...prev,
-            origin: value
-        }));
-    };
+  const handleTypeChange = (event) => {
+    const { value, checked } = event.target;
 
-    const handleStatusChange = (event) => {
-        const { value, checked } = event.target;
-        const updatedStatuses = checked
-            ? [...selectedFilters.statuses, value]
-            : selectedFilters.statuses.filter((status) => status !== value);
+    const updatedTypes = checked
+      ? [...tempFilters.types, value]
+      : tempFilters.types.filter((type) => type !== value);
 
-        setSelectedFilters((prev) => ({
-            ...prev,
-            statuses: updatedStatuses
-        }));
+    setTempFilters((prev) => ({
+      ...prev,
+      types: updatedTypes,
+    }));
+  };
 
-        onFilterApply({
-            ...selectedFilters,
-            statuses: updatedStatuses
-        });
-    };
+  const handleStatusChange = (event) => {
+    const { value, checked } = event.target;
 
-    const handleApplyFilters = () => {
-        const typesToSend = selectedFilters.types.length ? selectedFilters.types : ["NONE"];
+    const updatedStatuses = checked
+      ? [...tempFilters.statuses, value]
+      : tempFilters.statuses.filter((status) => status !== value);
 
-        onFilterApply({
-            ...selectedFilters,
-            types: typesToSend
-        });
-    };
+    setTempFilters((prev) => ({
+      ...prev,
+      statuses: updatedStatuses,
+    }));
+  };
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div>{error}</div>;
+  const handleOriginChange = (event) => {
+    const { value } = event.target;
+    setTempFilters((prev) => ({
+      ...prev,
+      origin: value,
+    }));
+  };
 
-    return (
-        <div className="filter-subwindow">
-            <div className='vessel-subwindow'>
-                <label>Vessel Type:</label>
-                {filterOptions?.types?.map((type) => (
-                    <label key={type}>
-                        <input
-                            type="checkbox"
-                            value={type}
-                            checked={selectedFilters.types.includes(type)}
-                            onChange={handleTypeChange}
-                        />
-                        {type}
-                    </label>
-                ))}
-            </div>
+  const handleApplyFilters = () => {
+    onFilterApply(tempFilters); // Apply the filters when the button is clicked
+  };
 
-            <div className='origin-subwindow'>
-                <label>Country of Origin:</label>
-                <input
-                    type="text"
-                    value={selectedFilters.origin}
-                    onChange={handleOriginChange}
-                    placeholder="Enter country of origin"
-                />
-            </div>
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>{error}</div>;
 
-            <div className='status-subwindow'>
-                <label>Status:</label>
-                {filterOptions?.current_status?.map((status) => (
-                    <label key={status}>
-                        <input
-                            type="checkbox"
-                            value={status}
-                            checked={selectedFilters.statuses.includes(status)}
-                            onChange={handleStatusChange}
-                        />
-                        {status}
-                    </label>
-                ))}
-            </div>
+  return (
+    <div className="filter-subwindow">
+      <div className="vessel-subwindow">
+        <label>Vessel Type:</label>
+        {vesselTypes.map((type) => (
+          <label key={type} className='vessel-type-label'>
+            <BoatIcon className="vessel-icon" type={type} size={20} heading={90}/>
+            <input
+              type="checkbox"
+              value={type}
+              checked={tempFilters.types.includes(type)}
+              onChange={handleTypeChange}
+            />
+            {type}
+          </label>
+        ))}
+      </div>
 
-            <button onClick={handleApplyFilters}>Apply Filters</button>
-        </div>
-    );
+      <div className="origin-subwindow">
+        <label>Country of Origin:</label>
+        <input
+          type="text"
+          value={tempFilters.origin}
+          onChange={handleOriginChange}
+          placeholder="Enter country of origin"
+        />
+      </div>
+
+      <div className="status-subwindow">
+        <label>Status:</label>
+        {statusTypes.map((status) => (
+          <label key={status}>
+            <input
+              type="checkbox"
+              value={status}
+              checked={tempFilters.statuses.includes(status)}
+              onChange={handleStatusChange}
+            />
+            {status}
+          </label>
+        ))}
+      </div>
+
+
+      <button onClick={handleApplyFilters}>Apply Filters</button>
+    </div>
+  );
 };
 
 export default FiltersUI;

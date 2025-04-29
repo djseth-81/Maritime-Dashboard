@@ -4,16 +4,12 @@ import sys
 import requests
 from pprint import pprint
 from json import loads, dumps
-from DBOperator import DBOperator
+from ...DBOperator import DBOperator
 
-"""
-// TODO
-- ADD stations to sources table
-    - Make sure DBOperator.add() is functioning as intended!
-    - iterate through ALL of data['stations']
-"""
-
+sources = DBOperator(db="capstone",table="sources")
 coop_stations_url = "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json"
+failures = []
+dubs = 0
 
 r = requests.get(coop_stations_url)
 print(f"STATUS: {r.status_code}")
@@ -30,14 +26,13 @@ units = data['units']
 station = data['stations']
 for station in data['stations']:
     # build apis array because I'm way too lazy
-    apis = []
+    products = []
     for product in "air_temperature wind water_temperature air_pressure humidity conductivity visibility salinity water_level hourly_height high_low daily_mean monthly_mean one_minute_water_level predictions air_gap currents currents_predictions ofs_water_level".split():
         url = f"https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station={station['id']}&product={product}&datum=STND&time_zone=gmt&units=english&format=json"
-        print(product)
-        apis.append(url)
-
-    apis.append(station['datums']['self']) # append with datums
-    apis.append(station['notices']['self']) # start array with notices
+        res = requests.get(url)
+        # if we get valid data from product query (and it's not an error message), record it as valid station datum
+        if (res.status_code == 200) and ('error' not in res.json().keys()):
+            products.append(product)
 
     # Parsing CO-OP station data of last entry
     # print(f"Name: {station['name']}")
@@ -54,93 +49,40 @@ for station in data['stations']:
     # print(f"Forecast: {station['forecast']}")
     # print()
 
+    # Build station entity
     entity = {
         "id": station['id'],
         "name": station['name'],
         "region": "USA",
-        "type": f"NOAA-{station['affiliations']}", # Cannot be "API"
-        "datums": apis, # Check if URI returns 200 or not
+        "type": f"NOAA-COOP", # Cannot be "API"
+        "datums": products, # Check if URI returns 200 or not
         # Following CANNOT BE NULL
         "timezone": f"{station['timezone']} (GMT {station['timezonecorr']})",
         "geom": f"Point({station['lng']} {station['lat']})",
     }
 
-    pprint(entity)
-    print(f"Adding entity to db...")
-    # sources = DBOperator(db="capstone",table="sources")
-    # sources.add(entity)
-    input()
+    try:
+        print(f"Adding entity to db...")
+        sources.add(entity.copy())
+        sources.commit()
+        dubs += 1
+    except Exception as e:
+        print(f"An error occured adding vessel to DB...\n{e}")
+        print("This entity caused the failure:")
+        pprint(entity)
+        input()
 
-"""
-^^^ ABOVE IS WHAT IS IMPORTANT
-vvv BELOW IS WHAT I WANNA RUN TO PULL DATA
-"""
+        failures.append(entity)
 
-"""
-API Key:
---------------------------------
-0. air temp
-1. wind
-2. water temp
-3. air pressure
-4. humidity
-5. conductivity
-6. visibility
-7. salinity
-8. water lvl
-9. hr_height
-10. hi/low
-11. daily mean
-12. montly mean
-13. one min lvl
-14. prediction water lvl
-15. air gap (bridge and water lvl)
-16. currents
-17. currents prediciton
-18. ofs water lvl
-19. datums/disclaimers
-20. notices
-"""
+print(f"{dubs} total pushes to DB.")
+print(f"{len(failures)} total sources weren't added to DB for some reason.")
 
-def query(url: str) -> dict:
-    response = requests.get(url)
-    print(f"STATUS: {response.status_code}")
-    pprint(response.json())
-    return response.json()
+if len(failures) > 0:
+    # TODO: DUNNO IF THE FOLLOWING ACCURATELY SAVES DATA
+    with open('coop-failures.csv','w',newline='') as outFile:
+        writer = csv.DictWriter(outFile, delimiter=',', fieldnames=failures[0].keys())
+        writer.writeheader()
+        for goob in failures:
+            writer.writerow(goob)
 
-# Meteorology
-a_temp = query(apis[0])
-
-wind = query(apis[1])
-
-air_pressure = query(apis[3])
-
-humidity = query(apis[4])
-
-visibility = query(apis[6])
-
-# Oceanography
-w_temp = query(apis[2])
-
-water_lvl = query(apis[8])
-
-# daily_lvl_mean = query(apis[11])
-
-monthly_lvl_mean = query(apis[12])
-
-air_gap = query(apis[15])
-
-currents = query(apis[16])
-
-currents_predict = query(apis[16])
-
-# Datums
-datums = query(apis[19])
-
-# Notice reports
-notices = query(apis[20])
-
-"""
-NOTES
-- Extrapolate to entire NOAA MET zone station is located in?
-"""
+sources.close()

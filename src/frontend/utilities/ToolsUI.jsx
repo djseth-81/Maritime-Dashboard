@@ -1,17 +1,47 @@
 import { useState } from "react";
-import Overlays from "./overlays/OverlaysUI";
+import OverlaysUI from "./overlays/OverlaysUI"; // Make sure the import path is correct
 import FiltersUI from "./filters/FiltersUI";
 import useFetchFilters from "./filters/Filters";
 
-const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape, apiEndpoint, onFilterApply }) => {
-    const [openPanel, setOpenPanel] = useState(false);
-    const [selectedShape, setSelectedShape] = useState("polygon");
-    const { loading, error } = useFetchFilters(apiEndpoint);
+/**
+* ToolsUI component that provides a user interface for various tools and overlays.
+* It includes buttons for toggling drawing, undoing actions, clearing the canvas,
+* selecting shapes, and applying filters.
+*
+* @param {function} onToggleDrawing - Function to toggle drawing mode.
+* @param {function} onUndo - Function to undo the last action.
+* @param {function} onClear - Function to clear the canvas.
+* @param {function} onSelectShape - Function to select a shape type.
+* @param {string} apiEndpoint - API endpoint for fetching filter options.
+* @param {function} onFilterApply - Function to apply selected filters.
+* @param {function} onToggleWeather - Function to toggle weather overlay.
+* @param {function} onToggleOceanConditions - Function to toggle ocean conditions overlay.
+* @param {function} onToggleTrafficHeatmaps - Function to toggle traffic heatmaps overlay.
+* @param {function} onToggleEEZ - Function to toggle EEZ overlay.
+* @param {boolean} showEEZState - Current state of the EEZ overlay visibility.
+*
+* @returns {JSX.Element} The rendered ToolsUI component.
+* @description This component manages the state of the UI controls,
+* including the visibility of different panels (tools, overlays, filters).
+* It uses the useFetchFilters hook to fetch filter options from the API.
+*/
 
-    const handleShapeChange = (event) => {
-        setSelectedShape(event.target.value);
-        onSelectShape(event.target.value);
-    };
+const ToolsUI = ({
+    onToggleDrawing,
+    onUndo, 
+    onClear, 
+    onSelectShape, 
+    apiEndpoint, 
+    onFilterApply,
+    onToggleWeather,
+    onToggleOceanConditions,
+    onToggleTrafficHeatmaps,
+    onToggleEEZ,
+    showEEZState,
+    onActiveWeatherLayer,
+}) => {
+    const [openPanel, setOpenPanel] = useState(false);
+    const { loading, error } = useFetchFilters(apiEndpoint);
 
     const handleToggle = (panel) => {
         setOpenPanel((prev) => (prev === panel ? null : panel));
@@ -21,15 +51,15 @@ const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape, apiEndpoint,
         <div className="ui-controls">
             {/*Button to expand/collapse sidebars*/}
             <button onClick={() => handleToggle("tools")}>
-                {openPanel === "tools" ? "Close" : "Tools"}
+                {openPanel === "tools" ? "Tools" : "Tools"}
             </button>
 
             <button onClick={() => handleToggle("overlays")}>
-                {openPanel === "overlays" ? "Close" : "Overlays"}
+                {openPanel === "overlays" ? "Overlays" : "Overlays"}
             </button>
 
             <button onClick={() => handleToggle("filters")}>
-                {openPanel === "filters" ? "Close" : "Filters"}
+                {openPanel === "filters" ? "Filters" : "Filters"}
             </button>
 
             {/* Sidebar Content */}
@@ -40,47 +70,20 @@ const ToolsUI = ({ onToggleDrawing, onUndo, onClear, onSelectShape, apiEndpoint,
                     <button onClick={onToggleDrawing}>Toggle Zoning Tool</button>
                     <button onClick={onUndo}>Undo</button>
                     <button onClick={onClear}>Clear</button>
-
-                    {/* non-functional buttons */}
-                    {/* <h4>Select Shape</h4>
-                    <label>
-                        <input
-                            type="radio"
-                            value="polygon"
-                            checked={selectedShape === "polygon"}
-                            onChange={handleShapeChange}
-                        />
-                        Polygon
-                    </label>
-                    <label>
-                        <input
-                            type="radio"
-                            value="polyline"
-                            checked={selectedShape === "polyline"}
-                            onChange={handleShapeChange}
-                        />
-                        Polyline
-                    </label>
-                    <label>
-                        <input
-                            type="radio"
-                            value="point"
-                            checked={selectedShape === "point"}
-                            onChange={handleShapeChange}
-                        />
-                        Point
-                    </label> */}
                 </div>
             )}
 
+            {/* Use the OverlaysUI component instead of hardcoded panel */}
             {openPanel === "overlays" && (
-                <div className="overlay-panel">
-                    <h3>Overlays</h3>
-                    <button>Weather</button>
-                    <button>Ocean Conditions</button>
-                    <button>Traffic Heatmap</button>
-                    <button onClick={() => handleToggle(null)}>Close</button>
-                </div>
+                <OverlaysUI
+                    onClose={() => handleToggle(null)}
+                    onToggleWeather={onToggleWeather}
+                    onToggleOceanConditions={onToggleOceanConditions}
+                    onToggleTrafficHeatmaps={onToggleTrafficHeatmaps}
+                    onToggleEEZ={onToggleEEZ}
+                    showEEZState={showEEZState}
+                    onActiveWeatherLayer={onActiveWeatherLayer}
+                />
             )}
 
             {openPanel === "filters" && (

@@ -99,13 +99,71 @@ python -m venv .venv
 .venv\Scripts\activate
 
 # Kafka reciver
-uvicorn backend.main:app --host 0.0.0.0 --port 5000 --reload
+uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+.venv\Scripts\python.exe -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+
 
 # Start Kafka
 bin/kafka-server-start.sh config/kraft/server.properties
 
 
 fast interact with frontend directly
+
+
+
+
+## Notes for Yolvin
+const ws = new WebSocket("ws://localhost:8000/ws");
+
+ws.onmessage = (msg) => console.log("Message from server:", msg.data);
+ws.onopen = () => {
+  console.log("WebSocket connection opened");
+};
+ws.onclose = () => console.log("WebSocket closed");
+ws.onerror = (e) => console.error("WebSocket error:", e);
+
+
+
+ws.send(JSON.stringify({ key: "shipX", status: "All clear" }));
+
+----------------------------------------GFW--------------------------------------------------------
+## GFW Token
+$env:TOKEN="x"
+
+## Consumer Listner
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic GFW --from-beginning
+
+
+
+python -m backend.processors.gfw.loitering_api
+python -m backend.processors.gfw.fishing_api
+python -m backend.processors.gfw.encounters_api
+python -m backend.processors.gfw.ports_api
+python -m backend.processors.gfw.transponder_api
+python -m backend.processors.gfw.vessels_api
+
+
+----------------------------------------NWS--------------------------------------------------------
+## Consumer Listner
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic NWS --from-beginning
+
+
+
+python -m backend.processors.nws.alerts_api
+python -m backend.processors.nws.met_api
+
+
+----------------------------------------Live Vessel Tracking Startup--------------------------------------------------------
+.\.venv\Scripts\activate 
+pip install pytz requests kafka-python
+
+python -m backend.processors.gfw.gfw_runner
+
+
+
+
+
+
 
 <br />
 
@@ -159,3 +217,24 @@ fast interact with frontend directly
   - Custom zoning may include and/or exclude vessels that would appear otherwise when applied
 - Got the frontend to pass data via WebSocket which the backend pushed it to Kafka and stores it as a topic
   - Then have a consumer listening that manages the message
+
+## v4.0
+### Features
+- API processors retrieve and package NOAA NWS forecast and alert data
+- Kafka integration enables websocket to retrieve data from API processors
+- Path prediction improved to match vessel direction
+- Weather overlay component for visualizing cloud cover, wind, and rain using University of Iowa and OpenWeatherMap APIs
+- Exclusive Economic Zone overlay component to display US EEZ boundaries retrieved from database
+- Vessel visualization updated for clarity
+
+### Bug Fixes
+- Custom zones not containing a station would error out with no data.
+- Undo option fixed when defining custom geometry
+- Infobox not being visible
+
+### Other
+- OpenWeatherMap API is rate limited so is not real-time
+- User login and account management were shelved
+- Saving custom presets were shelved
+- Bugs
+  - EEZ zones and custom geometry zones collide, where one appears to override the other when displayed
