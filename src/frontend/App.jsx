@@ -8,7 +8,6 @@ import "react-toastify/ReactToastify.css";
 import "./App.css";
 import { placeVessel } from "./utilities/shippingVessels/Vessels";
 import { Viewer } from "resium";
-import OverlaysUI from "./utilities/overlays/OverlaysUI";
 import { fetchVessels } from "./utilities/apiFetch";
 import { zoning } from "./utilities/zoning";
 import {
@@ -28,8 +27,7 @@ import {
 import { useCesiumViewer } from "./utilities/hooks/useCesiumViewer";
 import "./App.css";
 import { generateZoneDescription } from "./utilities/zoning/ZoneInfobox";
-import { fetchEEZZones, loadEEZZonesToGlobe, toggleEEZVisibility } from "./utilities/zoning/eezFetch"; // EEZ Functions
-import axios from "axios";
+import { toggleEEZVisibility } from "./utilities/zoning/eezFetch"; // EEZ Functions
 import { Cartesian3, Color, HeightReference } from "cesium";
 import * as Cesium from "cesium";
 import { Entity } from "resium";
@@ -49,12 +47,11 @@ function App() {
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [currentFilters, setCurrentFilters] = useState({  // Tracks current filters
-    types:[],
+    types: [],
     statuses: [],
-    origin:""
+    origin: ""
   })
   const [showEEZ, setShowEEZ] = useState(false);
-  
   const [entityName, setEntityName] = useState(null);
   const [predictions, setPredictions] = useState([]);
   const [activeWeatherLayer, setActiveWeatherLayer] = useState(null);
@@ -121,10 +118,10 @@ function App() {
   const handleRefreshZoneData = async () => {
     if (!selectedGeometry) return;
 
-    try{
+    try {
       // Get the polygon data for the selected geometry
       const polygonData = geometries.find(geo => geo.id === selectedGeometry.id);
-      if (!polygonData){
+      if (!polygonData) {
         toast.error("Selected zone data not found.");
         return;
       }
@@ -141,7 +138,7 @@ function App() {
       setGeometries(prevGeometries =>
         prevGeometries.map(geo => {
           if (geo.id === selectedGeometry.id) {
-            return{
+            return {
               ...geo,
               zoneData: zoneData
             };
@@ -161,23 +158,24 @@ function App() {
           toast.success("Zone data refreshed successfully!");
         }
       }
-    } catch (error){
+    } catch (error) {
       console.error("Error refreshing zone data: ", error);
       toast.error("Failed to refresh zone data.");
     }
   };
 
   // Handler for toggling EEZ
-  const handleToggleEEZ = () => {
+  const handleToggleEEZ = async () => {
+    console.log("EEZ toggle button clicked. Current state:", showEEZ);
     if (!viewerRef.current?.cesiumElement) return;
 
-    toggleEEZVisibility(
-      viewerRef.current.cesiumElement,
-      showEEZ,
-      setShowEEZ,
-      eezAPI
-    );
-
+    const viewer = viewerRef.current.cesiumElement;
+    try {
+        await toggleEEZVisibility(viewer, showEEZ, setShowEEZ, eezAPI);
+    } catch (error) {
+        console.error("Error toggling EEZ visibility:", error);
+        toast.error("Failed to toggle EEZ visibility.");
+    }
   };
 
   // Fetch vessels when the viewer is ready and the API endpoint is available
@@ -228,12 +226,12 @@ function App() {
     }
 
     function getDistanceInMeters(sog) {
-      const nauticalMileInMeters = 1852; 
-      return sog * nauticalMileInMeters;  
+      const nauticalMileInMeters = 1852;
+      return sog * nauticalMileInMeters;
     }
 
     function adjustCoordinates(lat, lon, sog, heading) {
-      const R = 6371000; 
+      const R = 6371000;
 
       const distance = getDistanceInMeters(sog);
 
@@ -297,30 +295,30 @@ function App() {
     const numLatitude = Number(latitude);
 
     if (isNaN(numLongitude) || isNaN(numLatitude)) {
-        console.warn(`Invalid coordinates for prediction at T+${hoursAhead}h`, { latitude, longitude });
-        return null;
+      console.warn(`Invalid coordinates for prediction at T+${hoursAhead}h`, { latitude, longitude });
+      return null;
     }
-    
+
     const position = Cartesian3.fromDegrees(numLongitude, numLatitude);
 
     return (
       <Entity
-          key={`dot-${hoursAhead}-${longitude}-${latitude}`}
-          position={position}
-          point={{
-              pixelSize: 10,
-              color: Color.AQUA,
-              outlineWidth: 2,
-              heightReference: HeightReference.CLAMP_TO_GROUND,
-          }}
-          label={{
-              text: `${hoursAhead}h`,
-              font: "10pt sans-serif",
-              fillColor: Color.LIGHTBLUE,
-              outlineColor: Color.BLACK,
-              outlineWidth: 2,
-              pixelOffset: new Cartesian3(0, -20, 15),
-          }}
+        key={`dot-${hoursAhead}-${longitude}-${latitude}`}
+        position={position}
+        point={{
+          pixelSize: 10,
+          color: Color.AQUA,
+          outlineWidth: 2,
+          heightReference: HeightReference.CLAMP_TO_GROUND,
+        }}
+        label={{
+          text: `${hoursAhead}h`,
+          font: "10pt sans-serif",
+          fillColor: Color.LIGHTBLUE,
+          outlineColor: Color.BLACK,
+          outlineWidth: 2,
+          pixelOffset: new Cartesian3(0, -20, 15),
+        }}
       />
     );
   }
@@ -330,7 +328,7 @@ function App() {
       return
     }
     // IOWA WEATHER MAP (ONLY U.S. BASED)
-    let currentTime = new Date();  
+    let currentTime = new Date();
     const radarLayer = new Cesium.WebMapServiceImageryProvider({
       url: "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi?",
       layers: "nexrad-n0r",
@@ -365,7 +363,7 @@ function App() {
       url: `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${openWeatherAPIKEY}`,
       credit: "Cloud layer © OpenWeatherMap",
     });
-    
+
     const layerOptions = {
       Clouds: cloudLayer,
       Precipitation: precipitationLayer,
@@ -373,7 +371,7 @@ function App() {
       Temperature: temperatureLayer,
       "US Precipitation": radarLayer
     };
-    
+
     setWeatherLayers(layerOptions)
   }
 
