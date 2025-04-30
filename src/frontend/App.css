@@ -329,3 +329,10 @@ div[class="cesium-infoBox-description"] {
   gap: 5px;
   color: black;
 }
+
+.menu-header {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
