@@ -1,149 +1,140 @@
-import csv
+import sys
 import requests
-from datetime import datetime, timedelta
+import csv
 from pprint import pprint
+from datetime import datetime, timezone
 from time import sleep
 from ...DBOperator import DBOperator
+from kafka import KafkaProducer
+from backend.kafka_service.producer import send_message
+from json import dumps
 
 """
 // TODO
 - Convert types to coincide with DB
 - VERIFY DATA KEYS AND UNITS ARE WHAT I THINK THEY ARE
-- Test
-    - improve logging
-    - error handling
-    - Adding/modifying DB entries
-- IDK what the following mean:
-    - OFS Water leve
-    - Predictions
-    - Keys in some of the entries
+- improve logging, error handling
 """
 
+TOPIC = 'COOP'
+producer = KafkaProducer(
+    bootstrap_servers='localhost:9092',
+    value_serializer=lambda v: dumps(v).encode('utf-8'),
+    key_serializer=lambda k: str(k).encode('utf-8')
+)
 
-def request(id, product):
-    res = requests.get(
-        f"https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station={id}&product={product}&datum=STND&time_zone=gmt&units=english&format=json")
-    # print(f"Status: {res.status_code}")
-    if res.status_code >= 400:
-        return res
-    return res.json()
+def fetch_station_datums(station_id: str) -> list[str]:
+    """MDAPI call to get available datums for a station."""
+    url = (
+        f"https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/"
+        f"stations/{station_id}/datums.json"
+    )
+    r = requests.get(url)
+    if r.status_code != 200:
+        return []
+    return [d.get('product') for d in r.json().get('datums', [])]
 
+def request_data(station_id: str, product: str):
+    """Hit the DataGetter endpoint; return JSON or raw Response on error."""
+    resp = requests.get(
+        "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter",
+        params={
+            'date': 'latest',
+            'station': station_id,
+            'product': product,
+            'datum': 'STND',
+            'time_zone': 'gmt',
+            'units': 'english',
+            'format': 'json'
+        }
+    )
+    return resp if resp.status_code >= 400 else resp.json()
 
-ocean_reports = []
-notices = []
+def main():
+    now   = datetime.now(timezone.utc)
+    ts_iso = now.isoformat()
+    ts_int = int(now.timestamp())
 
-sources = DBOperator(table='sources')
-stations = sources.query([{'type': 'NOAA-COOP'}])
+    sources_db = DBOperator(table='sources')
+    stations   = sources_db.query([{'type': 'NOAA-COOP'}])
+    pprint(f"Fetched {len(stations)} stations → {[s['id'] for s in stations]}")
+    if not stations:
+        pprint("No stations found. Exiting.")
+        sources_db.close()
+        sys.exit(0)
 
-# All known oceanographic datums
-datums = "water_temperature conductivity salinity water_level hourly_height high_low daily_mean monthly_mean one_minute_water_level predictions air_gap currents currents_predictions ofs_water_level".split()
+    all_datums  = (
+        "water_temperature conductivity salinity water_level hourly_height "
+        "high_low daily_mean monthly_mean one_minute_water_level predictions "
+        "air_gap currents currents_predictions ofs_water_level"
+    ).split()
+    recordables = {"water_temperature", "water_level"}
 
-# Oceanographic data we're currently recording
-things = "water_temperature conductivity salinity water_level".split()
+    ocean_reports = []
 
-# Get current time
-timestamp = datetime.now()
+    for st in stations:
+        sid       = st['id']
+        available = st.get('datums') or fetch_station_datums(sid)
 
-# iterate through stations
-for station in stations:
-    ocean_report = {}
+        report = {
+            'src_id':   sid,
+            'timestamp': ts_iso,
+            'type':     'ocean_report'
+        }
 
-    # Metadata for ocean_report
-    # print(f"# Station {station['name']} ({station['id']})")
-    ocean_report.update({'src_id': station['id']})
-    # print(f"timestamp: {timestamp.strftime('%Y-%m-%dT%H:%M:%S')}")
-    ocean_report.update({'timestamp': timestamp.strftime('%Y-%m-%dT%H:%M:%S')})
+        for key in all_datums:
+            if key not in available:
+                if key in recordables:
+                    report[key] = None
+                continue
 
-    # Iterates through expected datums, and sees if station reports it. If so,
-    # report
-    for thing in datums:
-        # If expected datum is not recorded by station, continue
-        if thing not in station['datums']:
-            # print(f"No {thing} to report from {station['name']}")
-            if thing in things:  # if we care about datum, record
-                # datum is entered as null
-                ocean_report.update({f'{thing}': None})
-            continue
+            data = request_data(sid, key)
+            if isinstance(data, requests.Response) and data.status_code >= 400:
+                pprint(f"HTTP ERROR {data.status_code} for {key} @ {sid}")
+                break
+            if isinstance(data, dict) and data.get('error'):
+                if key in recordables:
+                    report[key] = None
+                continue
 
-        # Executes API call to pull datum
-        data = request(station['id'], thing)
+            entry = data['data'][0]
+            val   = entry.get('s') if key == 'salinity' else entry.get('v')
+            if key in recordables:
+                report[key] = val
 
-        # If client or server error, quit while we're ahead and print out returned error
-        if type(data) is not type({"1": 1}) and data.status_code >= 400:
-            print(f"### COOP-Oceanography API: HTTP ERROR {data.status_code}")
-            # pprint(data.json())
-            break
+        pprint(f"Kafka: Sending ocean report for station {sid}")
+        producer.send(TOPIC, key=sid, value=report)
 
-        # if error found in data keys when trying a datum, notify that it's no longer valid
-        if 'error' in data.keys():
-            # TODO: Enable modify() to update datums for station
-            print(
-                f"### Meteorology API: {thing} expected, but is no longer recorded at station {station['name']} ({station['id']})")
-            if thing in things:  # if we care about datum, record entry
-                # datum is entered as null
-                ocean_report.update({f'{thing}': None})
-            continue
+        ocean_reports.append(report)
+        sleep(0.1)
 
-        # The JSON for salinity datums is structured differently than the others...
-        if thing == "salinity":
-            # is this even the datapoint to collect?
-            ocean_report.update({f'{thing}': data['data'][0]['s']})
-        elif thing in things:  # If data is currently in list of datums to record, record.
-            ocean_report.update({f'{thing}': data['data'][0]['v']})
-        # else: # otherwise, just print to console. Might be worth looking @ later
-            # print(f"{thing} report from {station['name']}:")
-            # pprint(data)
+    producer.flush()
+    producer.close()
 
-    pprint("### COOP Oceanography API: Queuing ocean report...") # Printing for logs
-    ocean_reports.append(ocean_report)
+    oce_db  = DBOperator(table='oceanography')
+    failures = []
+    for rpt in ocean_reports:
+        try:
+            db_entry = {
+                'src_id':     rpt['src_id'],
+                'timestamp':  ts_int,
+                'water_temp': rpt.get('water_temperature'),
+                'wave_height': rpt.get('water_level')
+            }
+            oce_db.add(db_entry)
+            oce_db.commit()
+        except Exception as e:
+            oce_db.rollback()
+            failures.append(rpt)
+    oce_db.close()
+    sources_db.close()
 
-    sleep(0.1)  # to avoid 504 Gateway Timeout
-sources.close()
+    if failures:
+        with open('coop-oce-failures.csv','w',newline='') as f:
+            w = csv.DictWriter(f, fieldnames=failures[0].keys())
+            w.writeheader()
+            w.writerows(failures)
+        pprint(f"Wrote {len(failures)} failures to coop-oce-failures.csv")
 
-print(f'{len(ocean_reports)} oceanography reports to push to DB')
-failures = []
-
-# Adding ocean events to database
-oce = DBOperator(table='oceanography')
-for entity in ocean_reports:
-    try:
-        """
-        I'm using this to add constructed entities to DB, but I imagine this is
-        where the Kafka stuff will go as well
-        """
-        print("Adding oceanography report to Oceanography...")
-        oce.add(entity.copy())
-        oce.commit()
-
-    except Exception as e:
-        print(f"An error occured adding oceanography report to DB...\n{e}")
-        print("This report caused the failure:")
-        pprint(entity)
-        input() # DEBUG
-        failures.append(entity)
-oce.close()
-
-if len(failures) > 0:
-    with open('coop-oce-failures.csv', 'w', newline='') as outFile:
-        writer = csv.DictWriter(outFile, delimiter=',',
-                                fieldnames=failures[0].keys())
-        writer.writeheader()
-        for goob in failures:
-            writer.writerow(goob)
-
-# DATUMS URL
-# datums_url = f"https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/{station[id]}/datums.json"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+if __name__ == '__main__':
+    main()

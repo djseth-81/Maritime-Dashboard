@@ -160,7 +160,10 @@ pip install pytz requests kafka-python
 python -m backend.processors.runner
 
 
-
+----------------------------------------COOP--------------------------------------------------------
+python -m backend.processors.coop.met_api
+python -m backend.processors.coop.oce_api
+python -m backend.processors.coop.stations_api
 
 
 
