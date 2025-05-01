@@ -16,7 +16,6 @@ from json import dumps
 - improve logging, error handling
 """
 
-# Kafka setup
 TOPIC = 'COOP'
 producer = KafkaProducer(
     bootstrap_servers='localhost:9092',
@@ -56,12 +55,11 @@ def main():
     ts_iso = now.isoformat()
     ts_int = int(now.timestamp())
 
-    # 1) get NOAA-COOP station list from DB
     sources_db = DBOperator(table='sources')
     stations   = sources_db.query([{'type': 'NOAA-COOP'}])
     pprint(f"Fetched {len(stations)} stations → {[s['id'] for s in stations]}")
     if not stations:
-        pprint("⚠️ No stations found. Exiting.")
+        pprint("No stations found. Exiting.")
         sources_db.close()
         sys.exit(0)
 
@@ -74,7 +72,6 @@ def main():
 
     ocean_reports = []
 
-    # 2) build & send
     for st in stations:
         sid       = st['id']
         available = st.get('datums') or fetch_station_datums(sid)
@@ -105,7 +102,6 @@ def main():
             if key in recordables:
                 report[key] = val
 
-        # 3) publish to Kafka
         pprint(f"Kafka: Sending ocean report for station {sid}")
         producer.send(TOPIC, key=sid, value=report)
 
@@ -115,7 +111,6 @@ def main():
     producer.flush()
     producer.close()
 
-    # 4) persist to Postgres
     oce_db  = DBOperator(table='oceanography')
     failures = []
     for rpt in ocean_reports:

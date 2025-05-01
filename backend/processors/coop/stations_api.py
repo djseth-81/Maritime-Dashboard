@@ -34,7 +34,6 @@ producer = KafkaProducer(
     key_serializer=lambda k: str(k).encode('utf-8')
 )
 
-# all possible products we care about
 ALL_DATUMS = (
     "air_temperature wind water_temperature air_pressure humidity conductivity visibility "
     "salinity water_level hourly_height high_low daily_mean monthly_mean "
@@ -60,10 +59,8 @@ def request_dataget(station_id: str, product: str):
 def main():
     ts_iso = datetime.now(timezone.utc).isoformat()
 
-    # 1) connect to sources table
     sources_db = DBOperator(table='sources')
 
-    # 2) fetch station list
     coop_url = "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json"
     pprint(f"Fetching stations from {coop_url}")
     resp = requests.get(coop_url)
@@ -76,16 +73,14 @@ def main():
     inserted = 0
     failures = []
 
-    # 3) process each station
     for st in stations:
         sid = st['id']
-        # 3a) determine which datums actually return data
         datums = []
         for prod in ALL_DATUMS:
             data = request_dataget(sid, prod)
             if isinstance(data, dict) and data.get('data') and 'error' not in data:
                 datums.append(prod)
-            sleep(0.05)  # be gentle on the API
+            sleep(0.05)
 
         payload = {
             'id':        sid,
@@ -97,7 +92,6 @@ def main():
             'timestamp': ts_iso
         }
 
-        # 3b) publish to Kafka
         pprint(f"Kafka: Sending station {sid}")
         producer.send(TOPIC, key=sid, value=payload)
 
@@ -106,7 +100,6 @@ def main():
             pprint(f"Skipping DB insert (exists) {sid}")
             continue
 
-        # 3d) insert new station record (including datums array)
         try:
             row = {
                 'id':       payload['id'],
@@ -124,11 +117,9 @@ def main():
             sources_db.rollback()
             failures.append(payload)
 
-    # 4) teardown Kafka
     producer.flush()
     producer.close()
 
-    # 5) report
     total = len(stations)
     pprint(f"Inserted {inserted}/{total} new stations, skipped {total - inserted}")
     if failures:

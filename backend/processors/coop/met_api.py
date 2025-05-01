@@ -25,14 +25,12 @@ from kafka import KafkaProducer
 """
 
 
-# Kafka producer
 producer = KafkaProducer(
     bootstrap_servers='localhost:9092',
     value_serializer=lambda v: dumps(v).encode('utf-8'),
     key_serializer=lambda k: str(k).encode('utf-8')
 )
 
-# Station‐side “things” we want to record
 THINGS = ['air_temperature', 'wind', 'visibility', 'humidity']
 
 def fetch_station_datums(station_id: str) -> list[str]:
@@ -45,7 +43,6 @@ def fetch_station_datums(station_id: str) -> list[str]:
     if r.status_code != 200:
         pprint(f"Warning: could not fetch datums for {station_id}: HTTP {r.status_code}")
         return []
-    # MDAPI returns {"datums": [ { "product": "air_temperature", … }, … ]}
     return [d.get('product') for d in r.json().get('datums', [])]
 
 def request_data(station_id: str, product: str):
@@ -65,11 +62,9 @@ def request_data(station_id: str, product: str):
     return resp if resp.status_code >= 400 else resp.json()
 
 def main():
-    # timestamp for all messages
     ts = datetime.now(timezone.utc)
     ts_iso = ts.isoformat()
 
-    # connect to our sources table and fetch NOAA-COOP stations
     sources_op = DBOperator(table='sources')
     stations = sources_op.query([{'type': 'NOAA-COOP'}])
     pprint(f"Fetched {len(stations)} stations from DB")
@@ -81,7 +76,6 @@ def main():
     for st in stations:
         sid = st['id']
         name = st.get('name','')
-        # use DB's datums, or fetch MDAPI if empty
         station_datums = st.get('datums') or fetch_station_datums(sid)
         report = {
             'src_id':   sid,
@@ -91,7 +85,6 @@ def main():
 
         for aspect in THINGS:
             if aspect not in station_datums:
-                # fill nulls
                 if aspect == 'wind':
                     report.update({'wind_heading': None, 'wind_speed': None})
                 else:
@@ -116,11 +109,9 @@ def main():
             else:
                 report[aspect] = entry.get('v')
 
-        # send the weather report
         pprint(f"Kafka: Sending weather report for station {sid}")
         producer.send('COOP', key=sid, value=report)
 
-        # now do notices (unchanged)
         notice_url = (
             f"https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/"
             f"stations/{sid}/notices.json"
