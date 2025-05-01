@@ -6,11 +6,11 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from backend.utils import connect, filter_parser
-from fastapi import WebSocket, WebSocketDisconnect
-from backend.kafka_service.kafka_ws_bridge import connected_clients, kafka_listener, start_kafka_consumer
-from backend.kafka_service.producer import send_message
-
+from utils import connect, filter_parser
+from fastapi import WebSocket, WebSocketDisconnect, FastAPI
+from kafka_service.kafka_ws_bridge import connected_clients, kafka_listener, start_kafka_consumer
+from kafka_service.producer import send_message
+import linearRegressionPathPrediction
 
 app = FastAPI()
 
@@ -356,8 +356,21 @@ async def fetch_eezs():
             "retrieved": datetime.now(),
             "privileges": db.permissions,
             "attributes": [i for i in db.attrs.keys()],
-            "payload": db.query([{'type':'EEZ'}]),
+            "payload": [],
         }
+        # Disgusting. FIXME
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (American Samoa)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Palmyra Atoll)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Puerto Rico)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (United States Virgin Islands)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Johnston Atoll)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Guam)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Northern Mariana Islands)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Jarvis Islands)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Howland and Baker Islands)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Hawaii)'}]))
+        payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Alaska)'}]))
         print("### Websocket: EEZs collected.")
         payload.update({"size": len(payload['payload'])})
         return payload
@@ -399,3 +412,9 @@ async def startup_event():
     start_kafka_consumer()
     asyncio.create_task(kafka_listener())
 
+@app.get("/predict/{lat}/{lon}/{sog}/{heading}")
+async def predict_path(lat: float, lon: float, sog: float, heading: float):
+    print(f"Received coordinates -  Latitude: {lat}, Longitude: {lon}")
+    predictions = start_vessel_prediction(lat, lon, sog, heading)
+    print(predictions)
+    return predictions.to_dict(orient="records")

@@ -97,7 +97,7 @@ def nws_alerts(zone: dict):
         "headline": alert['properties']['headline'],
     }
 
-if __name__ == "__main__":
+def main():
     alerts = []
     StationOp = DBOperator(table='sources')
     stations = StationOp.query([{'type': 'NOAA-NWS'}])
@@ -123,3 +123,7 @@ if __name__ == "__main__":
             alerts.append(entity)
     producer.flush()
     ZoneOp.close()
+
+if __name__ == "__main__":
+    main()
+

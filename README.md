@@ -157,7 +157,7 @@ python -m backend.processors.nws.met_api
 .\.venv\Scripts\activate 
 pip install pytz requests kafka-python
 
-python -m backend.processors.gfw.gfw_runner
+python -m backend.processors.runner
 
 
 ----------------------------------------COOP--------------------------------------------------------
@@ -220,3 +220,22 @@ python -m backend.processors.coop.stations_api
   - Custom zoning may include and/or exclude vessels that would appear otherwise when applied
 - Got the frontend to pass data via WebSocket which the backend pushed it to Kafka and stores it as a topic
   - Then have a consumer listening that manages the message
+
+## v4.0
+### Features
+- API processors retrieve and package NOAA NWS forecast and alert data
+- Kafka integration enables websocket to retrieve data from API processors
+- Path prediction improved to match vessel direction
+- Weather overlay component for visualizing cloud cover, wind, and rain using University of Iowa and OpenWeatherMap APIs
+- Exclusive Economic Zone overlay component to display US EEZ boundaries retrieved from database
+- Vessel visualization updated for clarity
+
+### Bug Fixes
+- Custom zones not containing a station would error out with no data.
+- Undo option fixed when defining custom geometry
+- Infobox not being visible
+
+### Other
+- OpenWeatherMap API is rate limited so is not real-time
+- User login and account management were shelved
+- Saving custom presets were shelved

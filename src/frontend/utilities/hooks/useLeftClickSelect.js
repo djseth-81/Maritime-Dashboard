@@ -7,12 +7,13 @@ import * as Cesium from "cesium";
  * @param {Function} setSelectedGeometry - Function to set the selected geometry.
  * @param {Function} setShowContextMenu - Function to show or hide the context menu.
  * @param {Function} setShowSettings - Function to show or hide settings.
+ * @param {Function} props.setEntityName - Function to update the entity name state.
  * @returns {void}
  * @description This hook sets up a left-click event handler on the Cesium canvas.
  * It handles left-click to select entities and updates the selected geometry state.
  */
 
-const useLeftClickSelect = (scene, setSelectedGeometry, setShowContextMenu, setShowSettings) => {
+const useLeftClickSelect = (scene, setSelectedGeometry, setShowContextMenu, setShowSettings, setEntityName) => {
     useEffect(() => {
         if (!scene) return;
 
@@ -23,6 +24,8 @@ const useLeftClickSelect = (scene, setSelectedGeometry, setShowContextMenu, setS
             const pickedEntity = scene.pick(click.position);
             if (Cesium.defined(pickedEntity)) {
                 console.log("Left-click on entity:", pickedEntity);
+                const newEntityName = pickedEntity.id.name;
+                setEntityName(newEntityName)
                 setSelectedGeometry(pickedEntity.id);
             } else {
                 setShowContextMenu(false);
