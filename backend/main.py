@@ -10,7 +10,7 @@ from utils import connect, filter_parser
 from fastapi import WebSocket, WebSocketDisconnect, FastAPI
 from kafka_service.kafka_ws_bridge import connected_clients, kafka_listener, start_kafka_consumer
 from kafka_service.producer import send_message
-from linearRegressionPathPrediction import *
+import linearRegressionPathPrediction
 
 app = FastAPI()
 
