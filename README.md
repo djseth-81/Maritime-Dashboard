@@ -157,10 +157,13 @@ python -m backend.processors.nws.met_api
 .\.venv\Scripts\activate 
 pip install pytz requests kafka-python
 
-python -m backend.processors.gfw.gfw_runner
+python -m backend.processors.runner
 
 
-
+----------------------------------------COOP--------------------------------------------------------
+python -m backend.processors.coop.met_api
+python -m backend.processors.coop.oce_api
+python -m backend.processors.coop.stations_api
 
 
 

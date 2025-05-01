@@ -9,13 +9,14 @@ connected_clients = set()
 def get_consumer():
     return KafkaConsumer(
         'GFW',
+        'NWS',
+        'COOP',
         bootstrap_servers='localhost:9092',
         auto_offset_reset='latest',
         enable_auto_commit=True,
         key_deserializer=lambda k: k.decode('utf-8') if k else None,
         value_deserializer=lambda v: json.loads(v.decode('utf-8'))
     )
-
 
 kafka_to_ws_queue = asyncio.Queue()
 
