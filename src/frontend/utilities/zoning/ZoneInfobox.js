@@ -4,7 +4,7 @@ export function generateZoneDescription(zoneName, zoneData) {
     return `
       <div style="background-color:#1a1a1a; color:#ffffff; font-family:Arial; padding:10px; margin:-10px; width:calc(100% + 20px);">
         <h3 style="margin-top:0; color:#ffffff;">Zone: ${zoneName}</h3>
-        <p>No data available for this zone. Click "Refresh Zone Data" in the settings panel to load data.</p>
+        <p>No data available for this zone. Right Click on Zone: Settings >> Click "Refresh Zone Data" in the settings panel to load data.</p>
       </div>
     `;
   }

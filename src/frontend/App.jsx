@@ -484,6 +484,7 @@ function App() {
           </button>
           <button onClick={() => setShowSettings(true)}>Rename</button>
           <button onClick={() => performPrediction()}>Path Prediction</button>
+          <button onClick={() => {handleRefreshZoneData(); setShowContextMenu(false);}}>Refresh Zone</button>
         </div>
       )}
 
