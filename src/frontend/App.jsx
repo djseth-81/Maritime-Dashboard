@@ -63,6 +63,7 @@ function App() {
   const vesselsAPI = "http:" + URL[1] + ":8000/vessels/";
   const filtersAPI = "http:" + URL[1] + ":8000/filters/";
   const eezAPI = "http:" + URL[1] + ":8000/eezs/";
+  const wsAPI = "http:" + URL[1] + ":8000/ws";
   const openWeatherAPIKEY = "";
 
   useCesiumViewer(viewerRef, setViewerReady);
@@ -192,7 +193,7 @@ function App() {
     loadVessels();
     loadWeatherLayers();
 
-    const ws = new WebSocket("ws://localhost:8000/ws");
+    const ws = new WebSocket(wsAPI);
 
     ws.onopen = () => {
       console.log("WebSocket connected from React");  //displays message showing websocket is connected (shows on F12 + console)

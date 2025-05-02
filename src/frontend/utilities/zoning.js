@@ -25,6 +25,10 @@ export const zoning = async (polygonData, filters = {}, setVessels) => {
   console.log("Zone GeoJSON:");
   console.log(geom);
   payload.geom = geom;
+    // TODO: FIX when it assumes you're trying to zone with a ship:
+    // Check for non (Multi) Polygon
+    // If so, return with no changes!
+    // Otherwise, proceed!
 
   // Apply filters to query
   if (filters.types && filters.types.length > 0) {

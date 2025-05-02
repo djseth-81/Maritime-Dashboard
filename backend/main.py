@@ -196,12 +196,10 @@ async def get_filtered_vessels(
         filters["current_status"] = status.split(',') if status else []
 
     if not types_list:
-        print("### Fast Server: All vessel types unchecked → Returning empty payload.")
         payload['payload'] = []
         payload["size"] = 0
         return payload
 
-    print("### Fast Server: Assembling Payload...")
     # Ignore empty filters
     filters = {key: value for key, value in {
         "type": types_list,
@@ -209,7 +207,6 @@ async def get_filtered_vessels(
         "current_status": status if status else None
     }.items() if value}
 
-    # print(f"### Websocket: Filters:\n{filters}")
 
     if len(filters) > 0:
         queries = []
@@ -219,9 +216,6 @@ async def get_filtered_vessels(
         # This is because my recursion sucks so there's a chance for duplicates
         # when more than 1 attribute has multiple values
         queries = [dict(t) for t in {tuple(d.items()) for d in queries}]
-
-        # print(f"### Websocket: query array:")
-        # pprint(queries)
 
         ### IF DB connection successful, attempt assembling payload
         try:
@@ -269,7 +263,7 @@ async def zone_vessels(data: dict):
     status = data['origin'].split(',') if 'origin' in data.keys() else []
     flags = data['flag'].split(',') if 'flag' in data.keys() else []
 
-    pprint(geom)
+    # pprint(geom)
 
     try:
         ### Getting Vessels
@@ -289,18 +283,14 @@ async def zone_vessels(data: dict):
         # If the original geometry doesn't encompass stations, does it overlap
         # with known geometries?
         if len(stations) < 1:
-            print("### Websocket: Couldn't find stations inside zone provided by client")
             waah = [eek for eek in zones.overlaps(geom)]
-            # pprint(waah)
             for wah in waah:
-                stations.extend([i['id'] for i in sources.within(loads(wah['geom']))])
+                stations.extend([i['id'] for i in sources.within(wah['geom'])])
 
         if len(stations) > 0:
             payload['payload'].update({'stations': stations} if len(stations) > 0 else {'guh!': "No stations found."})
 
             ### Getting Meteorology
-            # print("### Websocket: querying meteorology data matching station id:")
-            # pprint(met.query([{'src_id': i} for i in stations]))
             payload['payload'].update({'weather': met.query([{'src_id': i} for i in stations])})
 
             ### Getting Oceanography
@@ -350,7 +340,6 @@ async def add_vessel(data: dict):
 @app.get("/eezs/", response_model=dict)
 async def fetch_eezs():
     db = connect('zones')
-    print("### Websocket: Collecting EEZs")
     try:
         payload = {
             "retrieved": datetime.now(),
@@ -371,7 +360,6 @@ async def fetch_eezs():
         payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Howland and Baker Islands)'}]))
         payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Hawaii)'}]))
         payload['payload'].extend(db.query([{'name':'United States Exclusive Economic Zone (Alaska)'}]))
-        print("### Websocket: EEZs collected.")
         payload.update({"size": len(payload['payload'])})
         return payload
     except Exception as e:
@@ -415,6 +403,6 @@ async def startup_event():
 @app.get("/predict/{lat}/{lon}/{sog}/{heading}")
 async def predict_path(lat: float, lon: float, sog: float, heading: float):
     print(f"Received coordinates -  Latitude: {lat}, Longitude: {lon}")
-    predictions = start_vessel_prediction(lat, lon, sog, heading)
+    predictions = linearRegressionPathPrediction.start_vessel_prediction(lat, lon, sog, heading)
     print(predictions)
     return predictions.to_dict(orient="records")

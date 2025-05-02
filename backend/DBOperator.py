@@ -500,6 +500,7 @@ class DBOperator():
         Gets entity within a (Multi) Polygon
         """
 
+        # TODO: Check if GeoJSON['type'] is Polygon or MultiPolygon
         if "geom" not in self.attrs.keys():
             raise AttributeError(
                 "### DBOperator.within() Error: Cannot call GIS function on table with no 'geom' attrubute.")
@@ -508,7 +509,7 @@ class DBOperator():
                 SELECT *,ST_AsGeoJson(geom)
                 FROM {self.table}
                 WHERE ST_Within(geom::geometry, ST_GeomFromGeoJSON(%s))
-                OR ST_Crosses(geom::geometry,ST_GeomFromGeoJSON(%s))
+                OR ST_Intersects(geom::geometry, ST_GeomFromGeoJSON(%s))
             """
 
         self.__cursor.execute(
@@ -594,9 +595,6 @@ if __name__ == "__main__":
     # operator = DBOperator(table='oceanography')
     # operator = DBOperator(table='events')
 
-    # pprint(operator.query([{'mmsi':367633000}]))
-    # operator.close()
-
     # FIXME: TopologyError when trying to check zones containing some stations
     #        Following stations threwe TopologyException:
     #          - ILM
@@ -605,9 +603,53 @@ if __name__ == "__main__":
     #          - AKQ
     #          - TBW
 
+    # Sean's got an issue where some are appearing outsize the zone
+    sean_weird_zone = {'coordinates': [[['-86.1707', '29.1620'],
+                                        ['-85.3796', '22.7064'],
+                                        ['-73.9226', '25.4874'],
+                                        ['-75.7470', '31.4726']]],
+                       'type': 'Polygon'}
+
+    # "IllegalArgumentException: Points of a LineRing do not form a closed Linestring"
+    """
+    At some point, zones passed to DBO cannot form linestring
+    """
+    guh_zone = {'coordinates': [[['-119.5034', '32.9248'],
+                      ['-124.3756', '38.7426'],
+                      ['-124.8843', '46.5192'],
+                      ['-133.2542', '46.8094'],
+                      ['-132.4695', '37.6720'],
+                      ['-126.2402', '30.2042']]],
+     'type': 'Polygon'}
+
+    aiie = {'coordinates': [[['6.0525', '53.3555'],
+                             ['1.9163', '53.2504'],
+                             ['0.7868', '51.6040'],
+                             ['2.2164', '50.2432'],
+                             ['7.7450', '51.5900'],
+                             ['6.7880', '52.6503']]],
+            'type': 'Polygon'}
+
+    # Another zone where 2 ships are found when 3 should appear
+    amsterdam = {'coordinates': [[['4.7884', '52.6353'],
+                                  ['3.9926', '52.5249'],
+                                  ['3.4623', '51.9731'],
+                                  ['3.5442', '51.4474'],
+                                  ['5.3651', '51.8428'],
+                                  ['5.2999', '52.3550']]],
+                 'type': 'Polygon'}
+
+    asdf = {'coordinates': [[['4.4190', '52.6856'],
+                      ['4.1545', '52.5966'],
+                      ['4.1205', '52.4268'],
+                      ['4.8141', '52.2624'],
+                      ['5.0931', '52.5111'],
+                      ['4.9711', '52.7696']]],
+     'type': 'Polygon'}
+    pprint([i['vessel_name'] for i in operator.within(amsterdam)])
     # print(f"Entities in table: {operator.get_count()}")
     # results = operator.query([{'type':'NOAA-NWS'}])
-    # operator.close()
+    operator.close()
     # zoneOp = DBOperator(table='zones')
 
     # for station in results:
