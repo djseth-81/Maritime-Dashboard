@@ -7,6 +7,9 @@ const URL = window.location.href.split(":");
 export const zoning = async (polygonData, filters = {}, setVessels) => {
   const payload = {};
 
+  // Escape without changing anything in the event polygonData is undefined
+  if (!polygonData) return;
+
   // If zone is selected, apply geospatial filtering
   console.log("ZONE SELECTED:", polygonData);
   // console.log(polygonData);
