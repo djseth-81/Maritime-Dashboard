@@ -74,18 +74,22 @@ function App() {
   //   await fetchVessels(vesselsAPI, filters, setVessels);
   //   await selectedGeometry ? zoning(polygonData, filters, setVessels) : console.log("NO ZONE SELECTED");
   // };
+
   const handleFilterApply = async (filters) => {
     console.log("Applying filters...", filters);
 
     // Set current filters
     setCurrentFilters(filters);
 
+    console.log("Polygon data:");
+    console.log(polygonData);
+
     try {
-      await fetchVessels(vesselsAPI, filters, setVessels);
       if (selectedGeometry) {
         await zoning(polygonData, filters, setVessels);
       } else {
         console.log("NO ZONE SELECTED");
+        await fetchVessels(vesselsAPI, filters, setVessels);
       }
     } catch (error) {
       console.error("Error applying filters:", error.message);

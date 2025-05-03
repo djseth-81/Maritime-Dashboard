@@ -7,13 +7,13 @@ const URL = window.location.href.split(":");
 export const zoning = async (polygonData, filters = {}, setVessels) => {
   const payload = {};
 
-  // If zone is selected, apply geospatial filtering
-  console.log("ZONE SELECTED:", polygonData);
-  // console.log(polygonData);
-
+  // Ships appear with undefined polygonData, so abort if polygonData is undefined
+  if (!polygonData) return;
+  
   let polygonVerticies = polygonData?.positions.map(
     (point) => convertCartesianToDegrees(point) // This is sick tho
   );
+  console.log(polygonVerticies);
 
   let geom = {
     type: "Polygon",
@@ -25,10 +25,6 @@ export const zoning = async (polygonData, filters = {}, setVessels) => {
   console.log("Zone GeoJSON:");
   console.log(geom);
   payload.geom = geom;
-    // TODO: FIX when it assumes you're trying to zone with a ship:
-    // Check for non (Multi) Polygon
-    // If so, return with no changes!
-    // Otherwise, proceed!
 
   // Apply filters to query
   if (filters.types && filters.types.length > 0) {
