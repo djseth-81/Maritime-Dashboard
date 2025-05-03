@@ -194,6 +194,9 @@ function App() {
     loadVessels();
     loadWeatherLayers();
 
+    /*
+     * Websocket stuff
+     */
     const ws = new WebSocket(wsAPI);
 
     ws.onopen = () => {
@@ -217,6 +220,9 @@ function App() {
 
   }, [viewerReady, vesselsAPI]);
 
+  /*
+   * Path prediction
+   */
   const performPrediction = async () => {
 
     function convertToRadians(degrees) {
@@ -290,7 +296,6 @@ function App() {
   }
 
   function plotPredictedPath(data) {
-    // console.log("data: ", data)
     const { 'Predicted LAT': latitude, 'Predicted LON': longitude, 'Hours Ahead': hoursAhead } = data;
 
     const numLongitude = Number(longitude);
@@ -325,6 +330,9 @@ function App() {
     );
   }
 
+  /*
+   * Weather overlays
+   */
   function loadWeatherLayers() {
     if (openWeatherAPIKEY == "" || openWeatherAPIKEY == null) {
       return
@@ -486,7 +494,7 @@ function App() {
           </button>
           <button onClick={() => setShowSettings(true)}>Rename</button>
           <button onClick={() => performPrediction()}>Path Prediction</button>
-          <button onClick={() => {handleRefreshZoneData(); setShowContextMenu(false);}}>Refresh Zone</button>
+          { polygonData && (<button onClick={() => {handleRefreshZoneData(); setShowContextMenu(false);}}>Refresh Zone</button>) }
         </div>
       )}
 
