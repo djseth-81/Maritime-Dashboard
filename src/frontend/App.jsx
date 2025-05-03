@@ -81,9 +81,6 @@ function App() {
     // Set current filters
     setCurrentFilters(filters);
 
-    console.log("Polygon data:");
-    console.log(polygonData);
-
     try {
       if (selectedGeometry) {
         await zoning(polygonData, filters, setVessels);
