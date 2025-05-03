@@ -57,10 +57,10 @@ def main():
 
     sources_db = DBOperator(table='sources')
     stations   = sources_db.query([{'type': 'NOAA-COOP'}])
-    pprint(f"Fetched {len(stations)} stations → {[s['id'] for s in stations]}")
+    sources_db.close()
+    print(f"Fetched {len(stations)} stations from DB")
     if not stations:
-        pprint("No stations found. Exiting.")
-        sources_db.close()
+        print("No stations found. Exiting.")
         sys.exit(0)
 
     all_datums  = (
@@ -68,41 +68,51 @@ def main():
         "high_low daily_mean monthly_mean one_minute_water_level predictions "
         "air_gap currents currents_predictions ofs_water_level"
     ).split()
-    recordables = {"water_temperature", "water_level"}
+    recordables = {"water_temperature", "water_level", "wave_height", "conductivity", "salinity"}
 
+    oce_db = DBOperator(table='oceanography')
     ocean_reports = []
+    failures = []
 
     for st in stations:
         sid       = st['id']
-        available = st.get('datums') or fetch_station_datums(sid)
+        available = st.get('datums')
+        if len(available) < 1:
+            print(f"Station {sid} does not report data.")
+            continue
 
         report = {
             'src_id':   sid,
             'timestamp': ts_iso,
-            'type':     'ocean_report'
         }
 
-        for key in all_datums:
+        for key in recordables:
             if key not in available:
-                if key in recordables:
-                    report[key] = None
                 continue
 
             data = request_data(sid, key)
             if isinstance(data, requests.Response) and data.status_code >= 400:
-                pprint(f"HTTP ERROR {data.status_code} for {key} @ {sid}")
+                print(f"HTTP ERROR {data.status_code} for {key} @ {sid}")
                 break
             if isinstance(data, dict) and data.get('error'):
-                if key in recordables:
-                    report[key] = None
                 continue
 
             entry = data['data'][0]
             val   = entry.get('s') if key == 'salinity' else entry.get('v')
-            if key in recordables:
-                report[key] = val
+            report[key] = val
 
-        pprint(f"Kafka: Sending ocean report for station {sid}")
+        try:
+            oce_db.add(report.copy())
+            oce_db.commit()
+        except Exception as e:
+            oce_db.rollback()
+            print(f"WARNING: Failed to add Oceanography report to DB:\n")
+            print("This report failed:")
+            pprint(report)
+            input()
+            failures.append(report)
+
+        print(f"Kafka: Sending ocean report for station {sid}")
         producer.send(TOPIC, key=sid, value=report)
 
         ocean_reports.append(report)
@@ -111,30 +121,14 @@ def main():
     producer.flush()
     producer.close()
 
-    oce_db  = DBOperator(table='oceanography')
-    failures = []
-    for rpt in ocean_reports:
-        try:
-            db_entry = {
-                'src_id':     rpt['src_id'],
-                'timestamp':  ts_int,
-                'water_temp': rpt.get('water_temperature'),
-                'wave_height': rpt.get('water_level')
-            }
-            oce_db.add(db_entry)
-            oce_db.commit()
-        except Exception as e:
-            oce_db.rollback()
-            failures.append(rpt)
     oce_db.close()
-    sources_db.close()
 
     if failures:
-        with open('coop-oce-failures.csv','w',newline='') as f:
+        with open('coop-oce-failures.csv','a',newline='') as f:
             w = csv.DictWriter(f, fieldnames=failures[0].keys())
             w.writeheader()
             w.writerows(failures)
-        pprint(f"Wrote {len(failures)} failures to coop-oce-failures.csv")
+        print(f"Wrote {len(failures)} failures to coop-oce-failures.csv")
 
 if __name__ == '__main__':
     main()

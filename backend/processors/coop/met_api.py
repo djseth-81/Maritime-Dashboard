@@ -15,13 +15,6 @@ from kafka import KafkaProducer
 - I wonder if it's worth it to combine this and the NWS Forecast API into one
   that pulls stations based on Within() Zone, so Missing data can be
   potentially accounted between one another
-
-// TODO
-- Convert types to coincide with DB
-- Test
-    - improve logging
-    - error handling
-    - Adding/modifying DB entries
 """
 
 
@@ -41,7 +34,7 @@ def fetch_station_datums(station_id: str) -> list[str]:
     )
     r = requests.get(url)
     if r.status_code != 200:
-        pprint(f"Warning: could not fetch datums for {station_id}: HTTP {r.status_code}")
+        print(f"Warning: could not fetch datums for {station_id}: HTTP {r.status_code}")
         return []
     return [d.get('product') for d in r.json().get('datums', [])]
 
@@ -67,40 +60,39 @@ def main():
 
     sources_op = DBOperator(table='sources')
     stations = sources_op.query([{'type': 'NOAA-COOP'}])
-    pprint(f"Fetched {len(stations)} stations from DB")
+    sources_op.close()
+    print(f"Fetched {len(stations)} stations from DB")
 
     if not stations:
-        pprint("WARNING: No NOAA-COOP stations found in DB. Exiting.")
+        print("WARNING: No NOAA-COOP stations found in DB. Exiting.")
         sys.exit(0)
+
+    WeatherOp = DBOperator(table='meteorology')
+
+    failures = []
 
     for st in stations:
         sid = st['id']
         name = st.get('name','')
-        station_datums = st.get('datums') or fetch_station_datums(sid)
+        station_datums = st.get('datums')
+        if len(station_datums) < 1:
+            print(f"Station {sid} does not report data")
+            continue
         report = {
             'src_id':   sid,
             'timestamp': ts_iso,
-            'type':     'weather_report'
         }
 
         for aspect in THINGS:
             if aspect not in station_datums:
-                if aspect == 'wind':
-                    report.update({'wind_heading': None, 'wind_speed': None})
-                else:
-                    report[aspect] = None
                 continue
 
             data = request_data(sid, aspect)
             if isinstance(data, requests.Response) and data.status_code >= 400:
-                pprint(f"HTTP ERROR {data.status_code} for {aspect} @ {sid}")
+                print(f"HTTP ERROR {data.status_code} for {aspect} @ {sid}")
                 break
             if isinstance(data, dict) and data.get('error'):
-                pprint(f"{aspect} no longer recorded at {sid}")
-                if aspect == 'wind':
-                    report.update({'wind_heading': None, 'wind_speed': None})
-                else:
-                    report[aspect] = None
+                print(f"{aspect} no longer recorded at {sid}")
                 continue
 
             entry = data['data'][0]
@@ -109,40 +101,33 @@ def main():
             else:
                 report[aspect] = entry.get('v')
 
-        pprint(f"Kafka: Sending weather report for station {sid}")
-        producer.send('COOP', key=sid, value=report)
 
-        notice_url = (
-            f"https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/"
-            f"stations/{sid}/notices.json"
-        )
-        nr = requests.get(notice_url)
-        if nr.status_code in (200,201):
-            notices = nr.json().get('notices',[])
-            if notices:
-                n0 = notices[0]
-                notice = {
-                    'src_id':   sid,
-                    'timestamp': ts_iso,
-                    'effective': ts_iso,
-                    'end_time':  (ts + timedelta(hours=1)).isoformat(),
-                    'active':    True,
-                    'type':      'notice',
-                    'description': n0.get('text'),
-                    'expires':    (ts + timedelta(hours=1)).isoformat(),
-                    'instructions': 'None',
-                    'urgency':     'low',
-                    'severity':    'low',
-                    'headline':    n0.get('name')
-                }
-                pprint(f"Kafka: Sending notice for station {sid}")
-                producer.send('COOP', key=sid, value=notice)
+        try:
+            WeatherOp.add(report.copy())
+            WeatherOp.commit()
+
+        except Exception as e:
+            WeatherOp.rollback()
+            print(f"WARNING: Failure to save weather report to DB:\n{e}")
+            print("This report failed:")
+            pprint(report)
+            failures.append(report)
+
+        print(f"Kafka: Sending weather report for station {sid}")
+        producer.send('COOP', key=sid, value=report)
 
         sleep(0.1)
 
     producer.flush()
     producer.close()
-    sources_op.close()
+    WeatherOp.close()
+
+    if failures:
+        with open('coop-met-failures.csv','a',newline='') as f:
+            w = csv.DictWriter(f, fieldnames=failures[0].keys())
+            w.writeheader()
+            w.writerows(failures)
+        print(f"Wrote {len(failures)} failures to coop-oce-failures.csv")
 
 if __name__ == "__main__":
     main()
