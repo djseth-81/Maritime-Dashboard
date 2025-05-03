@@ -18,3 +18,9 @@ export const convertCartesianToDegrees = (cartesian) => {
 
     return { longitude,latitude };
 };
+
+export const convertDegreesToCartesian = (longitude, latitude) => {
+    const ellipsoid = Cesium.Ellipsoid.WGS84;
+    const cartographic = Cesium.Cartographic.fromDegrees(longitude, latitude);
+    return ellipsoid.cartographicToCartesian(cartographic);
+};

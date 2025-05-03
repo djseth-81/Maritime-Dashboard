@@ -9,7 +9,7 @@ import "./App.css";
 import { placeVessel } from "./utilities/shippingVessels/Vessels";
 import { Viewer } from "resium";
 import { fetchVessels } from "./utilities/apiFetch";
-import { zoning } from "./utilities/zoning";
+import { zoning } from "./utilities/zoning/zoning";
 import {
   handleUndo,
   handleToggleDrawing,
@@ -32,6 +32,7 @@ import { Cartesian3, Color, HeightReference } from "cesium";
 import * as Cesium from "cesium";
 import { Entity } from "resium";
 import { ImageryLayer } from "resium";
+import VesselTracking from "./utilities/shippingVessels/VesselTracking";
 
 function App() {
   const [isDrawing, setIsDrawing] = useState(false);
@@ -67,7 +68,6 @@ function App() {
   const openWeatherAPIKEY = "";
 
   useCesiumViewer(viewerRef, setViewerReady);
-
   // const handleFilterApply = async (filters) => {
   //   console.log("Filters selected:");
   //   console.log(filters);
@@ -173,10 +173,10 @@ function App() {
 
     const viewer = viewerRef.current.cesiumElement;
     try {
-        await toggleEEZVisibility(viewer, showEEZ, setShowEEZ, eezAPI);
+      await toggleEEZVisibility(viewer, showEEZ, setShowEEZ, eezAPI);
     } catch (error) {
-        console.error("Error toggling EEZ visibility:", error);
-        toast.error("Failed to toggle EEZ visibility.");
+      console.error("Error toggling EEZ visibility:", error);
+      toast.error("Failed to toggle EEZ visibility.");
     }
   };
 
@@ -206,6 +206,20 @@ function App() {
 
     ws.onmessage = (event) => {
       console.log("Message from WebSocket server:", event.data);  //echos the response from backend log (shows on F12 + console)
+      try {
+        const updatedVesselData = JSON.parse(event.data);
+        console.log("Updated Vessel Data:", updatedVesselData);  //displays the updated vessel data (shows on F12 + console)
+        setVessels((prevVessels) =>
+          prevVessels.map((vessel) => 
+            vessel.mmsi === updatedVesselData.mmsi &&
+            (vessel.latitude !== updatedVesselData.latitude ||
+            vessel.longitude !== updatedVesselData.longitude) ?
+            { ...vessel, ...updatedVesselData } : vessel
+          )
+        );
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);  //error handling
+      }
     };
 
     ws.onerror = (err) => {
@@ -438,6 +452,7 @@ function App() {
       >
         {vessels.map((vessel) =>
           placeVessel(
+            vessel["mmsi"],
             vessel["lon"],
             vessel["lat"],
             vessel["heading"],
@@ -446,6 +461,10 @@ function App() {
             vessel["vessel_name"]
           ) || <div key={vessel["mmsi"]}>Invalid Vessel Data</div>
         )}
+
+        <VesselTracking
+          vessels={vessels}
+        />
 
         {predictions && predictions.map((item, index) => plotPredictedPath(item))}
 

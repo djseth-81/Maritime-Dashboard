@@ -1,5 +1,5 @@
 import axios from "axios";
-import { convertCartesianToDegrees } from "./coordUtils";
+import { convertCartesianToDegrees } from "../coordUtils";
 import { toast } from "react-toastify";
 
 const URL = window.location.href.split(":");
@@ -7,13 +7,13 @@ const URL = window.location.href.split(":");
 export const zoning = async (polygonData, filters = {}, setVessels) => {
   const payload = {};
 
-  // Ships appear with undefined polygonData, so abort if polygonData is undefined
-  if (!polygonData) return;
-  
+  // If zone is selected, apply geospatial filtering
+  console.log("ZONE SELECTED:", polygonData);
+  // console.log(polygonData);
+
   let polygonVerticies = polygonData?.positions.map(
     (point) => convertCartesianToDegrees(point) // This is sick tho
   );
-  console.log(polygonVerticies);
 
   let geom = {
     type: "Polygon",
@@ -53,7 +53,7 @@ export const zoning = async (polygonData, filters = {}, setVessels) => {
     console.log(response.data.size);
     console.log("Payload:");
     console.log(response.data.payload);
-    if (response.data.length === 0) {
+    if (!response.data.payload || response.data.payload.vessels?.length === 0) {
       toast.info("No vessels found matching your filters.");
       if (setVessels) setVessels([]);
       return;
@@ -62,7 +62,7 @@ export const zoning = async (polygonData, filters = {}, setVessels) => {
     const transformedVessels = response.data.payload.vessels?.map((vessel) =>
       Array.isArray(vessel)
         ? {
-            id: vessel["mmsi"],
+            mmsi: vessel["mmsi"],
             name: vessel["vessel_name"],
             type: vessel["type"],
             country_of_origin: vessel["flag"],
