@@ -41,13 +41,7 @@ data = {
 # Spawning DB operators
 ArchiveOp = DBOperator(table='vessel_archive')
 VesselsOp = DBOperator(table='vessels')
-
-# Retrieving known vessels from DB
 types = VesselsOp.fetch_filter_options()['types']
-known_vessels = VesselsOp.get_table()
-# pprint([i['mmsi'] for i in known_vessels])
-
-# events_operator = DBOperator(table='events')
 
 now = datetime.now()
 utc = pytz.UTC
@@ -58,12 +52,7 @@ response = query(vessels_url)
 
 vessels = response['entries']
 
-
-print(f"Fetched vessels: {len(vessels)}")
-print(f"Known vessels: {len(known_vessels)}")
-
 for entry in vessels:
-    archive = False # boolean to archive ship
     entity = {}
 
     # Getting most recent combined data
@@ -98,7 +87,6 @@ for entry in vessels:
         'flag' : entry['selfReportedInfo'][index]['flag'],
         'callsign' : entry['selfReportedInfo'][index]['callsign'] if None else "NONE"
     })
-
 
     # Reporting details
     entity.update({
@@ -145,10 +133,10 @@ for entry in vessels:
 
     status = "UNKNOWN"
     if event_type.upper() == 'FISHING':
-        speed = event[event_type]['averageSpeedKnots']
+        speed = float(event[event_type]['averageSpeedKnots'])
         status = 'FISHING'
     elif event_type.upper() == 'LOITERING':
-        speed = event[event_type]['averageSpeedKnots']
+        speed = float(event[event_type]['averageSpeedKnots'])
         status = 'LOITERING' if speed == 0.0 else 'LIMITED MOVEMENT'
     elif event_type.upper() == 'PORT_VISIT':
         speed = 0.0
@@ -164,7 +152,6 @@ for entry in vessels:
         'speed' : speed
     })
 
-
     if start <= utc.localize(now) < end:
         entity.update({
             'dist_from_port': float(event['distances'].get('startDistanceFromPortKm', 0)),
@@ -177,33 +164,30 @@ for entry in vessels:
             'dist_from_shore': float(event['distances'].get('endDistanceFromShoreKm', 0))
         })
 
-
     # Vessel processing
-    if entity['mmsi'] not in [i['mmsi'] for i in known_vessels]:
+    vessel = VesselsOp.query([{'mmsi':mmsi}])
+    if len(vessel) < 1:
         print(f"### GFW Vessels API: New vessel identified: {entity['vessel_name']} ({entity['mmsi']}) flying {entity['flag']}")
         # Adding new vessels to DB
         VesselsOp.add(entity.copy())
         VesselsOp.commit()
-        known_vessels.extend(VesselsOp.query([{'mmsi':entity['mmsi']}])) # Appending known vessels with new addition
+        vessel = entity.copy() # assigning local vessel as entity
     else:
-        vessel = VesselsOp.query([{'mmsi':entity.pop('mmsi')}])[0]
         for attr,value in entity.copy().items():
-            if value == vessel[attr]:
+            if value == vessel[0][attr]:
                 entity.pop(attr)
         # Changes have been made, update vessel data
         if len(entity) > 0:
             # First, archive old vessel state
-            ArchiveOp.add(vessel.copy())
+            ArchiveOp.add(vessel[0].copy())
             ArchiveOp.commit()
 
-            VesselsOp.modify({'mmsi':vessel['mmsi']},entity)
+            VesselsOp.modify({'mmsi':vessel[0]['mmsi']},entity)
             VesselsOp.commit()
-
-    vessel = VesselsOp.query([{'mmsi':mmsi}])[0]
-    # pprint(vessel)
+            vessel[0].update(entity) # Updating local vessel with changes in entity to mirror modification to DB
 
     # Update Report info
-    producer.send("GFW", key=str(mmsi), value=vessel)
+    producer.send("GFW", key=str(mmsi), value=vessel[0])
 
     print(f"Kafka: Sent vessel info for {mmsi}")
 
