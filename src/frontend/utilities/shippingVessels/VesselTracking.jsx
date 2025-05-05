@@ -7,8 +7,8 @@ const VesselTracking = React.memo(({ vessels }) => {
             {vessels.map((vessel) => {
               placeVessel(
                 vessel.mmsi,
-                vessel.longitude,
-                vessel.latitude,
+                vessel.lon,
+                vessel.lat,
                 vessel.heading,
                 vessel.elevation,
                 vessel.type,
