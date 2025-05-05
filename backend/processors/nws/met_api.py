@@ -38,12 +38,8 @@ producer = KafkaProducer(
 
 def nws_weather(station: dict):
 
-    print(station['name'])
-    print(station['id'])
-    pprint(loads(station['geom']))
-
     # Get NWS Point
-    point_url = f"https://api.weather.gov/points/{loads(station['geom'])['coordinates'][1]},{loads(station['geom'])['coordinates'][0]}"
+    point_url = f"https://api.weather.gov/points/{station['geom']['coordinates'][1]},{station['geom']['coordinates'][0]}"
     point_report = requests.get(point_url)
     if point_report.status_code not in [200, 201]:
         print(f"Error retrieving point report:\n{point_report.text}")
@@ -57,8 +53,6 @@ def nws_weather(station: dict):
         return
 
     report = weather_report.json()
-    # pprint(report)
-    # TODO: zone_operator.contain(station['geom']). I wanna see if geometry from forecast report matches
 
     zone_operator = DBOperator(table='zones')
     zones = zone_operator.contains(report['geometry'])
@@ -111,8 +105,6 @@ def nws_weather(station: dict):
     index = 0
     for i, item in enumerate(guh['windSpeed'].split()):
         index = i if item.isdigit() else index
-
-    # pprint(guh)
 
     weather_data = {
         'src_id': station['id'],
@@ -172,7 +164,7 @@ if __name__ == "__main__":
     met.close()
 
     if failures:
-        with open('nws-weather-failures.csv', 'w', newline='') as outFile:
+        with open('nws-weather-failures.csv', 'a', newline='') as outFile:
             writer = csv.DictWriter(outFile, delimiter=',', fieldnames=failures[0].keys())
             writer.writeheader()
             for goob in failures:

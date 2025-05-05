@@ -98,11 +98,11 @@ def nws_alerts(zone: dict):
     }
 
 def main():
-    alerts = []
     StationOp = DBOperator(table='sources')
     stations = StationOp.query([{'type': 'NOAA-NWS'}])
     StationOp.close()
     ZoneOp = DBOperator(table='zones')
+    EventsOp = DBOperator(table='events')
 
     for station in stations:
         entity = {}
@@ -117,12 +117,13 @@ def main():
                     try:
                         producer.send("NWS", key=station['id'], value=entity)
                         print(f"Kafka: Sent alert for station {station['id']}")
+                        EventsOp.add(entity.copy())
+                        EventsOp.commit()
                     except Exception as e:
                         print(f"Failed to send alert for {station['id']}: {e}")
-        if len(entity) > 0:
-            alerts.append(entity)
     producer.flush()
     ZoneOp.close()
+    EventsOp.close()
 
 if __name__ == "__main__":
     main()

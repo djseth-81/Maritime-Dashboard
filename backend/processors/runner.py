@@ -4,9 +4,9 @@ import time
 
 scripts = [
     "backend.processors.gfw.vessels_api",
-    # "backend.processors.gfw.loitering_api",
-    # "backend.processors.nws.alerts_api",
-    # "backend.processors.nws.met_api"
+    "backend.processors.gfw.loitering_api",
+    "backend.processors.nws.alerts_api",
+    "backend.processors.nws.met_api"
 ]
 
 while True:
