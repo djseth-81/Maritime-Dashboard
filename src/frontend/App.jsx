@@ -191,7 +191,7 @@ function App() {
         toast.error("Failed to load vessels.");
       }
     };
-
+    loadWeatherLayers(); // Load weather layers
     loadVessels().then(() => {
       const ws = new WebSocket(wsAPI);
 
