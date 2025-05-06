@@ -96,7 +96,7 @@ def main():
                     failures.append(notice)
 
                 print(f"Kafka: Sending notice for station {sid}")
-                producer.send('COOP', key=sid, value=notice)
+                producer.send('Events', key=sid, value=notice)
 
         sleep(0.1)
 

@@ -23,8 +23,8 @@ Northrop Grumman - Capstone 2025 - Maritime Operations Monitoring Dashboard
 
 <br />
 
-## 4. Running FastAPI (cd into backend directory)
-`uvicorn main:app --reload`
+## 4. Running FastAPI (cd into Maritime-Ops-Dashboard directory)
+`uvicorn backend.main:app --reload`
 
 <br />
 
@@ -94,22 +94,47 @@ copy docs/build/html contents to /docs on main repo branch
 ### Run Dev Server
 `npm run dev`
 
+<br />
+
+# Unit Testing
+
+## Install Necessary Packages (if not installed already)
+
+### Core Packages
+`pip install fastapi uvicorn`
+
+### Machine Learning and Data Science Packages
+`pip install pandas scikit-learn numpy joblib`
+
+### Math Helper Packages
+`pip install geopy`
+
+### Pytest and FastAPI
+`pip install pytest pytest-asyncio httpx requests`
+
+
+## Running Tests
+cd into Maritime-Ops-Dashboard directory and run `ENV=test pytest`
+
+<br />
+
 # Activate virtual environment
 python -m venv .venv
 .venv\Scripts\activate
+
+<br />
 
 # Kafka reciver
 uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 .venv\Scripts\python.exe -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 
+<br />
 
 # Start Kafka
 bin/kafka-server-start.sh config/kraft/server.properties
 
 
 fast interact with frontend directly
-
-
 
 
 ## Notes for Yolvin

@@ -16,7 +16,7 @@ from json import dumps
 - improve logging, error handling
 """
 
-TOPIC = 'COOP'
+TOPIC = 'Ocean'
 producer = KafkaProducer(
     bootstrap_servers='localhost:9092',
     value_serializer=lambda v: dumps(v).encode('utf-8'),

@@ -9,11 +9,6 @@ from datetime import datetime, timedelta
 from ...DBOperator import DBOperator
 from kafka import KafkaProducer
 
-def query(url: str) -> dict:
-    response = requests.get(url, headers=headers)
-    print(f"STATUS: {response.status_code}")
-    return response.json()
-
 GFW_TOKEN = os.environ.get("TOKEN")
 if not GFW_TOKEN:
     sys.exit("No GFW API Token provided.")
@@ -48,9 +43,13 @@ utc = pytz.UTC
 vessel_payload = []
 
 vessels_url = "https://gateway.api.globalfishingwatch.org/v3/vessels/search?query=mmsi&datasets[0]=public-global-vessel-identity:latest&includes[0]=MATCH_CRITERIA&includes[1]=OWNERSHIP&includes[2]=AUTHORIZATIONS"
-response = query(vessels_url)
+response = requests.get(vessels_url,headers=headers)
+if response.status_code not in [200,201]:
+    print("Failed to fetch vessels")
+    print(response.text)
+    sys.exit()
 
-vessels = response['entries']
+vessels = response.json().get('entries',[])
 
 for entry in vessels:
     entity = {}
@@ -77,6 +76,9 @@ for entry in vessels:
             diff = endDate - utc.localize(now)
             index = i
 
+    startDate = datetime.fromisoformat(entry['selfReportedInfo'][index]['transmissionDateFrom'])
+    endDate = datetime.fromisoformat(entry['selfReportedInfo'][index]['transmissionDateTo'])
+
     # Vessel identifiers
     mmsi = int(entry['selfReportedInfo'][index]['ssvid'])
     vessel_id = entry['selfReportedInfo'][index]['id']
@@ -94,8 +96,6 @@ for entry in vessels:
         'timestamp' : entry['selfReportedInfo'][index]['transmissionDateTo'] if (utc.localize(now) > endDate) else entry['selfReportedInfo'][index]['transmissionDateFrom']
     })
 
-    startDate = datetime.fromisoformat(entry['selfReportedInfo'][index]['transmissionDateFrom']),
-    endDate = datetime.fromisoformat(entry['selfReportedInfo'][index]['transmissionDateTo']),
 
     # Fetch events wrt vessel GFW ID
     data.update({"vessels": [entry['selfReportedInfo'][index]['id']]})
@@ -187,7 +187,7 @@ for entry in vessels:
             vessel[0].update(entity) # Updating local vessel with changes in entity to mirror modification to DB
 
     # Update Report info
-    producer.send("GFW", key=str(mmsi), value=vessel[0])
+    producer.send("Vessels", key=str(mmsi), value=vessel[0])
 
     print(f"Kafka: Sent vessel info for {mmsi}")
 
