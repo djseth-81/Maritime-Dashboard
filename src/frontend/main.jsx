@@ -19,22 +19,22 @@ const Layout = () => {
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Layout />,
+    element: <App />,
     errorElement: <ErrorPage />,
-    children: [
-      {
-        index: "/",
-        element: <ProtectedRoute component={<App/>} isAuthRequired={true}/>,
-      },
-      {
-        path: "login",
-        element: <ProtectedRoute component={<Auth/>} isAuthRequired={false}/>,
-      },
-      {
-        path: "register",
-        element: <ProtectedRoute component={<Auth/>} isAuthRequired={false}/>,
-      },
-    ],
+    // children: [
+      // {
+      //   path: "App",
+      //   element: <ProtectedRoute component={<App/>} isAuthRequired={false}/>,
+      // },
+      // {
+      //   path: "login",
+      //   element: <ProtectedRoute component={<Auth/>} isAuthRequired={false}/>,
+      // },
+      // {
+      //   path: "register",
+      //   element: <ProtectedRoute component={<Auth/>} isAuthRequired={false}/>,
+      // },
+    // ],
   },
 ]);
 
