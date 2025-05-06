@@ -57,7 +57,7 @@ export function placeVessel(mmsi, longitude, latitude, heading, elevation = 0, t
 
     return (
         <Entity
-            key={`${name}-${longitude}-${latitude}`}
+            key={`${mmsi}`}
             position={position}
             billboard={{
                 image: dataUrl,
