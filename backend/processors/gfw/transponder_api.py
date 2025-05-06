@@ -72,7 +72,6 @@ for event in events_data:
         timestamp = event["end"] if utc.localize(now) > end else event["start"]
 
         alert = {
-            "id": event["id"],
             "src_id": mmsi,
             "timestamp": now.strftime("%Y-%m-%dT%H:%M:%S"),
             "effective": event["start"],
@@ -89,7 +88,9 @@ for event in events_data:
 
         # Send to Kafka
         producer.send("Events", key=mmsi, value=alert)
-        print(f"Kafka: Sent transponder event for vessel {mmsi}")
+        print(f"Kafka: Sent port visit event for vessel {mmsi}")
+        EventsOp.add(alert.copy()) # Save port visit to Events table
+        EventsOp.commit()
 
         """
         Update vessel status, save to DB, and push to Topic
@@ -113,8 +114,6 @@ for event in events_data:
         # Try to pull vessel to update
         known_ship = VesselsOp.query([{'mmsi': int(mmsi)}])
         if known_ship: # Vessel exists, let's update it
-            print(f"{vessel_name} found!")
-
             entity = {
                 'timestamp': now.strftime("%Y-%m-%dT%H:%M:%S"),
                 'speed': speed,
@@ -126,15 +125,25 @@ for event in events_data:
                 'dist_from_shore': dist_shore,
             }
 
-            ArchiveOp.add(known_ship[0].copy())
-            ArchiveOp.commit()
+            for key,value in entity.copy().items():
+                if value == known_ship[0][key]:
+                    entity.pop(key)
 
-            VesselsOp.modify({'mmsi': int(mmsi)},entity)
-            VesselsOp.commit()
+            guh = entity.copy()
+            guh.pop('timestamp','')
+            if len(guh) > 0:
+                # Archiving old Vessel state
+                ArchiveOp.add(known_ship[0].copy())
+                ArchiveOp.commit()
 
-            entity = known_ship[0].update(entity)
-            producer.send("Vessels", key=mmsi,value=entity)
-            print(f"Kafka: Sent vessel info for {mmsi}")
+                # Updating vessel in DB
+                VesselsOp.modify({'mmsi': int(mmsi)},entity)
+                VesselsOp.commit()
+                entity = known_ship[0].update(entity)
+
+                # Pishing to Kafka
+                producer.send("Vessels", key=mmsi,value=entity)
+                print(f"Kafka: Sent vessel info for {mmsi}")
 
         else: # If transponder isn't active, of course it wouldn't be found
             print(f"{vessel_name} does not exist.")

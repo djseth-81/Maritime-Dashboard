@@ -68,6 +68,9 @@ for event in events_data:
             print("Vessel has unidentafiable MMSI")
             continue
 
+        if vessel_name in VesselsOp.attrs or vessel_name is None:
+            vessel_name = "UNKNOWN"
+
         start = datetime.fromisoformat(event["start"])
         end = datetime.fromisoformat(event["end"])
         timestamp = event["end"] if utc.localize(now) > end else event["start"]
@@ -116,8 +119,6 @@ for event in events_data:
         # Try to pull vessel to update
         known_ship = VesselsOp.query([{'mmsi': int(mmsi)}])
         if known_ship: # Vessel exists, let's update it
-            print(f"{vessel_name} found!")
-
             entity = {
                 'timestamp': now.strftime("%Y-%m-%dT%H:%M:%S"),
                 'speed': speed,
@@ -129,12 +130,25 @@ for event in events_data:
                 'dist_from_shore': dist_shore,
             }
 
-            ArchiveOp.add(known_ship[0].copy())
-            ArchiveOp.commit()
+            for key,value in entity.copy().items():
+                if value == known_ship[0][key]:
+                    entity.pop(key)
 
-            VesselsOp.modify({'mmsi': int(mmsi)},entity)
-            VesselsOp.commit()
-            entity = known_ship[0].update(entity)
+            guh = entity.copy()
+            guh.pop('timestamp','')
+            if len(guh) > 0:
+                # Archiving old Vessel state
+                ArchiveOp.add(known_ship[0].copy())
+                ArchiveOp.commit()
+
+                # Updating vessel in DB
+                VesselsOp.modify({'mmsi': int(mmsi)},entity)
+                VesselsOp.commit()
+                entity = known_ship[0].update(entity)
+
+                # Pishing to Kafka
+                producer.send("Vessels", key=mmsi,value=entity)
+                print(f"Kafka: Sent vessel info for {mmsi}")
 
         else: # Vessel doesn't exist, so let's add it
             print(f"{vessel_name} Not found in DB")
@@ -170,11 +184,14 @@ for event in events_data:
                     diff = endDate - utc.localize(now)
                     index = i
 
+            flag = vessel.get('flag')
+            callsign = entry['selfReportedInfo'][index]['callsign']
+
             entity.update({
                 'vessel_name': vessel_name,
                 'mmsi': int(mmsi),
-                'flag': vessel.get('flag','OTHER'),
-                'callsign': entry['selfReportedInfo'][index]['callsign'] if not None else "NONE",
+                'flag': flag if flag is not None else 'OTHER',
+                'callsign': callsign if callsign is not None else "NONE",
                 'src' : f"GFW-{entry['selfReportedInfo'][index]['sourceCode'][0]}",
                 # Data expected to change with report
                 'timestamp' : now.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -187,15 +204,20 @@ for event in events_data:
                 'dist_from_shore': dist_shore,
             })
 
+            # Adding new vessel to DB
             VesselsOp.add(entity.copy())
             VesselsOp.commit()
 
-        producer.send("Vessels", key=mmsi,value=entity)
-        print(f"Kafka: Sent vessel info for {mmsi}")
+            # Pishing to Kafka
+            producer.send("Vessels", key=mmsi,value=entity)
+            print(f"Kafka: Sent vessel info for {mmsi}")
 
     except TypeError as e:
         print(f"Error manipulating data:\n{e}")
     except Exception as e:
         print(f"Error processing event {event.get('id')}: {e}")
+
+VesselsOp.close()
+ArchiveOp.close()
 
 producer.flush()

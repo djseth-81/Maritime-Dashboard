@@ -83,11 +83,17 @@ for entry in vessels:
     mmsi = int(entry['selfReportedInfo'][index]['ssvid'])
     vessel_id = entry['selfReportedInfo'][index]['id']
 
+    name = entry['selfReportedInfo'][index]['shipname']
+    if name in VesselsOp.attrs or name is None:
+        name = "UNKNOWN"
+
+    callsign = entry['selfReportedInfo'][index]['callsign']
+
     entity.update({
-        'vessel_name' : entry['selfReportedInfo'][index]['shipname'],
+        'vessel_name' : name,
         'mmsi' : mmsi,
         'flag' : entry['selfReportedInfo'][index]['flag'],
-        'callsign' : entry['selfReportedInfo'][index]['callsign'] if None else "NONE"
+        'callsign' : callsign if callsign is not None else "NONE"
     })
 
     # Reporting details
@@ -143,7 +149,6 @@ for entry in vessels:
         status = 'ANCHORED'
     elif event_type.upper() == 'GAP':
         speed = 0.0
-        status = 'UNKNOWN'
     else:
         speed = 0.0
 
@@ -171,7 +176,9 @@ for entry in vessels:
         # Adding new vessels to DB
         VesselsOp.add(entity.copy())
         VesselsOp.commit()
-        vessel = entity.copy() # assigning local vessel as entity
+        # Update Report info
+        producer.send("Vessels", key=str(mmsi), value=entity.copy())
+        print(f"Kafka: Sent vessel info for {mmsi}")
     else:
         for attr,value in entity.copy().items():
             if value == vessel[0][attr]:
@@ -186,10 +193,9 @@ for entry in vessels:
             VesselsOp.commit()
             vessel[0].update(entity) # Updating local vessel with changes in entity to mirror modification to DB
 
-    # Update Report info
-    producer.send("Vessels", key=str(mmsi), value=vessel[0])
-
-    print(f"Kafka: Sent vessel info for {mmsi}")
+            # Update Report info
+            producer.send("Vessels", key=str(mmsi), value=vessel[0])
+            print(f"Kafka: Sent vessel info for {mmsi}")
 
 VesselsOp.close()
 ArchiveOp.close()
