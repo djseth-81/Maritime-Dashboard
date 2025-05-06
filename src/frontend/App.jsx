@@ -208,15 +208,15 @@ function App() {
       console.log("Message from WebSocket server:", event.data);  //echos the response from backend log (shows on F12 + console)
       try {
         const updatedVesselData = JSON.parse(event.data);
-        console.log("Updated Vessel Data:", updatedVesselData);  //displays the updated vessel data (shows on F12 + console)
         setVessels((prevVessels) =>
-          prevVessels.map((vessel) => 
+          prevVessels.map((vessel) =>
             vessel.mmsi === updatedVesselData.mmsi &&
-            (vessel.latitude !== updatedVesselData.latitude ||
-            vessel.longitude !== updatedVesselData.longitude) ?
-            { ...vessel, ...updatedVesselData } : vessel
+              (vessel.lat !== updatedVesselData.lat ||
+                vessel.lon !== updatedVesselData.lon) ?
+              { ...vessel, ...updatedVesselData } : vessel
           )
         );
+        console.log("Updated Data:", updatedVesselData);  //displays the updated vessel data (shows on F12 + console)
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);  //error handling
       }
@@ -450,7 +450,7 @@ function App() {
           sanitizeHtml: false,
         }}
       >
-        {vessels.map((vessel) =>
+        {/* {vessels.map((vessel) =>
           placeVessel(
             vessel["mmsi"],
             vessel["lon"],
@@ -460,7 +460,7 @@ function App() {
             vessel["type"],
             vessel["vessel_name"]
           ) || <div key={vessel["mmsi"]}>Invalid Vessel Data</div>
-        )}
+        )} */}
 
         <VesselTracking
           vessels={vessels}
@@ -513,7 +513,7 @@ function App() {
           </button>
           <button onClick={() => setShowSettings(true)}>Rename</button>
           <button onClick={() => performPrediction()}>Path Prediction</button>
-          { polygonData && (<button onClick={() => {handleRefreshZoneData(); setShowContextMenu(false);}}>Refresh Zone</button>) }
+          {polygonData && (<button onClick={() => { handleRefreshZoneData(); setShowContextMenu(false); }}>Refresh Zone</button>)}
         </div>
       )}
 
