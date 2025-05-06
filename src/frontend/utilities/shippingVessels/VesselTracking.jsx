@@ -2,9 +2,10 @@ import React from "react";
 import { placeVessel } from "./Vessels";
 
 const VesselTracking = React.memo(({ vessels }) => {
+    // console.log("Vessels passed to VesselTracking:", vessels);
     return (
         <>
-            {vessels.map((vessel) => 
+            {vessels.map((vessel) =>
                 placeVessel(
                     vessel.mmsi,
                     vessel.lon,
@@ -13,7 +14,7 @@ const VesselTracking = React.memo(({ vessels }) => {
                     vessel.elevation,
                     vessel.type,
                     vessel.vessel_name
-                ) || <div key={vessel.mmsi}>Invalid Vessel Data</div>
+                )
             )}
         </>
     );

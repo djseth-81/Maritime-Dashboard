@@ -189,49 +189,44 @@ function App() {
       } catch (error) {
         console.error("Error fetching vessels:", error.message);
         toast.error("Failed to load vessels.");
-      };
-    };
-    loadVessels();
-    loadWeatherLayers();
-
-    /*
-     * Websocket stuff
-     */
-    const ws = new WebSocket(wsAPI);
-
-    ws.onopen = () => {
-      console.log("WebSocket connected from React");  //displays message showing websocket is connected (shows on F12 + console)
-      ws.send("Hello from React WebSocket client!");  //dispalys on backend log
-    };
-
-    ws.onmessage = (event) => {
-      console.log("Message from WebSocket server:", event.data);  //echos the response from backend log (shows on F12 + console)
-      try {
-        const updatedVesselData = JSON.parse(event.data);
-        setVessels((prevVessels) =>
-          prevVessels.map((vessel) =>
-            vessel.mmsi === updatedVesselData.mmsi &&
-              (vessel.lat !== updatedVesselData.lat ||
-                vessel.lon !== updatedVesselData.lon) ?
-              { ...vessel, ...updatedVesselData } : vessel
-          )
-        );
-        console.log("Updated Data:", updatedVesselData);  //displays the updated vessel data (shows on F12 + console)
-      } catch (error) {
-        console.error("Error parsing WebSocket message:", error);  //error handling
       }
     };
 
-    ws.onerror = (err) => {
-      console.error("WebSocket error:", err); //error handling
-    };
+    loadVessels().then(() => {
+      const ws = new WebSocket(wsAPI);
 
-    ws.onclose = () => {
-      console.log("WebSocket disconnected");  //error handling
-    };
+      ws.onopen = () => {
+        console.log("WebSocket connected from React");
+        ws.send("Hello from React WebSocket client!");
+      };
 
-    return () => ws.close();
+      ws.onmessage = (event) => {
+        console.log("Message from WebSocket server:", event.data);
+        try {
+          const updatedVesselData = JSON.parse(event.data);
+          setVessels((prevVessels) =>
+            prevVessels.map((vessel) =>
+              vessel.mmsi === updatedVesselData.mmsi &&
+              (vessel.lat !== updatedVesselData.lat || vessel.lon !== updatedVesselData.lon)
+                ? { ...vessel, ...updatedVesselData }
+                : vessel
+            )
+          );
+        } catch (error) {
+          console.error("Error parsing WebSocket message:", error);
+        }
+      };
 
+      ws.onerror = (err) => {
+        console.error("WebSocket error:", err);
+      };
+
+      ws.onclose = () => {
+        console.log("WebSocket disconnected");
+      };
+
+      return () => ws.close();
+    });
   }, [viewerReady, vesselsAPI]);
 
   /*

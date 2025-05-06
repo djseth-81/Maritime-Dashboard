@@ -6,11 +6,11 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from backend.utils import connect, filter_parser
+from utils import connect, filter_parser
 from fastapi import WebSocket, WebSocketDisconnect, FastAPI
-from backend.kafka_service.kafka_ws_bridge import connected_clients, kafka_listener, start_kafka_consumer
-from backend.kafka_service.producer import send_message
-import backend.linearRegressionPathPrediction as linearRegressionPyFile
+from kafka_service.kafka_ws_bridge import connected_clients, kafka_listener, start_kafka_consumer
+from kafka_service.producer import send_message
+import linearRegressionPathPrediction as linearRegressionPyFile
 
 app = FastAPI()
 
