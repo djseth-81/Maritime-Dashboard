@@ -21,20 +21,6 @@ const router = createBrowserRouter([
     path: "/",
     element: <App />,
     errorElement: <ErrorPage />,
-    // children: [
-      // {
-      //   path: "App",
-      //   element: <ProtectedRoute component={<App/>} isAuthRequired={false}/>,
-      // },
-      // {
-      //   path: "login",
-      //   element: <ProtectedRoute component={<Auth/>} isAuthRequired={false}/>,
-      // },
-      // {
-      //   path: "register",
-      //   element: <ProtectedRoute component={<Auth/>} isAuthRequired={false}/>,
-      // },
-    // ],
   },
 ]);
 
