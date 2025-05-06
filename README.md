@@ -23,8 +23,8 @@ Northrop Grumman - Capstone 2025 - Maritime Operations Monitoring Dashboard
 
 <br />
 
-## 4. Running FastAPI (cd into backend directory)
-`uvicorn main:app --reload`
+## 4. Running FastAPI (cd into Maritime-Ops-Dashboard directory)
+`uvicorn backend.main:app --reload`
 
 <br />
 
