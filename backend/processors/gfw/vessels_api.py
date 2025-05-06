@@ -164,8 +164,6 @@ for entry in vessels:
             'dist_from_shore': float(event['distances'].get('endDistanceFromShoreKm', 0))
         })
 
-    pprint(entity)
-
     # Vessel processing
     vessel = VesselsOp.query([{'mmsi':mmsi}])
     if len(vessel) < 1:

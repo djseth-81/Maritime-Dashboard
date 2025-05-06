@@ -57,11 +57,6 @@ def nws_weather(station: dict):
     zone_operator = DBOperator(table='zones')
     zones = zone_operator.contains(report['geometry'])
 
-    pprint(report['geometry'])  # wanna check with zone geometry
-    pprint(zones)
-
-    print()
-
     timestamp = report['properties']['generatedAt']
     guh = report['properties']['periods'][0]
 
