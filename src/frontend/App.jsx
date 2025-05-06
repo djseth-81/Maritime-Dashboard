@@ -394,6 +394,9 @@ function App() {
     setWeatherLayers(layerOptions)
   }
 
+  const handleClearPredictions = () => {
+    setPredictions([]);
+  };
   // Debug
   // console.log("Show Context Menu:", showContextMenu);
   // console.log("Context Menu Position:", contextMenuPosition);
@@ -507,7 +510,8 @@ function App() {
             Delete
           </button>
           <button onClick={() => setShowSettings(true)}>Rename</button>
-          <button onClick={() => performPrediction()}>Path Prediction</button>
+          <button onClick={() => performPrediction()}>Predict Possible Path</button>
+          {predictions.length > 0 && <button onClick={handleClearPredictions}>Clear Predicted Path</button>}
           {polygonData && (<button onClick={() => { handleRefreshZoneData(); setShowContextMenu(false); }}>Refresh Zone</button>)}
         </div>
       )}
