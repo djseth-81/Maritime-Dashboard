@@ -114,7 +114,7 @@ def main():
             failures.append(report)
 
         print(f"Kafka: Sending weather report for station {sid}")
-        producer.send('COOP', key=sid, value=report)
+        producer.send('Weather', key=sid, value=report)
 
         sleep(0.1)
 

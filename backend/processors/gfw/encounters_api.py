@@ -62,8 +62,11 @@ for event in events_data:
         """
         event_type = event["type"]
         vessel = event.get("vessel", {})
-        vessel_name = vessel.get("name", "Unknown")
-        mmsi = vessel.get("ssvid", "Unknown")
+        vessel_name = vessel.get("name", "UNKNOWN")
+        mmsi = vessel.get("ssvid", None)
+        if mmsi is None:
+            print("Vessel has unidentafiable MMSI")
+            continue
 
         start = datetime.fromisoformat(event["start"])
         end = datetime.fromisoformat(event["end"])
@@ -91,7 +94,7 @@ for event in events_data:
         }
 
         # Send to Kafka
-        producer.send("GFW", key=mmsi, value=alert)
+        producer.send("Events", key=mmsi, value=alert)
         print(f"Kafka: Sent encounter event for vessel {mmsi}")
         EventsOp.add(alert.copy()) # save event to DB
         EventsOp.commit()
@@ -192,7 +195,7 @@ for event in events_data:
             VesselsOp.add(entity.copy())
             VesselsOp.commit()
 
-        producer.send("GFW", key=mmsi,value=entity)
+        producer.send("Vessels", key=mmsi,value=entity)
         print(f"Kafka: Sent vessel info for {mmsi}")
 
     except TypeError as e:

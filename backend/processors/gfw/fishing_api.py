@@ -87,7 +87,7 @@ for event in events_data:
             "headline": f"{vessel_name} fishing event"
         }
 
-        producer.send("GFW", key=mmsi, value=alert)
+        producer.send("Events", key=mmsi, value=alert)
         print(f"Kafka: Sent fishing event for vessel {mmsi}")
 
         """
@@ -186,7 +186,7 @@ for event in events_data:
             VesselsOp.add(entity.copy())
             VesselsOp.commit()
 
-        producer.send("GFW", key=mmsi,value=entity)
+        producer.send("Vessels", key=mmsi,value=entity)
         print(f"Kafka: Sent vessel info for {mmsi}")
 
     except TypeError as e:

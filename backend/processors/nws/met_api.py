@@ -120,7 +120,7 @@ def nws_weather(station: dict):
     }
 
     try:
-        producer.send("NWS", key=station['id'], value=weather_data)
+        producer.send("Weather", key=station['id'], value=weather_data)
         print(f"Kafka: Sent weather report for station {station['id']}")
     except Exception as e:
         print(f"Failed to send weather report for {station['id']}: {e}")

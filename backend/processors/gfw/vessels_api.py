@@ -189,7 +189,7 @@ for entry in vessels:
             vessel[0].update(entity) # Updating local vessel with changes in entity to mirror modification to DB
 
     # Update Report info
-    producer.send("GFW", key=str(mmsi), value=vessel[0])
+    producer.send("Vessels", key=str(mmsi), value=vessel[0])
 
     print(f"Kafka: Sent vessel info for {mmsi}")
 

@@ -115,7 +115,7 @@ def main():
                     entity.update(guh)
 
                     try:
-                        producer.send("NWS", key=station['id'], value=entity)
+                        producer.send("Events", key=station['id'], value=entity)
                         print(f"Kafka: Sent alert for station {station['id']}")
                         EventsOp.add(entity.copy())
                         EventsOp.commit()
