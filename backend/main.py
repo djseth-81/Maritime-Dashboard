@@ -6,11 +6,11 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from utils import connect, filter_parser
+from backend.utils import connect, filter_parser
 from fastapi import WebSocket, WebSocketDisconnect, FastAPI
-from kafka_service.kafka_ws_bridge import connected_clients, kafka_listener, start_kafka_consumer
-from kafka_service.producer import send_message
-import linearRegressionPathPrediction
+from backend.kafka_service.kafka_ws_bridge import connected_clients, kafka_listener, start_kafka_consumer
+from backend.kafka_service.producer import send_message
+import backend.linearRegressionPathPrediction as linearRegressionPyFile
 
 app = FastAPI()
 
@@ -28,9 +28,7 @@ async def welcome():
     '''
     Root handler
     '''
-    return {"Message": "Hello :)",
-            "Retrieved": datetime.now(),
-           }
+    return {"Message": "Hello :)"}
 
 @app.get("/weather/")
 async def weather():
@@ -402,7 +400,5 @@ async def startup_event():
 
 @app.get("/predict/{lat}/{lon}/{sog}/{heading}")
 async def predict_path(lat: float, lon: float, sog: float, heading: float):
-    print(f"Received coordinates -  Latitude: {lat}, Longitude: {lon}")
-    predictions = linearRegressionPathPrediction.start_vessel_prediction(lat, lon, sog, heading)
-    print(predictions)
+    predictions = linearRegressionPyFile.start_vessel_prediction(lat, lon, sog, heading)
     return predictions.to_dict(orient="records")
