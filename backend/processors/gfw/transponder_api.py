@@ -7,6 +7,7 @@ from ...DBOperator import DBOperator
 from datetime import datetime, timedelta
 import pytz
 from kafka import KafkaProducer
+from psycopg2.errors import *
 
 # Kafka producer setup
 producer = KafkaProducer(
@@ -39,8 +40,6 @@ data = {
 # API call
 events_url = "https://gateway.api.globalfishingwatch.org/v3/events?offset=0&limit=500"
 response = requests.post(events_url, headers=headers, json=data)
-print("Status Code:", response.status_code)
-
 if response.status_code >= 400:
     print("Failed to fetch transponder events.")
     print(response.text)
@@ -67,11 +66,18 @@ for event in events_data:
             print("Vessel has unidentafiable MMSI")
             continue
 
+        if vessel_name in VesselsOp.attrs or vessel_name is None:
+            vessel_name = "UNKNOWN"
+
         start = datetime.fromisoformat(event["start"])
         end = datetime.fromisoformat(event["end"])
+        if end < utc.localize((now - timedelta(days=365))):
+            print("Event over a year old. Ignoring")
+            continue
         timestamp = event["end"] if utc.localize(now) > end else event["start"]
 
         alert = {
+            "event_id": event['id'],
             "src_id": mmsi,
             "timestamp": now.strftime("%Y-%m-%dT%H:%M:%S"),
             "effective": event["start"],
@@ -86,11 +92,11 @@ for event in events_data:
             "headline": f"AIS Transponder gap for {vessel_name}"
         }
 
+        EventsOp.add(alert.copy()) # Save port visit to Events table
+        EventsOp.commit()
         # Send to Kafka
         producer.send("Events", key=mmsi, value=alert)
         print(f"Kafka: Sent port visit event for vessel {mmsi}")
-        EventsOp.add(alert.copy()) # Save port visit to Events table
-        EventsOp.commit()
 
         """
         Update vessel status, save to DB, and push to Topic
@@ -146,12 +152,23 @@ for event in events_data:
                 print(f"Kafka: Sent vessel info for {mmsi}")
 
         else: # If transponder isn't active, of course it wouldn't be found
-            print(f"{vessel_name} does not exist.")
+            print(f"{vessel_name} not recognized. Ignoring.")
             continue
 
     except TypeError as e:
         print(f"Error manipulating data:\n{e}")
+        VesselsOp.rollback()
+        ArchiveOp.rollback()
+        EventsOp.rollback()
+    except UniqueViolation as e:
+        VesselsOp.rollback()
+        ArchiveOp.rollback()
+        EventsOp.rollback()
+        print(f"{e}\nEntity already exists in DB. Ingoring.")
     except Exception as e:
         print(f"Error processing event {event.get('id')}: {e}")
+        VesselsOp.rollback()
+        ArchiveOp.rollback()
+        EventsOp.rollback()
 
 producer.flush()

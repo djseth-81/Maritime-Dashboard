@@ -61,10 +61,14 @@ for entry in vessels:
         if (now.year - item['shiptypes'][0]['yearTo']) < diff:
             diff = now.year - item['shiptypes'][0]['yearTo']
             index = i
-    if entry['combinedSourcesInfo'][index]['shiptypes'][0]['name'] in types:
+
+    # If vessel is an acceptable type, save it. Otherwise ignore so it defaults to UNKNOWN
+    # if entry['combinedSourcesInfo'][index]['shiptypes'][0]['name'] in types:
+    #     entity.update({'type' : entry['combinedSourcesInfo'][index]['shiptypes'][0]['name']})
+
+    # If vessel type is reported, add it
+    if entry['combinedSourcesInfo'][index]['shiptypes'][0]['name']:
         entity.update({'type' : entry['combinedSourcesInfo'][index]['shiptypes'][0]['name']})
-    else:
-        entity.update({'type': "OTHER"})
 
     # Obtaining most recent self-reported data
     index = 0
@@ -78,6 +82,9 @@ for entry in vessels:
 
     startDate = datetime.fromisoformat(entry['selfReportedInfo'][index]['transmissionDateFrom'])
     endDate = datetime.fromisoformat(entry['selfReportedInfo'][index]['transmissionDateTo'])
+    if endDate < utc.localize((now - timedelta(days=365))):
+        print("Vessel entry is over a year old. Ignoring")
+        continue
 
     # Vessel identifiers
     mmsi = int(entry['selfReportedInfo'][index]['ssvid'])
@@ -87,13 +94,14 @@ for entry in vessels:
     if name in VesselsOp.attrs or name is None:
         name = "UNKNOWN"
 
-    callsign = entry['selfReportedInfo'][index]['callsign']
+    if entry['selfReportedInfo'][index]['callsign']:
+        entity.update({'callsign':entry['selfReportedInfo'][index]['callsign']});
+    if entry['selfReportedInfo'][index]['flag']:
+        entity.update({'flag':entry['selfReportedInfo'][index]['flag']})
 
     entity.update({
         'vessel_name' : name,
-        'mmsi' : mmsi,
-        'flag' : entry['selfReportedInfo'][index]['flag'],
-        'callsign' : callsign if callsign is not None else "NONE"
+        'mmsi' : mmsi
     })
 
     # Reporting details
@@ -172,30 +180,42 @@ for entry in vessels:
     # Vessel processing
     vessel = VesselsOp.query([{'mmsi':mmsi}])
     if len(vessel) < 1:
-        print(f"### GFW Vessels API: New vessel identified: {entity['vessel_name']} ({entity['mmsi']}) flying {entity['flag']}")
-        # Adding new vessels to DB
-        VesselsOp.add(entity.copy())
-        VesselsOp.commit()
-        # Update Report info
-        producer.send("Vessels", key=str(mmsi), value=entity.copy())
-        print(f"Kafka: Sent vessel info for {mmsi}")
+        # print(f"### GFW Vessels API: New vessel identified: {entity['vessel_name']} ({entity['mmsi']}) flying {entity['flag']}")
+        # # Adding new vessels to DB
+        # VesselsOp.add(entity.copy())
+        # VesselsOp.commit()
+        # # Update Report info
+        # producer.send("Vessels", key=str(mmsi), value=entity.copy())
+        # print(f"Kafka: Sent vessel info for {mmsi}")
+        print(f"{name} not recognized. Ignoring.")
     else:
         for attr,value in entity.copy().items():
             if value == vessel[0][attr]:
                 entity.pop(attr)
+
+        # Using a temp variable to remove timestamp (if any) and see if any OTHER changes have been made
+        guh = entity.copy()
+        guh.pop('timestamp','')
         # Changes have been made, update vessel data
-        if len(entity) > 0:
+        if len(guh) > 0:
             # First, archive old vessel state
-            ArchiveOp.add(vessel[0].copy())
-            ArchiveOp.commit()
+            try:
+                ArchiveOp.add(vessel[0].copy())
+                ArchiveOp.commit()
 
-            VesselsOp.modify({'mmsi':vessel[0]['mmsi']},entity)
-            VesselsOp.commit()
-            vessel[0].update(entity) # Updating local vessel with changes in entity to mirror modification to DB
+                VesselsOp.modify({'mmsi':vessel[0]['mmsi']},entity.copy())
+                VesselsOp.commit()
+                vessel[0].update(entity) # Updating local vessel with changes in entity to mirror modification to DB
 
-            # Update Report info
-            producer.send("Vessels", key=str(mmsi), value=vessel[0])
-            print(f"Kafka: Sent vessel info for {mmsi}")
+                # Update Report info
+                producer.send("Vessels", key=str(mmsi), value=vessel[0])
+                # NOTE: Apparently can encounter a KeyError: 0 for value=vessel[0]?
+                #   Keep an eye on this
+                print(f"Kafka: Sent vessel info for {mmsi}")
+            except Exception as e:
+                print(f"Error with processing vessel entry:\n{e}\nThis threw the error:")
+                pprint(entity)
+
 
 VesselsOp.close()
 ArchiveOp.close()

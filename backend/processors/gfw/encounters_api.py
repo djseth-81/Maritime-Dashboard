@@ -7,6 +7,7 @@ from ...DBOperator import DBOperator
 from datetime import datetime, timedelta
 import pytz
 from kafka import KafkaProducer
+from psycopg2.errors import *
 
 # Kafka Producer Setup
 producer = KafkaProducer(
@@ -40,8 +41,6 @@ data = {
 # Fetch events
 events_url = "https://gateway.api.globalfishingwatch.org/v3/events?offset=0&limit=500"
 response = requests.post(events_url, headers=headers, json=data)
-
-print("Status Code:", response.status_code)
 if response.status_code not in [200, 201]:
     print("Failed to fetch encounter events.")
     print(response.text)
@@ -63,7 +62,6 @@ for event in events_data:
         event_type = event["type"]
         vessel = event.get("vessel")
         vessel_name = vessel.get("name")
-
         mmsi = vessel.get("ssvid", None)
         if mmsi is None:
             print("Vessel has unidentafiable MMSI")
@@ -73,8 +71,12 @@ for event in events_data:
             vessel_name = "UNKNOWN"
 
 
+        # Parse timing
         start = datetime.fromisoformat(event["start"])
         end = datetime.fromisoformat(event["end"])
+        if end < utc.localize((now - timedelta(days=365))):
+            print("Event over a year old. Ignoring")
+            continue
         timestamp = event["end"] if utc.localize(now) > end else event["start"]
 
         guest_vessel = event[event_type].get("vessel", {})
@@ -84,6 +86,7 @@ for event in events_data:
         risk = event[event_type].get("potentialRisk", False)
 
         alert = {
+            "event_id": event['id'],
             "src_id": mmsi,
             "timestamp": now.strftime("%Y-%m-%dT%H:%M:%S"),
             "effective": event["start"],
@@ -97,12 +100,12 @@ for event in events_data:
             "severity": "high" if risk else "low",
             "headline": f"{vessel_name} reported vessel encounter",
         }
-
+        # save event to DB
+        EventsOp.add(alert.copy())
+        EventsOp.commit()
         # Send to Kafka
         producer.send("Events", key=mmsi, value=alert)
         print(f"Kafka: Sent encounter event for vessel {mmsi}")
-        EventsOp.add(alert.copy()) # save event to DB
-        EventsOp.commit()
 
         """
         Update vessel status, save to DB, and push to Topic
@@ -154,76 +157,98 @@ for event in events_data:
                 VesselsOp.commit()
                 entity = known_ship[0].update(entity)
 
-                # Pishing to Kafka
+                # Pushing to Kafka
                 producer.send("Vessels", key=mmsi,value=entity)
                 print(f"Kafka: Sent vessel info for {mmsi}")
 
         else: # Vessel doesn't exist, so let's add it
-            print(f"{vessel_name} Not found in DB")
-            entity = {}
+            print(f"{vessel_name} Not recognized. Ignoring.")
+            continue
 
-            url = f"https://gateway.api.globalfishingwatch.org/v3/vessels/search?query={vessel['id']}&datasets[0]=public-global-vessel-identity:latest&includes[0]=MATCH_CRITERIA&includes[1]=OWNERSHIP&includes[2]=AUTHORIZATIONS"
-            res = requests.get(url,headers=headers)
-            if res.status_code not in [200,201]:
-                print("Failed to fetch vessel")
-                print(response.text)
-                sys.exit()
-            entry = res.json().get('entries',[])[0]
+            # print(f"{vessel_name} Not found in DB")
+            # entity = {}
 
-            # Getting most recent combined data
-            index = 0
-            diff = now.year
-            for i, item in enumerate(entry['combinedSourcesInfo']):
-                if (now.year - item['shiptypes'][0]['yearTo']) < diff:
-                    diff = now.year - item['shiptypes'][0]['yearTo']
-                    index = i
-            if entry['combinedSourcesInfo'][index]['shiptypes'][0]['name'] in types:
-                entity.update({'type' : entry['combinedSourcesInfo'][index]['shiptypes'][0]['name']})
-            else:
-                entity.update({'type': "OTHER"})
+            # url = f"https://gateway.api.globalfishingwatch.org/v3/vessels/search?query={vessel['id']}&datasets[0]=public-global-vessel-identity:latest&includes[0]=MATCH_CRITERIA&includes[1]=OWNERSHIP&includes[2]=AUTHORIZATIONS"
+            # res = requests.get(url,headers=headers)
+            # if res.status_code not in [200,201]:
+            #     print("Failed to fetch vessel")
+            #     print(response.text)
+            #     sys.exit()
+            # entry = res.json().get('entries',[])[0]
 
-            # Obtaining most recent self-reported data
-            index = 0
-            diff = timedelta(days=now.year)
-            for i, item in enumerate(entry['selfReportedInfo']):
-                startDate = datetime.fromisoformat(item['transmissionDateFrom'])
-                endDate = datetime.fromisoformat(item['transmissionDateTo'])
-                if (utc.localize(now) - endDate <= diff):
-                    diff = endDate - utc.localize(now)
-                    index = i
+            # # Getting most recent combined data
+            # index = 0
+            # diff = now.year
+            # for i, item in enumerate(entry['combinedSourcesInfo']):
+            #     if (now.year - item['shiptypes'][0]['yearTo']) < diff:
+            #         diff = now.year - item['shiptypes'][0]['yearTo']
+            #         index = i
+            # # if entry['combinedSourcesInfo'][index]['shiptypes'][0]['name'] in types:
+            # #     entity.update({'type' : entry['combinedSourcesInfo'][index]['shiptypes'][0]['name']})
 
-            flag = vessel.get('flag')
-            callsign = entry['selfReportedInfo'][index]['callsign']
+            # if entry['combinedSourcesInfo'][index]['shiptypes'][0]['name']:
+            #     entity.update({'type' : entry['combinedSourcesInfo'][index]['shiptypes'][0]['name']})
 
-            entity.update({
-                'vessel_name': vessel_name,
-                'mmsi': int(mmsi),
-                'flag': flag if flag is not None else 'OTHER',
-                'callsign': callsign if callsign is not None else "NONE",
-                'src' : f"GFW-{entry['selfReportedInfo'][index]['sourceCode'][0]}",
-                # Data expected to change with report
-                'timestamp' : now.strftime("%Y-%m-%dT%H:%M:%S"),
-                'speed': speed,
-                'current_status': status,
-                'lat': lat,
-                'lon': lon,
-                'geom': geom,
-                'dist_from_port': dist_port,
-                'dist_from_shore': dist_shore,
-            })
+            # # Obtaining most recent self-reported data
+            # index = 0
+            # diff = timedelta(days=now.year)
+            # for i, item in enumerate(entry['selfReportedInfo']):
+            #     startDate = datetime.fromisoformat(item['transmissionDateFrom'])
+            #     endDate = datetime.fromisoformat(item['transmissionDateTo'])
+            #     if (utc.localize(now) - endDate <= diff):
+            #         diff = endDate - utc.localize(now)
+            #         index = i
 
-            # Adding new vessel to DB
-            VesselsOp.add(entity.copy())
-            VesselsOp.commit()
+            # if vessel.get('flag'):
+            #     entity.update({'flag':vessel.get('flag')})
 
-            # Pishing to Kafka
-            producer.send("Vessels", key=mmsi,value=entity)
-            print(f"Kafka: Sent vessel info for {mmsi}")
+            # if entry['selfReportedInfo'][index]['callsign']:
+            #     entity.update({'callsign':entry['selfReportedInfo'][index]['callsign']})
+
+            # entity.update({
+            #     'vessel_name': vessel_name,
+            #     'mmsi': int(mmsi),
+            #     'src' : f"GFW-{entry['selfReportedInfo'][index]['sourceCode'][0]}",
+            #     # Data expected to change with report
+            #     'timestamp' : now.strftime("%Y-%m-%dT%H:%M:%S"),
+            #     'speed': speed,
+            #     'current_status': status,
+            #     'lat': lat,
+            #     'lon': lon,
+            #     'geom': geom,
+            #     'dist_from_port': dist_port,
+            #     'dist_from_shore': dist_shore,
+            # })
+
+            # # Adding new vessel to DB
+            # VesselsOp.add(entity.copy())
+            # VesselsOp.commit()
+
+            # # Pushing to Kafka
+            # producer.send("Vessels", key=mmsi,value=entity)
+            # print(f"Kafka: Sent vessel info for {mmsi}")
 
     except TypeError as e:
-        print(f"Error manipulating data:\n{e}")
+        VesselsOp.rollback()
+        ArchiveOp.rollback()
+        EventsOp.rollback()
+        print(f"Error manipulating data:\n{e}\nThese were the entities when the error tripped:")
+        pprint(alert)
+        pprint(entity)
+        input()
+    except UniqueViolation as e:
+        print(f"Entry already exists. Ignoring")
+        VesselsOp.rollback()
+        ArchiveOp.rollback()
+        EventsOp.rollback()
     except Exception as e:
-        print(f"Error processing encounter event {event.get('id')}:\n{e}")
+        VesselsOp.rollback()
+        ArchiveOp.rollback()
+        EventsOp.rollback()
+        print(f"Error processing encounter event {event.get('id')}:\n{e}\nThese were the entities when the error tripped:")
+        pprint(alert)
+        pprint(entity)
+        input()
 
 VesselsOp.close()
 ArchiveOp.close()

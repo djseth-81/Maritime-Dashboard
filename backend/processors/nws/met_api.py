@@ -94,6 +94,7 @@ def nws_weather(station: dict):
     elif guh['windDirection'] == "NNW":
         heading = 337.5
     else:
+        heading = None # Assume report has no wind to detect
         print("Wind direction is not of the 16 point compass rose", file=sys.stderr)
 
     # I'm just gonna go ahead and save the high end estimates provided by the report

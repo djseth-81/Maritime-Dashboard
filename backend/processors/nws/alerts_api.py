@@ -50,6 +50,7 @@ def nws_alerts(zone: dict):
         return None
 
     alert = res.json()['features'][0]
+
     # pprint(alert['properties'])
     # input()
 
@@ -84,6 +85,7 @@ def nws_alerts(zone: dict):
     # print()
 
     return {
+        "event_id": alert['properties']['id'].split(':')[-1],
         "timestamp": alert['properties']['sent'],
         "effective": alert['properties']['effective'],
         "end_time": alert['properties']['ends'],
@@ -110,6 +112,8 @@ def main():
         for zone in zones:
             if zone['type'] == 'COUNTY':
                 guh = nws_alerts(zone)
+                pprint(guh)
+                input()
                 if guh is not None:
                     entity.update({'src_id': station['id']})
                     entity.update(guh)
