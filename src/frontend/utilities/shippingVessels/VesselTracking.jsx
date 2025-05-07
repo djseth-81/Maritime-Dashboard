@@ -13,7 +13,8 @@ const VesselTracking = React.memo(({ vessels }) => {
                     vessel.heading,
                     vessel.elevation,
                     vessel.type,
-                    vessel.vessel_name
+                    vessel.vessel_name,
+                    vessel.flag
                 )
             )}
         </>
