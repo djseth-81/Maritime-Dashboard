@@ -11,5 +11,6 @@ consumer = KafkaConsumer(
 )
 
 print("Listening for events...")
-for message in consumer:
-    print(f"Timestamp: {message.timestamp}, Key: {message.key}, Value: {message.value}")
+def consume():
+    for message in consumer:
+        print(f"Timestamp: {message.timestamp}, Key: {message.key}, Value: {message.value}")

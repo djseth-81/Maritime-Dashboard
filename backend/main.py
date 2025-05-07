@@ -10,6 +10,7 @@ from utils import connect, filter_parser
 from fastapi import WebSocket, WebSocketDisconnect, FastAPI
 from kafka_service.kafka_ws_bridge import connected_clients, kafka_listener, start_kafka_consumer
 from kafka_service.producer import send_message
+from kafka_service.consumer import *
 import linearRegressionPathPrediction as linearRegressionPyFile
 
 app = FastAPI()
@@ -376,14 +377,17 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
-            print("Received from client:", data)
+            print("Received from client:")
+            pprint(loads(data))
             await websocket.send_text(f"Echo: {data}")
 
             try:
                 parsed = loads(data)
                 key = parsed.get("key", "default")
-                send_message(key, parsed)
+                topic = parsed.get('topic',"Users")
+                send_message(topic, key, parsed)
                 print(f"Sent to Kafka | key: {key} | value: {parsed}")
+
             except json.JSONDecodeError:
                 print(f"Received non-JSON message: {data}")
             except Exception as e:
@@ -402,3 +406,4 @@ async def startup_event():
 async def predict_path(lat: float, lon: float, sog: float, heading: float):
     predictions = linearRegressionPyFile.start_vessel_prediction(lat, lon, sog, heading)
     return predictions.to_dict(orient="records")
+

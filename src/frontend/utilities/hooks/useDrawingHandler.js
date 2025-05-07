@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import * as Cesium from "cesium";
 import { convertCartesianToDegrees } from "../coordUtils";
 import { generateZoneDescription } from "../zoning/ZoneInfobox";
+import {shareZone} from "../zoning/zonesharing";
 
 /**
  * Custom hook to handle drawing polygons on a Cesium scene.
@@ -144,6 +145,7 @@ const useDrawingHandler = (
         );
       }
 
+
       setGeometries((prevGeometries) => [
         ...prevGeometries,
         {
@@ -154,6 +156,12 @@ const useDrawingHandler = (
           show: true,
         },
       ]);
+
+      console.log("### Zone drawn:");
+      console.log(activeZone.id);
+      // activeZone.points
+      console.log(positions);
+      shareZone(activeZone, positions, new WebSocket("http:" + window.location.href.split(":")[1] + ":8000/ws"));
 
       setActiveZone(null);
       setPositions([]);

@@ -9,6 +9,7 @@ import "./App.css";
 import { Viewer } from "resium";
 import { fetchVessels } from "./utilities/apiFetch";
 import { zoning } from "./utilities/zoning/zoning";
+import { getSharedZones,receiveCMD } from "./utilities/zoning/zonesharing";
 import {
   handleUndo,
   handleToggleDrawing,
@@ -190,10 +191,12 @@ function App() {
         toast.error("Failed to load vessels.");
       }
     };
-    loadWeatherLayers(); // Load weather layers
-    loadVessels().then(() => {
-      const ws = new WebSocket(wsAPI);
 
+    loadWeatherLayers(); // Load weather layers
+
+    loadVessels().then(() => {
+
+      const ws = new WebSocket(wsAPI);
       ws.onopen = () => {
         console.log("WebSocket connected from React");
         ws.send("Hello from React WebSocket client!");
@@ -246,6 +249,15 @@ function App() {
 
       return () => ws.close();
     });
+
+    // Receive Zones and relevant commands from Kafka "Users"
+    const ZoneExchange = async () => {
+        await getSharedZones(setGeometries, new WebSocket(wsAPI));
+        await receiveCMD(new WebSocket(wsAPI)); // TODO
+    };
+
+    ZoneExchange();
+
   }, [viewerReady, vesselsAPI]);
 
   /*
