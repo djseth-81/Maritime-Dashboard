@@ -18,29 +18,28 @@ const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
     error,
   } = useFetchFilters(apiEndpoint);
 
-  const vesselTypes = [
-    "CARGO",
-    "FISHING",
-    "TANKER",
-    "TUG",
-    "PASSENGER",
-    "RECREATIONAL",
-    "OTHER",
-  ];
-
-  const statusTypes = [
-    "UNDERWAY",
-    "ANCHORED",
-    "MOORED",
-    "IN TOW",
-    "FISHING",
-    "UNMANNED",
-    "LIMITED MOVEMENT",
-    "HAZARDOUS CARGO",
-    "AGROUND",
-    "EMERGENCY",
-    "UNKNOWN",
-  ];
+    const vesselTypes = [
+        'BUNKER',
+        'CARGO',
+        'GEAR',
+        'TANKER',
+        'OTHER',
+        'PASSENGER',
+        'RECREATIONAL',
+        'SEISMIC_VESSEL',
+        'TUG',
+        'FISHING'];
+    const statusTypes = [
+        'FISHING',
+        'UNMANNED',
+        'HAZARDOUS CARGO',
+        'IN TOW',
+        'ANCHORED',
+        'TOWED',
+        'LIMITED MOVEMENT',
+        'UNDERWAY',
+        'UNKNOWN',
+        'MOORED'];
 
   // Temporary state for filters
   const [tempFilters, setTempFilters] = useState({

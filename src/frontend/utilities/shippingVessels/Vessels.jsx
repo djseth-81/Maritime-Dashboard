@@ -4,7 +4,7 @@ import { Cartesian3, DistanceDisplayCondition, NearFarScalar, HeightReference } 
 import ReactDOMServer from 'react-dom/server'
 import BoatIcon from "../../assets/icons/boatIcon";
 
-export function placeVessel(mmsi, longitude, latitude, heading, elevation = 0, type = "OTHER", name = "UNKNOWN", timestamp) {
+export function placeVessel(mmsi, longitude, latitude, heading, elevation = 0, type = "OTHER", name = "UNKNOWN", flag, timestamp) {
     // Convert values to numbers and validate
     const numLongitude = Number(longitude);
     const numLatitude = Number(latitude);
@@ -44,6 +44,10 @@ export function placeVessel(mmsi, longitude, latitude, heading, elevation = 0, t
                     <td style="color:#ffffff; padding:3px 0;">${type}</td>
                 </tr>
                 <tr>
+                    <td style="color:#ffffff; padding:3px 0;">Colors:</td>
+                    <td style="color:#ffffff; padding:3px 0;">${flag}</td>
+                </tr>
+                <tr>
                     <td style="color:#ffffff; padding:3px 0;">Position:</td>
                     <td style="color:#ffffff; padding:3px 0;">${numLatitude.toFixed(4)}°, ${numLongitude.toFixed(4)}°</td>
                 </tr>
@@ -54,10 +58,6 @@ export function placeVessel(mmsi, longitude, latitude, heading, elevation = 0, t
                 <tr>
                     <td style="color:#ffffff; padding:3px 0;">Last updated:</td>
                     <td style="color:#ffffff; padding:3px 0;">${timestamp}</td>
-                </tr>
-                <tr>
-                    <td style="color:#ffffff; padding:3px 0;">Last updated:</td>
-                    <td style="color:#ffffff; padding:3px 0;">${flag}</td>
                 </tr>
             </table>
         </div>

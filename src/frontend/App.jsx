@@ -99,13 +99,15 @@ function App() {
 
   // Default filters for vessels
   const defaultFilters = {
-    types: ["CARGO", "FISHING", "TANKER", "TUG", "PASSENGER",
-      "RECREATIONAL", "OTHER"],
-    statuses: [
-      "UNDERWAY", "ANCHORED", "MOORED", "IN TOW", "FISHING",
-      "UNMANNED", "LIMITED MOVEMENT", "HAZARDOUS CARGO",
-      "AGROUND", "EMERGENCY", "UNKNOWN",
-    ],
+        types: ['BUNKER', 'CARGO', 'GEAR', 'TANKER',
+            'OTHER', 'PASSENGER', 'RECREATIONAL',
+            'SEISMIC_VESSEL', 'TUG', 'FISHING'
+        ],
+
+        statuses: ['FISHING', 'UNMANNED', 'HAZARDOUS CARGO',
+            'IN TOW', 'ANCHORED', 'TOWED', 
+            'LIMITED MOVEMENT', 'UNDERWAY', 'UNKNOWN', 
+            'MOORED']
   }
 
   // Set currentFilters based on defaultFilters once component is mounted
