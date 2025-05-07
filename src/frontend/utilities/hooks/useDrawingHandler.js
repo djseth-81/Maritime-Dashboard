@@ -148,7 +148,7 @@ const useDrawingHandler = (
 
       setGeometries((prevGeometries) => [
         ...prevGeometries,
-        { // Ask about the difference between positions and points
+        {
           id: activeZone.id,
           entity: activeZone.entity,
           positions: [...positions],
@@ -159,6 +159,7 @@ const useDrawingHandler = (
 
       console.log("### Zone drawn:");
       console.log(activeZone.id);
+      // activeZone.points
       console.log(positions);
       shareZone(activeZone, positions, new WebSocket("http:" + window.location.href.split(":")[1] + ":8000/ws"));
 
