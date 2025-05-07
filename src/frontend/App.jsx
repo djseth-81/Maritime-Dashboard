@@ -6,7 +6,6 @@ import ConfirmationDialog from "./utilities/ConfirmationDialog";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/ReactToastify.css";
 import "./App.css";
-import { placeVessel } from "./utilities/shippingVessels/Vessels";
 import { Viewer } from "resium";
 import { fetchVessels } from "./utilities/apiFetch";
 import { zoning } from "./utilities/zoning/zoning";
@@ -206,15 +205,35 @@ function App() {
       ws.onmessage = (event) => {
         console.log("Message from WebSocket server:", event.data);
         try {
-          const updatedVesselData = JSON.parse(event.data);
+          const message = JSON.parse(event.data);
+
+          if (message.topic === "Vessels") {
           setVessels((prevVessels) =>
             prevVessels.map((vessel) =>
-              vessel.mmsi === updatedVesselData.mmsi &&
-              (vessel.lat !== updatedVesselData.lat || vessel.lon !== updatedVesselData.lon)
-                ? { ...vessel, ...updatedVesselData }
+              vessel.mmsi === message.mmsi &&
+              (vessel.lat !== message.lat || vessel.lon !== message.lon)
+                ? { ...vessel, ...message }
                 : vessel
             )
           );
+        }
+
+          if (message.topic === "Weather") {
+            // Handle weather-related messages here
+          }
+
+          if (message.topic === "Ocean") {
+            // Handle ocean-related messages here
+          }
+
+          if (message.topic === "Events") {
+            // Handle event-related messages here
+          }
+
+          if (message.topic === "Users") {
+            // Handle user-related messages here
+          }
+
         } catch (error) {
           console.error("Error parsing WebSocket message:", error);
         }
@@ -406,6 +425,9 @@ function App() {
     setWeatherLayers(layerOptions)
   }
 
+  const handleClearPredictions = () => {
+    setPredictions([]);
+  };
   // Debug
   // console.log("Show Context Menu:", showContextMenu);
   // console.log("Context Menu Position:", contextMenuPosition);
@@ -519,7 +541,8 @@ function App() {
             Delete
           </button>
           <button onClick={() => setShowSettings(true)}>Rename</button>
-          <button onClick={() => performPrediction()}>Path Prediction</button>
+          <button onClick={() => performPrediction()}>Predict Possible Path</button>
+          {predictions.length > 0 && <button onClick={handleClearPredictions}>Clear Predicted Path</button>}
           {polygonData && (<button onClick={() => { handleRefreshZoneData(); setShowContextMenu(false); }}>Refresh Zone</button>)}
         </div>
       )}
