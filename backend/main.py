@@ -376,13 +376,12 @@ async def websocket_endpoint(websocket: WebSocket):
 
     try:
         while True:
+            data = await websocket.receive_text()
+            print("Received from client:")
+            pprint(oads(data))
+            await websocket.send_text(f"Echo: {data}")
 
             try:
-                data = await websocket.receive_text()
-                print("Received from client:")
-                pprint(loads(data))
-                await websocket.send_text(f"Echo: {data}")
-
                 parsed = loads(data)
                 key = parsed.get("key", "default")
                 topic = parsed.get('topic',"Users")
