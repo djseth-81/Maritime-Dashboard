@@ -163,7 +163,7 @@ const useDrawingHandler = (
       console.log(activeZone.id);
       // activeZone.points
       console.log(positions);
-      shareZone(activeZone, positions, new WebSocket("http:" + window.location.href.split(":")[1] + ":8000/ws"));
+      zyncPOST(activeZone, positions, new WebSocket("http:" + window.location.href.split(":")[1] + ":8000/ws"));
 
       setActiveZone(null);
       setPositions([]);
