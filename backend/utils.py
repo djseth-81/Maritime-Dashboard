@@ -10,7 +10,7 @@ def connect(table: str) -> DBOperator:
     # Seans credentials - CHANGE THIS FOR YOUR OWN
     db = 'capstone'
     user = ''
-    passwd = 'Jimenez3128'
+    passwd = 'gres'
     host = 'localhost'
     port = '5432'
 

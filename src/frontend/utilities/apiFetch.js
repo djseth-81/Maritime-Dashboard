@@ -35,16 +35,16 @@ export const fetchVessels = async (vesselsAPI, filters = {}, setVessels) => {
     const transformedVessels = response.data.payload?.map((vessel) =>
       Array.isArray(vessel)
         ? {
-            mmsi: vessel["mmsi"],
-            name: vessel["vessel_name"],
-            type: vessel["type"],
-            country_of_origin: vessel["flag"],
-            status: vessel["current_status"],
-            latitude: vessel["lat"],
-            longitude: vessel["lon"],
-            speed: vessel["speed"],
-            heading: vessel["heading"],
-          }
+          mmsi: vessel["mmsi"],
+          name: vessel["vessel_name"],
+          type: vessel["type"],
+          country_of_origin: vessel["flag"],
+          status: vessel["current_status"],
+          latitude: vessel["lat"],
+          longitude: vessel["lon"],
+          speed: vessel["speed"],
+          heading: vessel["heading"],
+        }
         : vessel
     );
 

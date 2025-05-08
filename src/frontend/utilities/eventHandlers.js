@@ -65,7 +65,7 @@ export const handleToggleFilters = (setShowFilters) => {
  */
 export const handleUndo = (undoLastPoint) => {
   console.log("Undo function passed to handleUndo:", undoLastPoint);
-  if(undoLastPoint) {
+  if (undoLastPoint) {
     undoLastPoint();
   } else {
     console.log("No active zone or points to undo.");
@@ -115,7 +115,7 @@ export const handleClearConfirmed = (
   console.log("### DELETING GEOMETRIES:");
   console.log(forKafka);
   if (forKafka.length > 0) {
-      sendCMD('DELETE', forKafka, new WebSocket("http:" + window.location.href.split(":")[1] + ":8000/ws"));
+    sendCMD('DELETE', forKafka, new WebSocket("http:" + window.location.href.split(":")[1] + ":8000/ws"));
   }
 
   setGeometries([]);
@@ -198,7 +198,7 @@ export const handleDeleteConfirm = (
 
     // TODO: Submit to Kafka topic for all others to delete
     console.log("### DELETING Geometry with ID:", selectedGeometry.id);
-    sendCMD('DELETE', selectedGeometry.id, null,new WebSocket("http:" + window.location.href.split(":")[1] + ":8000/ws"));
+    sendCMD('DELETE', selectedGeometry.id, null, new WebSocket("http:" + window.location.href.split(":")[1] + ":8000/ws"));
 
     const childEntities = viewer.entities.values;
     for (let i = childEntities.length - 1; i >= 0; i--) {

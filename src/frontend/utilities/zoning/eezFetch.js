@@ -69,6 +69,14 @@ export const loadEEZZonesToGlobe = async (viewer, zones) => {
   }
 };
 
+/**
+ * @description Toggles the visibility of EEZ zones on the globe.
+ * @param {Object} viewer - The Cesium viewer instance.
+ * @param {boolean} currentVisibility - The current visibility state of EEZ zones.
+ * @param {Function} setVisibility - Function to update the visibility state.
+ * @param {string} eezAPI - The API endpoint for fetching EEZ zones.
+ * @returns {Promise<void>} - A promise that resolves when the visibility is toggled.
+ */
 export const toggleEEZVisibility = async (viewer, currentVisibility, setVisibility, eezAPI) => {
   if (!viewer) return;
 

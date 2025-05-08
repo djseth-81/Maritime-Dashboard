@@ -18,28 +18,28 @@ const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
     error,
   } = useFetchFilters(apiEndpoint);
 
-    const vesselTypes = [
-        'BUNKER',
-        'CARGO',
-        'GEAR',
-        'TANKER',
-        'OTHER',
-        'PASSENGER',
-        'RECREATIONAL',
-        'SEISMIC_VESSEL',
-        'TUG',
-        'FISHING'];
-    const statusTypes = [
-        'FISHING',
-        'UNMANNED',
-        'HAZARDOUS CARGO',
-        'IN TOW',
-        'ANCHORED',
-        'TOWED',
-        'LIMITED MOVEMENT',
-        'UNDERWAY',
-        'UNKNOWN',
-        'MOORED'];
+  const vesselTypes = [
+    'BUNKER',
+    'CARGO',
+    'GEAR',
+    'TANKER',
+    'OTHER',
+    'PASSENGER',
+    'RECREATIONAL',
+    'SEISMIC_VESSEL',
+    'TUG',
+    'FISHING'];
+  const statusTypes = [
+    'FISHING',
+    'UNMANNED',
+    'HAZARDOUS CARGO',
+    'IN TOW',
+    'ANCHORED',
+    'TOWED',
+    'LIMITED MOVEMENT',
+    'UNDERWAY',
+    'UNKNOWN',
+    'MOORED'];
 
   // Temporary state for filters
   const [tempFilters, setTempFilters] = useState({
@@ -111,7 +111,7 @@ const FiltersUI = ({ apiEndpoint, onFilterApply }) => {
         <label>Vessel Type:</label>
         {vesselTypes.map((type) => (
           <label key={type} className='vessel-type-label'>
-            <BoatIcon className="vessel-icon" type={type} size={20} heading={90}/>
+            <BoatIcon className="vessel-icon" type={type} size={20} heading={90} />
             <input
               type="checkbox"
               value={type}

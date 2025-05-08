@@ -9,20 +9,10 @@ import "./App.css";
 import { Viewer } from "resium";
 import { fetchVessels } from "./utilities/apiFetch";
 import { zoning } from "./utilities/zoning/zoning";
-import { getSharedZones,receiveCMD } from "./utilities/zoning/zonesharing";
+import { getSharedZones, receiveCMD } from "./utilities/zoning/zonesharing";
 import {
-  handleUndo,
-  handleToggleDrawing,
-  handleToggleOverlays,
-  handleToggleFilters,
-  handleClear,
-  handleClearConfirmed,
-  handleClearCancelled,
-  handleRename,
-  handleDelete,
-  handleDeleteConfirm,
-  handleDeleteCancel,
-  handleSave,
+  handleUndo, handleToggleDrawing, handleToggleOverlays, handleToggleFilters, handleClear, handleClearConfirmed,
+  handleClearCancelled, handleRename, handleDelete, handleDeleteConfirm, handleDeleteCancel, handleSave,
 } from "./utilities/eventHandlers";
 import { useCesiumViewer } from "./utilities/hooks/useCesiumViewer";
 import "./App.css";
@@ -68,12 +58,6 @@ function App() {
   const openWeatherAPIKEY = "";
 
   useCesiumViewer(viewerRef, setViewerReady);
-  // const handleFilterApply = async (filters) => {
-  //   console.log("Filters selected:");
-  //   console.log(filters);
-  //   await fetchVessels(vesselsAPI, filters, setVessels);
-  //   await selectedGeometry ? zoning(polygonData, filters, setVessels) : console.log("NO ZONE SELECTED");
-  // };
 
   const handleFilterApply = async (filters) => {
     console.log("Applying filters...", filters);
@@ -99,15 +83,15 @@ function App() {
 
   // Default filters for vessels
   const defaultFilters = {
-        types: ['BUNKER', 'CARGO', 'GEAR', 'TANKER',
-            'OTHER', 'PASSENGER', 'RECREATIONAL',
-            'SEISMIC_VESSEL', 'TUG', 'FISHING'
-        ],
+    types: ['BUNKER', 'CARGO', 'GEAR', 'TANKER',
+      'OTHER', 'PASSENGER', 'RECREATIONAL',
+      'SEISMIC_VESSEL', 'TUG', 'FISHING'
+    ],
 
-        statuses: ['FISHING', 'UNMANNED', 'HAZARDOUS CARGO',
-            'IN TOW', 'ANCHORED', 'TOWED', 
-            'LIMITED MOVEMENT', 'UNDERWAY', 'UNKNOWN', 
-            'MOORED']
+    statuses: ['FISHING', 'UNMANNED', 'HAZARDOUS CARGO',
+      'IN TOW', 'ANCHORED', 'TOWED',
+      'LIMITED MOVEMENT', 'UNDERWAY', 'UNKNOWN',
+      'MOORED']
   }
 
   // Set currentFilters based on defaultFilters once component is mounted
@@ -194,6 +178,7 @@ function App() {
       }
     };
 
+
     loadWeatherLayers(); // Load weather layers
 
     loadVessels().then(() => {
@@ -205,20 +190,21 @@ function App() {
       };
 
       ws.onmessage = (event) => {
-        console.log("Message from WebSocket server:", event.data);
+        // console.log("Message from WebSocket server:", event.data);
         try {
           const message = JSON.parse(event.data);
 
           if (message.topic === "Vessels") {
-          setVessels((prevVessels) =>
-            prevVessels.map((vessel) =>
-              vessel.mmsi === message.mmsi &&
-              (vessel.lat !== message.lat || vessel.lon !== message.lon)
-                ? { ...vessel, ...message }
-                : vessel
-            )
-          );
-        }
+            console.log("Parsed message:", message);
+            setVessels((prevVessels) =>
+              prevVessels.map((vessel) =>
+                vessel.mmsi === message.mmsi &&
+                  (vessel.lat !== message.lat || vessel.lon !== message.lon)
+                  ? { ...vessel, ...message }
+                  : vessel
+              )
+            );
+          }
 
           if (message.topic === "Weather") {
             // Handle weather-related messages here
@@ -235,7 +221,6 @@ function App() {
           if (message.topic === "Users") {
             // Handle user-related messages here
           }
-
         } catch (error) {
           console.error("Error parsing WebSocket message:", error);
         }
@@ -254,8 +239,8 @@ function App() {
 
     // Receive Zones and relevant commands from Kafka "Users"
     const ZoneExchange = async () => {
-        await getSharedZones(setGeometries, new WebSocket(wsAPI));
-        await receiveCMD(new WebSocket(wsAPI)); // TODO
+      await getSharedZones(setGeometries, new WebSocket(wsAPI));
+      await receiveCMD(new WebSocket(wsAPI)); // TODO
     };
 
     ZoneExchange();

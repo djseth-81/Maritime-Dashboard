@@ -75,7 +75,7 @@ const useDrawingHandler = (
                 points: [],
               };
               setActiveZone(newActiveZone);
-              console.log("New active zone created:", newActiveZone);
+            //   console.log("New active zone created:", newActiveZone);
 
               const pointEntity = viewer.current.cesiumElement.entities.add({
                 position: cartesian,

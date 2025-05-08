@@ -48,11 +48,11 @@ const CustomGeometry = forwardRef(({
     // Function to undo the last point
     const undoLastPoint = () => {
         if (!scene) {
-            console.log("Scene is not defined.");
+            console.error("Scene is not available.");
             return;
         }
         if (!activeZone || positions.length === 0) {
-            console.log("No active zone or points to undo.");
+            // console.log("No active zone or points to undo.");
             return;
         }
 
@@ -61,7 +61,7 @@ const CustomGeometry = forwardRef(({
         const lastPoint = updatedPoints.pop(); // Get the last point entity
         if (lastPoint) {
             viewer.current.cesiumElement.entities.remove(lastPoint); // Remove the point entity from the viewer
-            console.log("Removed point entity:", lastPoint.id);
+            // console.log("Removed point entity:", lastPoint.id);
         }
 
         // Update the positions and active zone
@@ -70,7 +70,7 @@ const CustomGeometry = forwardRef(({
             if (newPositions.length === 0) {
                 // Reset activeZone if no points remain
                 setActiveZone(null);
-                console.log("All points undone. Active zone reset.");
+                // console.log("All points undone. Active zone reset.");
             } else {
                 setActiveZone((prevZone) => ({
                     ...prevZone,
@@ -86,7 +86,7 @@ const CustomGeometry = forwardRef(({
     }));
 
     useEffect(() => {
-        console.log("Active zone in CustomGeometry:", activeZone);
+        // console.log("Active zone in CustomGeometry:", activeZone);
     }, [activeZone]);
 
     useEffect(() => {
