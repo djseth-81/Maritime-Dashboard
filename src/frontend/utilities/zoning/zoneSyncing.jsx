@@ -4,9 +4,7 @@ import { toast } from "react-toastify";
 
 const URL = window.location.href.split(":");
 
-// TODO: Update geometries with appending geometry and ID, so long as ID is unique
 export const zyncGET = async (setNewZones, WebSocket) => {
-
   try {
     WebSocket.onopen = () => {
       console.log("### getSharedZones: WebSocket connected from React");
