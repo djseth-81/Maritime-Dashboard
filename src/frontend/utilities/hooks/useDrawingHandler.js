@@ -50,6 +50,9 @@ const useDrawingHandler = (
       setTimeout(() => {
         if (!doubleClickDetectedRef.current) {
           let cartesian = scene.pickPosition(click.position);
+
+          console.log(`Cartesian report of a clicked spot: ${cartesian}`);
+
           if (!cartesian) {
             cartesian = scene.camera.pickEllipsoid(
               click.position,
@@ -144,7 +147,6 @@ const useDrawingHandler = (
           null
         );
       }
-
 
       setGeometries((prevGeometries) => [
         ...prevGeometries,

@@ -385,7 +385,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 parsed = loads(data)
                 key = parsed.get("key", "default")
                 topic = parsed.get('topic',"Users")
-                send_message(topic, key, parsed)
+                payload = parsed.get('value')
+                send_message(topic, key, payload)
                 print(f"Sent to Kafka | key: {key} | value: {parsed}")
 
             except json.JSONDecodeError:

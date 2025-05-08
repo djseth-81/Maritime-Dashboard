@@ -9,7 +9,7 @@ import "./App.css";
 import { Viewer } from "resium";
 import { fetchVessels } from "./utilities/apiFetch";
 import { zoning } from "./utilities/zoning/zoning";
-import { getSharedZones,receiveCMD } from "./utilities/zoning/zonesharing";
+import { getSharedZones, receiveCMD, updateZones } from "./utilities/zoning/zonesharing";
 import {
   handleUndo,
   handleToggleDrawing,
@@ -57,6 +57,7 @@ function App() {
   const [predictions, setPredictions] = useState([]);
   const [activeWeatherLayer, setActiveWeatherLayer] = useState(null);
   const [weatherLayers, setWeatherLayers] = useState(null);
+  const [sharedZones, setSharedZones] = useState(new Set());
 
   const viewerRef = useRef(null);
   const customGeomRef = useRef(null);
@@ -110,6 +111,7 @@ function App() {
             'MOORED']
   }
 
+
   // Set currentFilters based on defaultFilters once component is mounted
   useEffect(() => {
     setCurrentFilters({
@@ -118,6 +120,21 @@ function App() {
       origin: ""
     });
   }, []);
+
+  // Creating this useEffect hook specifically for zones to populate per re-render
+  useEffect(() => {
+      const ZoneExchange = async () => {
+            await getSharedZones(setSharedZones, new WebSocket(wsAPI));
+            await receiveCMD(setGeometries, new WebSocket(wsAPI));
+        }
+        ZoneExchange();
+    });
+
+ // Creating this hook to independently mess with sharedZones after ZoneExchange is performed
+ useEffect(() => {
+        if (viewerRef.current && viewerRef.current.cesiumElement)
+          updateZones((viewerReady && viewerRef.current.cesiumElement.scene), viewerRef, geometries, sharedZones, setGeometries);
+    },[sharedZones]);
 
   const handleRefreshZoneData = async () => {
     if (!selectedGeometry) return;
@@ -150,9 +167,6 @@ function App() {
           return geo;
         })
       );
-
-
-
 
       // Update the entity's description with the new data
       if (viewerRef.current && viewerRef.current.cesiumElement) {
@@ -210,15 +224,15 @@ function App() {
           const message = JSON.parse(event.data);
 
           if (message.topic === "Vessels") {
-          setVessels((prevVessels) =>
-            prevVessels.map((vessel) =>
-              vessel.mmsi === message.mmsi &&
-              (vessel.lat !== message.lat || vessel.lon !== message.lon)
-                ? { ...vessel, ...message }
-                : vessel
-            )
-          );
-        }
+            setVessels((prevVessels) =>
+              prevVessels.map((vessel) =>
+                vessel.mmsi === message.mmsi &&
+                (vessel.lat !== message.lat || vessel.lon !== message.lon)
+                  ? { ...vessel, ...message }
+                  : vessel
+              )
+            );
+          }
 
           if (message.topic === "Weather") {
             // Handle weather-related messages here
@@ -233,7 +247,19 @@ function App() {
           }
 
           if (message.topic === "Users") {
-            // Handle user-related messages here
+            console.log("Geometries array:");
+            console.log(geometries);
+            if (msg.value.command?.match('New Zone')) {
+                // returns new zone IDs and verticies, and mappings of shared zoneIDs
+                getSharedZones(msg, setSharedZones);
+                console.log("New zone data shared to be added to geometries array:");
+                console.log(sharedZones);
+            }
+            else if (msg.value.command?.match('DELETE')) {
+                // will delete a zone from geometries and shared zone mapping if
+                // conditions are met
+                receiveCMD(msg); // TODO
+            }
           }
 
         } catch (error) {
@@ -251,14 +277,6 @@ function App() {
 
       return () => ws.close();
     });
-
-    // Receive Zones and relevant commands from Kafka "Users"
-    const ZoneExchange = async () => {
-        await getSharedZones(setGeometries, new WebSocket(wsAPI));
-        await receiveCMD(new WebSocket(wsAPI)); // TODO
-    };
-
-    ZoneExchange();
 
   }, [viewerReady, vesselsAPI]);
 
