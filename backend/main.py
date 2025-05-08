@@ -51,7 +51,7 @@ async def weather():
         raise HTTPException(status_code=500, detail=f"Error fetching metadata for weather: {str(e)}")
 
     try:
-        payload['payload'] = db.get_table() # Should retrieve nothing rn
+        payload['payload'] = db.get_table()
         payload['size'] = len(payload['payload'])
         return payload
     except Exception as e:
@@ -376,12 +376,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
     try:
         while True:
-            data = await websocket.receive_text()
-            print("Received from client:")
-            pprint(loads(data))
-            await websocket.send_text(f"Echo: {data}")
 
             try:
+                data = await websocket.receive_text()
+                print("Received from client:")
+                pprint(loads(data))
+                await websocket.send_text(f"Echo: {data}")
+
                 parsed = loads(data)
                 key = parsed.get("key", "default")
                 topic = parsed.get('topic',"Users")
