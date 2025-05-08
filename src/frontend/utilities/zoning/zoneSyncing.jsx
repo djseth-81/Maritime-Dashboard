@@ -7,7 +7,7 @@ const URL = window.location.href.split(":");
 export const zyncGET = async (setNewZones, WebSocket) => {
   try {
     WebSocket.onopen = () => {
-      console.log("### getSharedZones: WebSocket connected from React");
+      // console.log("### getSharedZones: WebSocket connected from React");
     };
     WebSocket.onmessage = (event) => {
       const msg = JSON.parse(event.data);
@@ -49,7 +49,7 @@ export const receiveCMD = async (setGeometries, WebSocket) => {
     try {
         WebSocket.onopen = () => {
             console.log(
-                "### Connected to WebSocket and looking for incoming zoning commands...",
+                // "### Connected to WebSocket and looking for incoming zoning commands...",
             );
         };
         WebSocket.onmessage = (event) => {
@@ -90,7 +90,7 @@ export const receiveCMD = async (setGeometries, WebSocket) => {
 export const zyncPOST = async (customZone, points, WebSocket) => {
   try {
     WebSocket.onopen = () => {
-      console.log("### ShareZone: WebSocket connected from React");
+      // console.log("### ShareZone: WebSocket connected from React");
       WebSocket.send(
         JSON.stringify({
           topic: "Users",
@@ -123,7 +123,7 @@ export const zyncPOST = async (customZone, points, WebSocket) => {
 export const sendCMD = async (command, ids=null, data=null, WebSocket) => {
     try {
         WebSocket.onopen = () => {
-            console.log("### Connected to WebSocket to send zoning commands...");
+            // console.log("### Connected to WebSocket to send zoning commands...");
               WebSocket.send(
                 JSON.stringify({
                     topic: "Users",

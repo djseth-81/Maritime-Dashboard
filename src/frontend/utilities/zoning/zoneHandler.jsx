@@ -9,8 +9,8 @@ export const updateZones = (scene, viewer, geometries, newZones, setGeometries) 
         return a.every((i) => b.indexOf(i) !== -1);
    };
 
-    let pending = [];
-    let unique = [];
+    var pending = [];
+    var unique = [];
 
 
     if (newZones.size === 0) return;
@@ -20,16 +20,20 @@ export const updateZones = (scene, viewer, geometries, newZones, setGeometries) 
     console.log(pending);
 
     console.log(`${geometries.length} Pre-existing Geometries:`)
-    let geom_ids = geometries.map((geom) => geom.id);
+    var geom_ids = geometries.map((geom) => geom.id);
     console.log(geom_ids);
 
     if (geometries.length > 0) { // If zones are already drawn, compare
-        pending.forEach((item) => {
-            console.log(`ID exist in geometries? ${geom_ids.indexOf(item.id) !== -1}`);
-            if (geom_ids.indexOf(item.id) === -1) {unique.push({id: item.id, points: item.points});}
+        pending.map((item) => {
+            console.log(`Does the ID exist in geometries? ${geom_ids.includes(item.id)}`);
+            if (!geom_ids.includes(item.id)) {
+                console.log(`pushing item ${item}`);
+                unique.push(item);
+            }
         });
-    } else { // Otherwise, assume they're all unique
-        pending.forEach((item) => unique.push({id: item.id, points: item.points}));
+    } else {
+        console.log("No pre-existing geometries. Pushing all pending items.");
+        pending.map((item) => unique.push(item));
     }
 
     console.log("Unique geometries to process:");
@@ -41,23 +45,21 @@ export const updateZones = (scene, viewer, geometries, newZones, setGeometries) 
       const labelOffset = new Cesium.Cartesian2(0, -20);
 
       // Defining positions array to append to later when going through reported verticies
-      let pts = []; // positions
-      let dots = []; // Points
-
-      // Create new zone entity for item
-      const zoneEntity = viewer.current.cesiumElement.entities.add({
-        polygon: {
-          hierarchy: new Cesium.PolygonHierarchy([]),
-          material: Cesium.Color.RED.withAlpha(0.5),
-        },
-        name: `Zone ${geometries.length + 1}`,
-        isGeometry: true,
-      });
+      var pts = []; // positions
+      var dots = []; // Points
 
       // Create new active zone for item, and assigning it reported ID and zoneEntity object
       const activeZone = {
         id: item.id,
-        entity: zoneEntity,
+        entity: viewer.current.cesiumElement.entities.add({
+            id : item.id,
+            polygon: {
+                hierarchy: new Cesium.PolygonHierarchy([]),
+                material: Cesium.Color.RED.withAlpha(0.5),
+            },
+            name: `Zone ${geometries.length + 1}`,
+            isGeometry: true,
+        }),
         points: [],
       };
 
@@ -82,7 +84,7 @@ export const updateZones = (scene, viewer, geometries, newZones, setGeometries) 
                 scale: 0.8,
                 pixelOffset: labelOffset,
               },
-              parent: zoneEntity,
+              parent: activeZone.entity,
             });
             pts.push(cartesian);
             activeZone.points.push(pointEntity);

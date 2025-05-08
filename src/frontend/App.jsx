@@ -59,6 +59,7 @@ function App() {
   const [activeWeatherLayer, setActiveWeatherLayer] = useState(null);
   const [weatherLayers, setWeatherLayers] = useState(null);
   const [sharedZones, setSharedZones] = useState(new Set());
+  const [polygonData, setPolygonData] = useState(null);
 
   const viewerRef = useRef(null);
   const customGeomRef = useRef(null);
@@ -85,7 +86,9 @@ function App() {
 
     try {
       if (selectedGeometry) {
-        await zoning(polygonData, filters, setVessels);
+      console.log(`Geometry selected: ${selectedGeometry.id}`)
+      handleRefreshZoneData();
+
       } else {
         console.log("NO ZONE SELECTED");
         await fetchVessels(vesselsAPI, filters, setVessels);
@@ -95,9 +98,10 @@ function App() {
       toast.error("Failed to apply filters.");
     }
   };
-  const polygonData = geometries?.find(
-    (geo) => geo.id === selectedGeometry?.id
-  );
+
+  // const polygonData = geometries?.find(
+  //   (geo) => geo.id === selectedGeometry?.id
+  // );
 
   // Default filters for vessels
   const defaultFilters = {
@@ -140,20 +144,30 @@ function App() {
     },[sharedZones]);
 
   useEffect(() => {setSharedZones(new Set())},[geometries]);
+  
+  useEffect(() => {
+      // console.log("Geometries matching selected geometry:");
+      console.log(geometries.find(geo => geo.id === selectedGeometry?.id)?.id);
+
+      setPolygonData(geometries.find(geo => geo.id === selectedGeometry?.id));
+
+      if (polygonData) console.log(`Polygon data retrieved for ${selectedGeometry?.id}`);
+      else console.log('selectedGeometry has no polygon data');
+    },[selectedGeometry]);
 
   const handleRefreshZoneData = async () => {
     if (!selectedGeometry) return;
 
     try {
       // Get the polygon data for the selected geometry
-      const polygonData = geometries.find(geo => geo.id === selectedGeometry.id);
+      // const polygonData = geometries.find(geo => geo.id === selectedGeometry.id);
       if (!polygonData) {
-        toast.error("Selected zone data not found.");
+        toast.warning("Selected geometry can't be used as filter.");
         return;
       }
 
       // Use the current filters
-      const zoneData = await zoning(polygonData, currentFilters);
+      const zoneData = await zoning(polygonData, currentFilters, setVessels);
 
       if (!zoneData) {
         toast.warning("No data found for this zone.");
@@ -252,19 +266,6 @@ function App() {
           }
 
           if (message.topic === "Users") {
-            console.log("Geometries array:");
-            console.log(geometries);
-            if (msg.value.command?.match('New Zone')) {
-                // returns new zone IDs and verticies, and mappings of shared zoneIDs
-                getSharedZones(msg, setSharedZones);
-                console.log("New zone data shared to be added to geometries array:");
-                console.log(sharedZones);
-            }
-            else if (msg.value.command?.match('DELETE')) {
-                // will delete a zone from geometries and shared zone mapping if
-                // conditions are met
-                receiveCMD(msg); // TODO
-            }
           }
 
         } catch (error) {
