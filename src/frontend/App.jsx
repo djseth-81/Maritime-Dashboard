@@ -138,7 +138,7 @@ function App() {
           updateZones((viewerReady && viewerRef.current.cesiumElement.scene), viewerRef, geometries, sharedZones, setGeometries);
     },[sharedZones]);
 
-  // useEffect(() => {setSharedZones(new Set())},[geometries]);
+  useEffect(() => {setSharedZones(new Set())},[geometries]);
 
   const handleRefreshZoneData = async () => {
     if (!selectedGeometry) return;

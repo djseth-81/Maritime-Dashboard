@@ -60,35 +60,30 @@ export const updateZones = (scene, viewer, geometries, newZones, setGeometries) 
     let pending = [];
     let unique = [];
 
-    console.log("### Zones to process");
-    console.log(newZones.size);
-    console.log(newZones);
+
+    if (newZones.size === 0) return;
 
     newZones.forEach((zone) => pending.push(JSON.parse(zone)));
-    // console.log(pending);
+    console.log("### Incoming zones:");
+    console.log(pending);
 
-    console.log(`Geometries drawn: ${geometries.length}`)
+    console.log(`${geometries.length} Pre-existing Geometries:`)
+    let geom_ids = geometries.map((geom) => geom.id);
+    console.log(geom_ids);
+
     if (geometries.length > 0) { // If zones are already drawn, compare
         pending.forEach((item) => {
-            // console.log(`Shared zone: ${item.id}`);
-            geometries.forEach((geom) => {
-                // console.log(`Pre-exisitng zone: ${geom.id}`);
-                // console.log(`ID match? ${geom.id === item.id}`)
-                // console.log(`Verticies match? ${isEqual(item.points, geom.positions)}`);
-                if ((geom.id !== item.id)) {
-                    console.log("No pre-existing geometry");
-                    unique.push(item);
-                }
-            });
+            console.log(`ID exist in geometries? ${geom_ids.indexOf(item.id) !== -1}`);
+            if (geom_ids.indexOf(item.id) === -1) {unique.push({id: item.id, points: item.points});}
         });
     } else { // Otherwise, assume they're all unique
-        pending.forEach((item) => unique.push(item))
+        pending.forEach((item) => unique.push({id: item.id, points: item.points}));
     }
 
-    console.log("Unique geometries found:");
+    console.log("Unique geometries to process:");
     console.log(unique);
 
-    let guh = [];
+    // Now, go through and process unique items
     unique.forEach((item) => {
       // Defining label offset
       const labelOffset = new Cesium.Cartesian2(0, -20);
@@ -153,16 +148,6 @@ export const updateZones = (scene, viewer, geometries, newZones, setGeometries) 
             );
         }
 
-        // console.log("Zones details to add:");
-        // console.log(`id: ${activeZone.id} (${typeof(activeZone.id)})`)
-        // console.log(`pos: ${pts} (${typeof(pts)})`)
-
-        guh.push({id : activeZone.id,
-            entity: activeZone.entity,
-            positions : [...pts],
-            points: activeZone.points,
-            show : true})
-
         setGeometries((prevGeoms) => [
                 ...prevGeoms,
                 {
@@ -170,23 +155,18 @@ export const updateZones = (scene, viewer, geometries, newZones, setGeometries) 
                     entity: activeZone.entity,
                     positions : [...pts],
                     points: activeZone.points,
-                    show : true,
+                    show : true
                 },
         ]);
 
-        console.log("New zone added!");
-        console.log(activeZone.id);
-        console.log(activeZone.positions);
-
-        geometries.forEach((geom) => console.log(`Geom drawn: ${geom.id}`));
+        console.log(`Shared zone Drawn: ${geometries.find((geom) => geom.id === activeZone.id)}`);
 
         unique.pop(item);
-        console.log("Zones left:");
-        console.log(unique);
+        console.log("Zones left to process:");
+        console.log(unique.length);
     });
 
-    console.log('Zones processed:');
-    console.log(guh);
+    return;
 
 };
 
