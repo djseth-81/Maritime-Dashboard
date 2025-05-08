@@ -128,6 +128,8 @@ function App() {
             await receiveCMD(setGeometries, new WebSocket(wsAPI));
         }
         ZoneExchange();
+        // if (viewerRef.current && viewerRef.current.cesiumElement)
+        //   updateZones((viewerReady && viewerRef.current.cesiumElement.scene), viewerRef, geometries, sharedZones, setGeometries);
     });
 
  // Creating this hook to independently mess with sharedZones after ZoneExchange is performed
@@ -135,6 +137,8 @@ function App() {
         if (viewerRef.current && viewerRef.current.cesiumElement)
           updateZones((viewerReady && viewerRef.current.cesiumElement.scene), viewerRef, geometries, sharedZones, setGeometries);
     },[sharedZones]);
+
+  // useEffect(() => {setSharedZones(new Set())},[geometries]);
 
   const handleRefreshZoneData = async () => {
     if (!selectedGeometry) return;
