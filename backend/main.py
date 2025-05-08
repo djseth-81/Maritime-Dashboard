@@ -378,7 +378,7 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             print("Received from client:")
-            pprint(oads(data))
+            pprint(data)
             await websocket.send_text(f"Echo: {data}")
 
             try:
