@@ -9,7 +9,8 @@ import "./App.css";
 import { Viewer } from "resium";
 import { fetchVessels } from "./utilities/apiFetch";
 import { zoning } from "./utilities/zoning/zoning";
-import { getSharedZones, receiveCMD } from "./utilities/zoning/zonesharing";
+import { zyncGET , receiveCMD } from "./utilities/zoning/zoneSyncing";
+import { updateZones } from './utilities/zoning/zoneHandler';
 import {
   handleUndo, handleToggleDrawing, handleToggleOverlays, handleToggleFilters, handleClear, handleClearConfirmed,
   handleClearCancelled, handleRename, handleDelete, handleDeleteConfirm, handleDeleteCancel, handleSave,
@@ -47,6 +48,8 @@ function App() {
   const [predictions, setPredictions] = useState([]);
   const [activeWeatherLayer, setActiveWeatherLayer] = useState(null);
   const [weatherLayers, setWeatherLayers] = useState(null);
+  const [sharedZones, setSharedZones] = useState(new Set());
+  const [polygonData, setPolygonData] = useState(null);
 
   const viewerRef = useRef(null);
   const customGeomRef = useRef(null);
@@ -67,7 +70,9 @@ function App() {
 
     try {
       if (selectedGeometry) {
-        await zoning(polygonData, filters, setVessels);
+      console.log(`Geometry selected: ${selectedGeometry.id}`)
+      handleRefreshZoneData();
+
       } else {
         console.log("NO ZONE SELECTED");
         await fetchVessels(vesselsAPI, filters, setVessels);
@@ -77,9 +82,10 @@ function App() {
       toast.error("Failed to apply filters.");
     }
   };
-  const polygonData = geometries?.find(
-    (geo) => geo.id === selectedGeometry?.id
-  );
+
+  // const polygonData = geometries?.find(
+  //   (geo) => geo.id === selectedGeometry?.id
+  // );
 
   // Default filters for vessels
   const defaultFilters = {
@@ -94,6 +100,7 @@ function App() {
       'MOORED']
   }
 
+
   // Set currentFilters based on defaultFilters once component is mounted
   useEffect(() => {
     setCurrentFilters({
@@ -103,19 +110,48 @@ function App() {
     });
   }, []);
 
+  // Creating this useEffect hook specifically for zones to populate per re-render
+  useEffect(() => {
+      const ZoneExchange = async () => {
+            await zyncGET(setSharedZones, new WebSocket(wsAPI));
+            await receiveCMD(setGeometries, new WebSocket(wsAPI));
+        }
+        ZoneExchange();
+        // if (viewerRef.current && viewerRef.current.cesiumElement)
+        //   updateZones((viewerReady && viewerRef.current.cesiumElement.scene), viewerRef, geometries, sharedZones, setGeometries);
+    });
+
+ // Creating this hook to independently mess with sharedZones after ZoneExchange is performed
+ useEffect(() => {
+        if (viewerRef.current && viewerRef.current.cesiumElement)
+          updateZones((viewerReady && viewerRef.current.cesiumElement.scene), viewerRef, geometries, sharedZones, setGeometries);
+    },[sharedZones]);
+
+  useEffect(() => {setSharedZones(new Set())},[geometries]);
+  
+  useEffect(() => {
+      // console.log("Geometries matching selected geometry:");
+      console.log(geometries.find(geo => geo.id === selectedGeometry?.id)?.id);
+
+      setPolygonData(geometries.find(geo => geo.id === selectedGeometry?.id));
+
+      if (polygonData) console.log(`Polygon data retrieved for ${selectedGeometry?.id}`);
+      else console.log('selectedGeometry has no polygon data');
+    },[selectedGeometry]);
+
   const handleRefreshZoneData = async () => {
     if (!selectedGeometry) return;
 
     try {
       // Get the polygon data for the selected geometry
-      const polygonData = geometries.find(geo => geo.id === selectedGeometry.id);
+      // const polygonData = geometries.find(geo => geo.id === selectedGeometry.id);
       if (!polygonData) {
-        toast.error("Selected zone data not found.");
+        toast.warning("Selected geometry can't be used as filter.");
         return;
       }
 
       // Use the current filters
-      const zoneData = await zoning(polygonData, currentFilters);
+      const zoneData = await zoning(polygonData, currentFilters, setVessels);
 
       if (!zoneData) {
         toast.warning("No data found for this zone.");
@@ -134,9 +170,6 @@ function App() {
           return geo;
         })
       );
-
-
-
 
       // Update the entity's description with the new data
       if (viewerRef.current && viewerRef.current.cesiumElement) {
@@ -195,11 +228,10 @@ function App() {
           const message = JSON.parse(event.data);
 
           if (message.topic === "Vessels") {
-            console.log("Parsed message:", message);
             setVessels((prevVessels) =>
               prevVessels.map((vessel) =>
                 vessel.mmsi === message.mmsi &&
-                  (vessel.lat !== message.lat || vessel.lon !== message.lon)
+                (vessel.lat !== message.lat || vessel.lon !== message.lon)
                   ? { ...vessel, ...message }
                   : vessel
               )
@@ -219,7 +251,6 @@ function App() {
           }
 
           if (message.topic === "Users") {
-            // Handle user-related messages here
           }
         } catch (error) {
           console.error("Error parsing WebSocket message:", error);
@@ -236,14 +267,6 @@ function App() {
 
       return () => ws.close();
     });
-
-    // Receive Zones and relevant commands from Kafka "Users"
-    const ZoneExchange = async () => {
-      await getSharedZones(setGeometries, new WebSocket(wsAPI));
-      await receiveCMD(new WebSocket(wsAPI)); // TODO
-    };
-
-    ZoneExchange();
 
   }, [viewerReady, vesselsAPI]);
 
@@ -524,11 +547,11 @@ function App() {
           style={{ top: contextMenuPosition.y, left: contextMenuPosition.x }}
         >
           <button onClick={() => { setShowSettings(true); setShowContextMenu(false); }}>Settings</button>
-          <button onClick={() => handleDelete(setShowContextMenu, setShowDeleteDialog)}>
+          {polygonData && (<button onClick={() => handleDelete(setShowContextMenu, setShowDeleteDialog)}>
             Delete
-          </button>
+          </button>)}
           <button onClick={() => setShowSettings(true)}>Rename</button>
-          <button onClick={() => performPrediction()}>Predict Possible Path</button>
+          {!polygonData && (<button onClick={() => performPrediction()}>Predict Possible Path</button>)}
           {predictions.length > 0 && <button onClick={handleClearPredictions}>Clear Predicted Path</button>}
           {polygonData && (<button onClick={() => { handleRefreshZoneData(); setShowContextMenu(false); }}>Refresh Zone</button>)}
         </div>

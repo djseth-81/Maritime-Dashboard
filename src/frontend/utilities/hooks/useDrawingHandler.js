@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import * as Cesium from "cesium";
 import { convertCartesianToDegrees } from "../coordUtils";
 import { generateZoneDescription } from "../zoning/ZoneInfobox";
-import {shareZone} from "../zoning/zonesharing";
+import { zyncPOST } from "../zoning/zoneSyncing";
 
 /**
  * Custom hook to handle drawing polygons on a Cesium scene.
@@ -50,6 +50,9 @@ const useDrawingHandler = (
       setTimeout(() => {
         if (!doubleClickDetectedRef.current) {
           let cartesian = scene.pickPosition(click.position);
+
+          console.log(`Cartesian report of a clicked spot: ${cartesian}`);
+
           if (!cartesian) {
             cartesian = scene.camera.pickEllipsoid(
               click.position,
@@ -145,7 +148,6 @@ const useDrawingHandler = (
         );
       }
 
-
       setGeometries((prevGeometries) => [
         ...prevGeometries,
         {
@@ -161,7 +163,7 @@ const useDrawingHandler = (
       console.log(activeZone.id);
       // activeZone.points
       console.log(positions);
-      shareZone(activeZone, positions, new WebSocket("http:" + window.location.href.split(":")[1] + ":8000/ws"));
+      zyncPOST(activeZone, positions, new WebSocket("http:" + window.location.href.split(":")[1] + ":8000/ws"));
 
       setActiveZone(null);
       setPositions([]);
