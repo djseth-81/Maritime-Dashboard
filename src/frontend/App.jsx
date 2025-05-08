@@ -563,11 +563,11 @@ function App() {
           style={{ top: contextMenuPosition.y, left: contextMenuPosition.x }}
         >
           <button onClick={() => { setShowSettings(true); setShowContextMenu(false); }}>Settings</button>
-          <button onClick={() => handleDelete(setShowContextMenu, setShowDeleteDialog)}>
+          {polygonData && (<button onClick={() => handleDelete(setShowContextMenu, setShowDeleteDialog)}>
             Delete
-          </button>
+          </button>)}
           <button onClick={() => setShowSettings(true)}>Rename</button>
-          <button onClick={() => performPrediction()}>Predict Possible Path</button>
+          {!polygonData && (<button onClick={() => performPrediction()}>Predict Possible Path</button>)}
           {predictions.length > 0 && <button onClick={handleClearPredictions}>Clear Predicted Path</button>}
           {polygonData && (<button onClick={() => { handleRefreshZoneData(); setShowContextMenu(false); }}>Refresh Zone</button>)}
         </div>
