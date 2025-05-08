@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import * as Cesium from "cesium";
 import { convertCartesianToDegrees } from "../coordUtils";
 import { generateZoneDescription } from "../zoning/ZoneInfobox";
-import {shareZone} from "../zoning/zonesharing";
+import { zyncPOST } from "../zoning/zoneSyncing";
 
 /**
  * Custom hook to handle drawing polygons on a Cesium scene.

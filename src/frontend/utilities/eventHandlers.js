@@ -1,5 +1,5 @@
 import { toast } from "react-toastify";
-import { sendCMD } from "./zoning/zonesharing";
+import { sendCMD } from "./zoning/zoneSyncing";
 
 /** 
  * @description Handles the toggling of the drawing tool.

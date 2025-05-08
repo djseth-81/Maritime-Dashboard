@@ -9,7 +9,8 @@ import "./App.css";
 import { Viewer } from "resium";
 import { fetchVessels } from "./utilities/apiFetch";
 import { zoning } from "./utilities/zoning/zoning";
-import { getSharedZones, receiveCMD, updateZones } from "./utilities/zoning/zonesharing";
+import { zyncGET , receiveCMD } from "./utilities/zoning/zoneSyncing";
+import { updateZones } from './utilities/zoning/zoneHandler';
 import {
   handleUndo,
   handleToggleDrawing,
@@ -124,7 +125,7 @@ function App() {
   // Creating this useEffect hook specifically for zones to populate per re-render
   useEffect(() => {
       const ZoneExchange = async () => {
-            await getSharedZones(setSharedZones, new WebSocket(wsAPI));
+            await zyncGET(setSharedZones, new WebSocket(wsAPI));
             await receiveCMD(setGeometries, new WebSocket(wsAPI));
         }
         ZoneExchange();
