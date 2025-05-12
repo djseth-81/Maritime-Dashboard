@@ -95,12 +95,12 @@ const ToolsUI = ({
                 <OverlaysUI
                     onClose={() => handleToggle(null)}
                     onToggleWeather={() => handleToggleWeather(showWeather, setShowWeather)}
-                    onToggleOceanConditions={() =>
-                        handleToggleOceanConditions(showOcean, setShowOcean)
-                    }
-                    onToggleTrafficHeatmaps={() =>
-                        handleToggleTrafficHeatmaps(showHeatmaps, setShowHeatmaps)
-                    }
+                    // onToggleOceanConditions={() =>
+                    //     handleToggleOceanConditions(showOcean, setShowOcean)
+                    // }
+                    // onToggleTrafficHeatmaps={() =>
+                    //     handleToggleTrafficHeatmaps(showHeatmaps, setShowHeatmaps)
+                    // }
                     onToggleEEZ={onToggleEEZ} // Pass the EEZ toggle handler
                     showEEZState={showEEZState} // Pass the current EEZ visibility state
                     onActiveWeatherLayer={setActiveWeatherLayer}
