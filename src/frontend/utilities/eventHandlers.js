@@ -112,7 +112,7 @@ export const handleClearConfirmed = (
   }
 
   // TODO: Search for Geometry IDs to push to kafka for delete command
-  console.log("### DELETING GEOMETRIES:");
+  // console.log("### DELETING GEOMETRIES:");
   console.log(forKafka);
   if (forKafka.length > 0) {
     sendCMD('DELETE', forKafka, new WebSocket("http:" + window.location.href.split(":")[1] + ":8000/ws"));

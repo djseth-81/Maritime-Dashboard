@@ -51,7 +51,7 @@ const useDrawingHandler = (
         if (!doubleClickDetectedRef.current) {
           let cartesian = scene.pickPosition(click.position);
 
-          console.log(`Cartesian report of a clicked spot: ${cartesian}`);
+        //   console.log(`Cartesian report of a clicked spot: ${cartesian}`);
 
           if (!cartesian) {
             cartesian = scene.camera.pickEllipsoid(
@@ -159,10 +159,10 @@ const useDrawingHandler = (
         },
       ]);
 
-      console.log("### Zone drawn:");
-      console.log(activeZone.id);
+    //   console.log("### Zone drawn:");
+    //   console.log(activeZone.id);
       // activeZone.points
-      console.log(positions);
+    //   console.log(positions);
       zyncPOST(activeZone, positions, new WebSocket("http:" + window.location.href.split(":")[1] + ":8000/ws"));
 
       setActiveZone(null);

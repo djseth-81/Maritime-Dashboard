@@ -31,32 +31,15 @@ const OverlaysUI = ({
     console.log("Weather Overlay Toggled");
   };
 
-  const handleOceanConditionToggle = () => {
-    console.log("Ocean Conditions Toggled");
-  };
-
-  const handleTrafficToggle = () => {
-    console.log("Traffic Heatmaps Toggled");
-  };
-
   return (
     <div className="overlay-panel">
       <div className="menu-header">Overlays</div>
       <button onClick={handleWeatherToggle}>
         {showWeather ? "Hide Weather Overlay" : "Show Weather Overlay"}
       </button>
-      <button onClick={handleOceanConditionToggle}>
-        {showOceanConditions
-          ? "Hide Ocean Conditions"
-          : "Show Ocean Conditions"}
-      </button>
-      <button onClick={handleTrafficToggle}>
-        {showTrafficHeatmaps
-          ? "Hide Traffic Heatmaps"
-          : "Show Traffic Heatmaps"}
-      </button>
+
       <button onClick={() => {
-        console.log("EEZ button clicked in OverlaysUI");
+        // console.log("EEZ button clicked in OverlaysUI");
         onToggleEEZ();
       }}>
         {showEEZState ? "Hide EEZ" : "Show EEZ"}

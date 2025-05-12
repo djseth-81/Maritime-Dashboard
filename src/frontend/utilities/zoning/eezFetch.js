@@ -9,9 +9,9 @@ import axios from "axios";
  */
 export const fetchEEZZones = async (eezAPI) => {
   try {
-    console.log("Fetching EEZ zones from API:", eezAPI);
+    // console.log("Fetching EEZ zones from API:", eezAPI);
     const response = await axios.get(eezAPI);
-    console.log("EEZ API response:", response.data);
+    // console.log("EEZ API response:", response.data);
     if (!response.data?.payload?.length) {
       toast.info("No EEZ zones found.");
       return [];
@@ -85,12 +85,12 @@ export const toggleEEZVisibility = async (viewer, currentVisibility, setVisibili
   const eezDataSources = viewer.dataSources.getByName("EEZ Zones");
 
   if (eezDataSources?.length > 0) {
-    console.log("Toggling visibility of existing EEZ data source...");
+    // console.log("Toggling visibility of existing EEZ data source...");
     eezDataSources[0].show = !currentVisibility;
     setVisibility(!currentVisibility);
     toast.info(`EEZ zones ${!currentVisibility ? "shown" : "hidden"}`);
   } else if (!currentVisibility) {
-    console.log("Fetching and loading EEZ zones...");
+    // console.log("Fetching and loading EEZ zones...");
     try {
       const zones = await fetchEEZZones(eezAPI);
       console.log("Fetched EEZ zones:", zones);

@@ -63,14 +63,14 @@ function App() {
   useCesiumViewer(viewerRef, setViewerReady);
 
   const handleFilterApply = async (filters) => {
-    console.log("Applying filters...", filters);
+    // console.log("Applying filters...", filters);
 
     // Set current filters
     setCurrentFilters(filters);
 
     try {
       if (selectedGeometry) {
-      console.log(`Geometry selected: ${selectedGeometry.id}`)
+      // console.log(`Geometry selected: ${selectedGeometry.id}`)
       handleRefreshZoneData();
 
       } else {
@@ -78,7 +78,7 @@ function App() {
         await fetchVessels(vesselsAPI, filters, setVessels);
       }
     } catch (error) {
-      console.error("Error applying filters:", error.message);
+      // console.error("Error applying filters:", error.message);
       toast.error("Failed to apply filters.");
     }
   };
@@ -135,8 +135,8 @@ function App() {
 
       setPolygonData(geometries.find(geo => geo.id === selectedGeometry?.id));
 
-      if (polygonData) console.log(`Polygon data retrieved for ${selectedGeometry?.id}`);
-      else console.log('selectedGeometry has no polygon data');
+      // if (polygonData) console.log(`Polygon data retrieved for ${selectedGeometry?.id}`);
+      // else console.log('selectedGeometry has no polygon data');
     },[selectedGeometry]);
 
   const handleRefreshZoneData = async () => {
@@ -187,7 +187,7 @@ function App() {
 
   // Handler for toggling EEZ
   const handleToggleEEZ = async () => {
-    console.log("EEZ toggle button clicked. Current state:", showEEZ);
+    // console.log("EEZ toggle button clicked. Current state:", showEEZ);
     if (!viewerRef.current?.cesiumElement) return;
 
     const viewer = viewerRef.current.cesiumElement;
@@ -203,7 +203,8 @@ function App() {
   useEffect(() => {
     const loadVessels = async () => {
       try {
-        console.log("Fetching vessels...");
+        // console.log("Fetching vessels...");
+        toast.info("Loading vessels...");
         await fetchVessels(vesselsAPI, defaultFilters, setVessels);
       } catch (error) {
         console.error("Error fetching vessels:", error.message);
@@ -218,7 +219,7 @@ function App() {
 
       const ws = new WebSocket(wsAPI);
       ws.onopen = () => {
-        console.log("WebSocket connected from React");
+        // console.log("WebSocket connected from React");
         ws.send("Hello from React WebSocket client!");
       };
 
@@ -251,6 +252,7 @@ function App() {
           }
 
           if (message.topic === "Users") {
+            
           }
         } catch (error) {
           console.error("Error parsing WebSocket message:", error);
