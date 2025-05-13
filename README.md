@@ -264,3 +264,19 @@ python -m backend.processors.coop.stations_api
 - OpenWeatherMap API is rate limited so is not real-time
 - User login and account management were shelved
 - Saving custom presets were shelved
+
+## v5.0
+### Features
+- Zone syncing between clients
+- Vessel tracking
+- Added a way to remove path prediction in context menu
+- Overhaul zone filtering on fronted to refresh and filter zone data
+
+### Bug Fixes
+- Filtering custom zones threw error when selecting ship or point
+- Zones would filter out vessels that appear inside zone drawn by user
+- Filtering custom zones threw a geometry error due fix for zones not properly filtering out vessels
+
+### Other
+- Bug: Zones will sometimes include vessels that appear outside the zone
+- Unit testing on NWS, GFW, COOP processors, websocket, path prediction, and database operator
