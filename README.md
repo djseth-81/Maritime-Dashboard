@@ -1,6 +1,6 @@
 # About
-Northrop Grumman - Capstone 2025 - Maritime Operations Monitoring Dashboard
-
+Maritime Dashboard
+This is a fork from the Team 12 Maritime Operation Dashboard project sponsored by Northrop Grumman completed for the University of Nebraska at Omaha's Spring 2025 Capstone class.
 <br />
 
 # Configuring Environment
