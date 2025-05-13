@@ -1,0 +1,331 @@
+/* Reset for the Cesium viewer */
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Make sure the Cesium container takes full available space */
+.cesium-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Ensure the Cesium viewer takes full space of its container */
+.cesium-viewer {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+}
+
+/* Make sure entities are visible */
+.cesium-entity-label,
+.cesium-billboard-image {
+  pointer-events: auto !important;
+  z-index: 1 !important;
+}
+
+/* Further refined InfoBox styling */
+.cesium-infoBox {
+  background: rgba(40, 40, 40, 0.9) !important;
+  border: 1px solid #444 !important;
+  border-radius: 7px !important;
+  color: white !important;
+  max-width: 400px !important;
+}
+
+.cesium-infoBox-description,
+.cesium-infoBox iframe .cesium-infoBox-description,
+.cesium-infoBox-iframe iframe .cesium-infoBox-description,
+div[class="cesium-infoBox-description"] {
+  color: white !important;
+  background-color: rgba(40, 40, 40, 0.9) !important;
+  padding: 10px !important;
+}
+
+.cesium-infoBox-title,
+.cesium-infoBox iframe .cesium-infoBox-title,
+.cesium-infoBox-iframe iframe .cesium-infoBox-title {
+  background: rgba(40, 40, 40, 0.9) !important;
+  color: white !important;
+  padding: 10px !important;
+  border-bottom: 1px solid #444 !important;
+}
+
+/* Ensure iframe background is also styled */
+.cesium-infoBox-iframe,
+.cesium-infoBox iframe,
+.cesium-infoBox iframe body {
+  background-color: rgba(40, 40, 40, 0.9) !important;
+  color: black !important;
+}
+
+/* Make div inside the iframe body visible */
+.cesium-infoBox iframe body div {
+  color: white !important;
+  background-color: transparent !important;
+}
+
+/* Override any inline styles */
+[style*="background-color: blue"] {
+  background-color: rgba(40, 40, 40, 0.9) !important;
+  color: white !important;
+}
+
+.zone-settings-ui {
+  position: absolute;
+  top: 20%;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #444;
+  border-radius: 5px;
+  padding: 10px;
+  z-index: 1000;
+  width: 400px; /* Ensure consistent width */
+  color: black;
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rename-button {
+  background: rgba(255, 255, 255, 0.9);
+  color: black;
+  border: none;
+  border-radius: 3px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.rename-button:hover {
+  background: grey;
+}
+
+.rename-section {
+  margin-top: 10px;
+}
+
+.rename-section input {
+  width: calc(100% - 20px);
+  padding: 5px;
+  margin-right: 10px;
+}
+
+.rename-section button {
+  background: rgba(255, 255, 255, 0.9);
+  color: black;
+  border: none;
+  border-radius: 3px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.rename-section button:hover {
+  background: grey;
+}
+
+.settings-body {
+  margin-top: 20px;
+}
+
+.settings-body h3 {
+  margin-bottom: 10px;
+}
+
+.settings-body ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.settings-body li {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #444;
+  border-radius: 5px;
+  padding: 5px;
+  margin-bottom: 5px;
+  color: black;
+}
+
+.save-btn,
+.delete-btn {
+  background: rgba(255, 255, 255, 0.9);
+  color: black;
+  border: none;
+  border-radius: 3px;
+  padding: 10px 20px;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+.save-btn:hover,
+.delete-btn:hover {
+  background: grey;
+}
+
+.delete-btn {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.context-menu {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #444;
+  border-radius: 5px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 10px;
+  z-index: 1500;
+  min-width: 150px;
+  color: black;
+}
+
+.context-menu button {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  text-align: left;
+  border: none;
+  background: none;
+  color: black;
+  cursor: pointer;
+}
+
+.context-menu button:hover {
+  background: grey;
+}
+
+/* Styles for the UI controls */
+.ui-controls {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 1000;
+}
+
+.ui-controls button {
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: black;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.ui-controls button:hover {
+  background: grey;
+}
+
+.overlay-panel,
+.filter-panel,
+.tools-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: absolute;
+  left: 105px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgb(0, 0, 0, 0.3);
+  z-index: 1000;
+  color: black;
+}
+
+.tools-panel {
+  width: 150px;
+}
+
+.filter-panel {
+  width: 250px;
+}
+
+.overlay-panel {
+  width: 150px;
+}
+
+.vessel-subwindow,
+.status-subwindow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Confirmation Dialog Styles */
+.confirmation-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #444;
+  border-radius: 5px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  z-index: 1000;
+  min-width: 300px;
+  max-width: 400px;
+  color: black;
+}
+
+.confirmation-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+.confirmation-dialog p {
+  margin: 0;
+  font-size: 16px;
+  color: black;
+  text-align: center;
+}
+
+.confirmation-dialog button {
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: black;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  flex: 1;
+  text-align: center;
+}
+
+.confirmation-dialog-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  width: 100%;
+}
+
+.confirmation-dialog button:hover {
+  background: black;
+}
+
+.vessel-type-label {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+  gap: 5px;
+  color: black;
+}
