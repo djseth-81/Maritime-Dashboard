@@ -18,8 +18,8 @@ Northrop Grumman - Capstone 2025 - Maritime Operations Monitoring Dashboard
 
 <br />
 
-## 3. Install PyGreSQL
-`pip install PyGreSQL`
+## 3. Install Psycopg2
+`pip install psycopg2`
 
 <br />
 
