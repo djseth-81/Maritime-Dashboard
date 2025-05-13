@@ -58,7 +58,7 @@ function App() {
   const filtersAPI = "http:" + URL[1] + ":8000/filters/";
   const eezAPI = "http:" + URL[1] + ":8000/eezs/";
   const wsAPI = "http:" + URL[1] + ":8000/ws";
-  const openWeatherAPIKEY = "";
+  const openWeatherAPIKEY = "16715bb8e86fa5dc2e93f343ecf966cf";
 
   useCesiumViewer(viewerRef, setViewerReady);
 

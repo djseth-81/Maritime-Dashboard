@@ -103,7 +103,7 @@ const ToolsUI = ({
                     // }
                     onToggleEEZ={onToggleEEZ} // Pass the EEZ toggle handler
                     showEEZState={showEEZState} // Pass the current EEZ visibility state
-                    onActiveWeatherLayer={setActiveWeatherLayer}
+                    onActiveWeatherLayer={onActiveWeatherLayer}
                 />
             )}
 
