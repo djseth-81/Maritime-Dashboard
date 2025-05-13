@@ -1,4 +1,5 @@
 import { toast } from "react-toastify";
+import { sendCMD } from "./zoning/zoneSyncing";
 
 /** 
  * @description Handles the toggling of the drawing tool.
@@ -63,11 +64,12 @@ export const handleToggleFilters = (setShowFilters) => {
  * @returns {void}
  */
 export const handleUndo = (undoLastPoint) => {
-  console.log("Undo function passed to handleUndo:", undoLastPoint);
-  if(undoLastPoint) {
+  // console.log("Undo function passed to handleUndo:", undoLastPoint);
+  if (undoLastPoint) {
     undoLastPoint();
   } else {
-    console.log("No active zone or points to undo.");
+    toast.info("No active zone or points to undo.")
+    // console.log("No active zone or points to undo.");
   }
 };
 
@@ -98,13 +100,25 @@ export const handleClearConfirmed = (
 ) => {
   const viewer = viewerRef.current.cesiumElement;
   const entities = viewer.entities.values;
+  // To submit to kafka
+  let forKafka = [];
+
   for (let i = entities.length - 1; i >= 0; i--) {
     const entity = entities[i];
     if (entity.isGeometry || entity.parent) {
       viewer.entities.remove(entity);
-      console.log("Removed entity:", entity.id);
+      // console.log("Removed entity:", entity.id);
+      forKafka.push(entity.id);
     }
   }
+
+  // TODO: Search for Geometry IDs to push to kafka for delete command
+  // console.log("### DELETING GEOMETRIES:");
+  console.log(forKafka);
+  if (forKafka.length > 0) {
+    sendCMD('DELETE', forKafka, new WebSocket("http:" + window.location.href.split(":")[1] + ":8000/ws"));
+  }
+
   setGeometries([]);
   setSelectedGeometry(null);
   setShowContextMenu(false);
@@ -182,6 +196,11 @@ export const handleDeleteConfirm = (
     const viewer = viewerRef.current.cesiumElement;
     viewer.entities.removeById(selectedGeometry.id);
 
+
+    // TODO: Submit to Kafka topic for all others to delete
+    // console.log("### DELETING Geometry with ID:", selectedGeometry.id);
+    sendCMD('DELETE', selectedGeometry.id, null, new WebSocket("http:" + window.location.href.split(":")[1] + ":8000/ws"));
+
     const childEntities = viewer.entities.values;
     for (let i = childEntities.length - 1; i >= 0; i--) {
       const child = childEntities[i];
@@ -213,6 +232,6 @@ export const handleDeleteCancel = (setShowDeleteDialog) => {
  * @returns {void}
 */
 export const handleSave = (setShowSettings) => {
-  console.log("Zone settings saved.");
+  // console.log("Zone settings saved.");
   setShowSettings(false);
 };

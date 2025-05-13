@@ -50,6 +50,7 @@ def nws_alerts(zone: dict):
         return None
 
     alert = res.json()['features'][0]
+
     # pprint(alert['properties'])
     # input()
 
@@ -84,6 +85,7 @@ def nws_alerts(zone: dict):
     # print()
 
     return {
+        "event_id": alert['properties']['id'].split(':')[-1],
         "timestamp": alert['properties']['sent'],
         "effective": alert['properties']['effective'],
         "end_time": alert['properties']['ends'],
@@ -97,12 +99,12 @@ def nws_alerts(zone: dict):
         "headline": alert['properties']['headline'],
     }
 
-if __name__ == "__main__":
-    alerts = []
+def main():
     StationOp = DBOperator(table='sources')
     stations = StationOp.query([{'type': 'NOAA-NWS'}])
     StationOp.close()
     ZoneOp = DBOperator(table='zones')
+    EventsOp = DBOperator(table='events')
 
     for station in stations:
         entity = {}
@@ -110,16 +112,23 @@ if __name__ == "__main__":
         for zone in zones:
             if zone['type'] == 'COUNTY':
                 guh = nws_alerts(zone)
+                pprint(guh)
+                input()
                 if guh is not None:
                     entity.update({'src_id': station['id']})
                     entity.update(guh)
 
                     try:
-                        producer.send("NWS", key=station['id'], value=entity)
+                        producer.send("Events", key=station['id'], value=entity)
                         print(f"Kafka: Sent alert for station {station['id']}")
+                        EventsOp.add(entity.copy())
+                        EventsOp.commit()
                     except Exception as e:
                         print(f"Failed to send alert for {station['id']}: {e}")
-        if len(entity) > 0:
-            alerts.append(entity)
     producer.flush()
     ZoneOp.close()
+    EventsOp.close()
+
+if __name__ == "__main__":
+    main()
+

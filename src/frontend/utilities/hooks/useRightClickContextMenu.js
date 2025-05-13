@@ -18,10 +18,10 @@ const useRightClickContextMenu = (scene, setSelectedGeometry, setContextMenuPosi
         const handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
         
         handler.setInputAction((click) => {
-            console.log("Right-click registered at position:", click.position);
+            // console.log("Right-click registered at position:", click.position);
             const pickedEntity = scene.pick(click.position);
             if (Cesium.defined(pickedEntity)) {
-                console.log("Right-click on entity:", pickedEntity);
+                // console.log("Right-click on entity:", pickedEntity);
                 setSelectedGeometry(pickedEntity.id);
                 setContextMenuPosition({ x: click.position.x, y: click.position.y });
                 setShowContextMenu(true);

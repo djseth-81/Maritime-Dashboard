@@ -8,14 +8,18 @@ export default function BoatIcon({
   // Define color schemes for different vessel types
   // Could we use the vessel types from get_filters() to populate the keys here?
   const vesselColors = {
+    BUNKER: "#ff33e0", // Hot Pink
     CARGO: "#6B8E23", // Olive green
-    FISHING: "#8B4513", // Brown
+    GEAR: "#CD5C5C", //  Indian red
     TANKER: "#FA6B05", // Indian red
-    TUG: "#F9C256", // Gold
-    RECREATIONAL: "#D31EFF", // Magenta
     PASSENGER: "#4682B4", // Steel blue
-    OTHER: "#CD5C5C" //  Indian red
+    RECREATIONAL: "#D31EFF", // Magenta
+    SEISMIC_VESSEL: "#33fff6", // Turquoise
+    TUG: "#F9C256", // Gold
+    FISHING: "#8B4513", // Brown
+    OTHER: "#9a9aa0" // Lame gray
   };
+
 
   // Get the color based on the vessel type
   const getVesselColor = () => {

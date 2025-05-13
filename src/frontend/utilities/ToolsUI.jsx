@@ -47,6 +47,24 @@ const ToolsUI = ({
         setOpenPanel((prev) => (prev === panel ? null : panel));
     };
 
+    const [showWeather, setShowWeather] = useState(false);
+    const [showOcean, setShowOcean] = useState(false);
+    const [showHeatmaps, setShowHeatmaps] = useState(false);
+    const [activeWeatherLayer, setActiveWeatherLayer] = useState(null);
+
+
+    const handleToggleWeather = (currentState, setState) => {
+        setState(!currentState);
+    };
+
+    const handleToggleOceanConditions = (currentState, setState) => {
+        setState(!currentState);
+    };
+
+    const handleToggleTrafficHeatmaps = (currentState, setState) => {
+        setState(!currentState);
+    };
+
     return (
         <div className="ui-controls">
             {/*Button to expand/collapse sidebars*/}
@@ -66,7 +84,6 @@ const ToolsUI = ({
             {openPanel === "tools" && (
                 <div className="tools-panel">
                     <h4>Zoning Tools</h4>
-
                     <button onClick={onToggleDrawing}>Toggle Zoning Tool</button>
                     <button onClick={onUndo}>Undo</button>
                     <button onClick={onClear}>Clear</button>
@@ -77,11 +94,15 @@ const ToolsUI = ({
             {openPanel === "overlays" && (
                 <OverlaysUI
                     onClose={() => handleToggle(null)}
-                    onToggleWeather={onToggleWeather}
-                    onToggleOceanConditions={onToggleOceanConditions}
-                    onToggleTrafficHeatmaps={onToggleTrafficHeatmaps}
-                    onToggleEEZ={onToggleEEZ}
-                    showEEZState={showEEZState}
+                    onToggleWeather={() => handleToggleWeather(showWeather, setShowWeather)}
+                    // onToggleOceanConditions={() =>
+                    //     handleToggleOceanConditions(showOcean, setShowOcean)
+                    // }
+                    // onToggleTrafficHeatmaps={() =>
+                    //     handleToggleTrafficHeatmaps(showHeatmaps, setShowHeatmaps)
+                    // }
+                    onToggleEEZ={onToggleEEZ} // Pass the EEZ toggle handler
+                    showEEZState={showEEZState} // Pass the current EEZ visibility state
                     onActiveWeatherLayer={onActiveWeatherLayer}
                 />
             )}

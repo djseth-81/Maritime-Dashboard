@@ -1,5 +1,5 @@
 import axios from "axios";
-import { convertCartesianToDegrees } from "./coordUtils";
+import { convertCartesianToDegrees } from "../coordUtils";
 import { toast } from "react-toastify";
 
 const URL = window.location.href.split(":");
@@ -7,9 +7,10 @@ const URL = window.location.href.split(":");
 export const zoning = async (polygonData, filters = {}, setVessels) => {
   const payload = {};
 
+  // Escape without changing anything in the event polygonData is undefined
+  if (!polygonData) {console.log("No polygon data provided"); return};
+
   // If zone is selected, apply geospatial filtering
-  console.log("ZONE SELECTED:", polygonData);
-  // console.log(polygonData);
 
   let polygonVerticies = polygonData?.positions.map(
     (point) => convertCartesianToDegrees(point) // This is sick tho
@@ -36,24 +37,11 @@ export const zoning = async (polygonData, filters = {}, setVessels) => {
   if (filters.statuses && filters.statuses.length > 0) {
     payload.status = filters.statuses.join(",");
   }
-  console.log("Payload for zoning API:", payload);
 
   try {
     const zoneAPI = "http:" + URL[1] + ":8000/zoning/";
     const response = await axios.post(zoneAPI, payload);
-
-    console.log("Zoning response:");
-    console.log(response);
-    console.log("Table privileges");
-    console.log(response.data.privileges);
-    console.log("Response Timestamp");
-    console.log(response.data.retrieved);
-
-    console.log("Size of payload");
-    console.log(response.data.size);
-    console.log("Payload:");
-    console.log(response.data.payload);
-    if (response.data.length === 0) {
+    if (!response.data.payload || response.data.payload.vessels?.length === 0) {
       toast.info("No vessels found matching your filters.");
       if (setVessels) setVessels([]);
       return;
@@ -62,7 +50,7 @@ export const zoning = async (polygonData, filters = {}, setVessels) => {
     const transformedVessels = response.data.payload.vessels?.map((vessel) =>
       Array.isArray(vessel)
         ? {
-            id: vessel["mmsi"],
+            mmsi: vessel["mmsi"],
             name: vessel["vessel_name"],
             type: vessel["type"],
             country_of_origin: vessel["flag"],

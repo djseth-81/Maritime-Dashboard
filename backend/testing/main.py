@@ -24,42 +24,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def connect_to_vessels() -> DBOperator:
-    """
-    Connects to the 'vessels' table in the database.
-
-    :return: DBOperator instance for interacting with the vessels table.
-    :raises HTTPException: If connection fails.
-    """
-    try:
-        db = DBOperator(table='vessels')
-        print("### Fast Server: Connected to vessels table")
-        return db
-    except Exception as e:
-        print("### Fast Server: Unable to connect to Vessels table")
-        raise HTTPException(
-            status_code=500,
-            detail="Unable to connect to database."
-        )
-
 @app.get("/")
 async def welcome():
-    """
-    Handles the root endpoint.
-
-    :return: A welcome message with the current timestamp.
-    """
-    return {"Message": "Welcome to FastAPI!",
-            "Retrieved": datetime.now(),
-           }
+    '''
+    Root handler
+    '''
+    return {"Message": "Hello :)"}
 
 @app.get("/weather/")
 async def weather():
-    """
-    Handles the weather endpoint.
-
-    :return: A weather message with the current timestamp.
-    """
+    '''
+    Weather query
+    '''
     db = connect('meteorology')
     try:
         payload = {
@@ -134,39 +110,31 @@ async def pull_events():
 
 @app.get("/users/")
 async def users():
-    """
-    Handles the users endpoint.
-
-    :return: A users message with the current timestamp.
-    """
+    '''
+    Users query
+    '''
     return {"Message": "Getting users!",
             "Retrieved": datetime.now(),
            }
 
 @app.post("/addUser")
 async def add_user(formData: dict):
-    """
-    Adds a new user based on provided form data.
-
-    :param formData: A dictionary containing user information.
-    :return: The received form data.
-    """
+    '''
+    User registration handler
+    '''
     print("### Websocket: Form data:")
     print(formData)
     return formData
 
 @app.post("/login")
 async def login(formData: dict):
-    """
-    Logs in a user based on provided form data.
-
-    :param formData: A dictionary containing user credentials.
-    :return: The received form data.
-    """
+    '''
+    User login handler
+    '''
     print(formData)
     # email = formData["email"]
     # decrypted_password = decrypt_password(formData["password"], secret_key="my-secret-key")
-    return formData
+    return (formData)
 
 @app.get("/stations/", response_model=dict)
 async def get_stations():
@@ -200,13 +168,7 @@ async def get_filtered_vessels(
     status: str = Query(None, description="Filter by vessel status")
 ):
     """
-    Fetches vessel data based on filters.
-
-    :param type: Filter by vessel type.
-    :param origin: Filter by country of origin.
-    :param status: Filter by vessel status.
-    :return: Filtered vessel data.
-    :raises HTTPException: If database interaction fails.
+    Fetch filtered vessels.
     """
     db = connect('vessels')
     try:
@@ -243,6 +205,7 @@ async def get_filtered_vessels(
         "flag": origin if origin else None,
         "current_status": status if status else None
     }.items() if value}
+
 
     if len(filters) > 0:
         queries = []
@@ -345,13 +308,7 @@ async def zone_vessels(data: dict):
 
 @app.get("/filters/", response_model=dict)
 async def get_filter_options():
-    """
-    Fetches available filter options for vessels.
-
-    :return: A dictionary containing filter options.
-    :raises HTTPException: If database interaction fails.
-    """
-    db = connect_to_vessels()
+    db = connect('vessels')
     try:
         filter_options = db.fetch_filter_options()
         if not filter_options:
@@ -364,14 +321,7 @@ async def get_filter_options():
 
 @app.post("/vessels/add/")
 async def add_vessel(data: dict):
-    """
-    Adds a new vessel to the database.
-
-    :param data: A dictionary containing vessel information.
-    :return: A success message upon successful insertion.
-    :raises HTTPException: If database interaction fails or required fields are missing.
-    """
-    db = connect_to_vessels()
+    db = connect('vessels')
     required_fields = ["id", "name", "type", "country_of_origin", "status", "latitude", "longitude"]
 
     if not all(field in data for field in required_fields):
@@ -417,23 +367,6 @@ async def fetch_eezs():
     finally:
         db.close()
 
-@app.get("/predict/{lat}/{lon}/{sog}/{heading}")
-async def predict_path(lat: float, lon: float, sog: float, heading: float):
-    """
-    Predicts vessel path based on coordinates.
-
-    :param lon: Longitude coordinate of the vessel.
-    :param lat: Latitude coordinate of the vessel.
-    :param sog: Speed of vessel
-    :param heading: Heading of vessel
-    :return: Predicted path data as a list of dictionaries.
-    :raises HTTPException: If prediction fails.
-    """
-    print(f"Received coordinates -  Latitude: {lat}, Longitude: {lon}")
-    predictions = start_vessel_prediction(lat, lon, sog, heading)
-    pprint(predictions)
-    return predictions.to_dict(orient="records")
-
 # Frontend Websocket > FastAPI backend > Kafka > Consumer
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -469,4 +402,9 @@ async def websocket_endpoint(websocket: WebSocket):
 async def startup_event():
     start_kafka_consumer()
     asyncio.create_task(kafka_listener())
+
+@app.get("/predict/{lat}/{lon}/{sog}/{heading}")
+async def predict_path(lat: float, lon: float, sog: float, heading: float):
+    predictions = linearRegressionPyFile.start_vessel_prediction(lat, lon, sog, heading)
+    return predictions.to_dict(orient="records")
 

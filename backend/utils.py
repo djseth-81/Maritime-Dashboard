@@ -1,15 +1,15 @@
 import base64
 from Crypto.Cipher import AES
 from fastapi import HTTPException
-from backend.DBOperator import DBOperator
+from DBOperator import DBOperator
 
 def connect(table: str) -> DBOperator:
     """
     Attempt DB connection
     """
     # Seans credentials - CHANGE THIS FOR YOUR OWN
-    db = 'capstonev2'
-    user = 'postgres'
+    db = 'capstone'
+    user = ''
     passwd = 'gres'
     host = 'localhost'
     port = '5432'

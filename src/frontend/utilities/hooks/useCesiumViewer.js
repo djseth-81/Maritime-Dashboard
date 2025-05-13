@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Ion } from "cesium";
 /**
  * Custom hook to manage Cesium viewer lifecycle and scene mode change events.
@@ -16,15 +16,16 @@ export const useCesiumViewer = (viewerRef, setViewerReady) => {
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIxZjRjZjA4Ny05YjE2LTQ4NWItOGJkNi04ZjkyZjJlZmExYTgiLCJpZCI6MjczMzkxLCJpYXQiOjE3Mzg3MDUzNzB9.Ur_w05dnvhyA0R13ddj4E7jtUkOXkmqy0G507nY0aos";
   Ion.defaultAccessToken = token;
 
-  useEffect(() => {
-    const initializeScene = () => {
-      if (viewerRef.current && viewerRef.current.cesiumElement) {
-        const viewer = viewerRef.current.cesiumElement;
-        setViewerReady(true);
-        setScene(viewer.scene);
-      }
-    };
+  // Memoize the initializeScene function
+  const initializeScene = useCallback(() => {
+    if (viewerRef.current && viewerRef.current.cesiumElement) {
+      const viewer = viewerRef.current.cesiumElement;
+      setViewerReady(true);
+      setScene(viewer.scene);
+    }
+  }, [viewerRef, setViewerReady]);
 
+  useEffect(() => {
     // Check if viewerRef.current is ready
     if (viewerRef.current) {
       initializeScene();
@@ -39,7 +40,7 @@ export const useCesiumViewer = (viewerRef, setViewerReady) => {
     }, 100);
 
     return () => clearInterval(interval);
-  }, [viewerRef, setViewerReady]);
+  }, [viewerRef, initializeScene]);
 
   return scene;
 };

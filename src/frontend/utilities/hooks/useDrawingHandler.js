@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import * as Cesium from "cesium";
 import { convertCartesianToDegrees } from "../coordUtils";
 import { generateZoneDescription } from "../zoning/ZoneInfobox";
+import { zyncPOST } from "../zoning/zoneSyncing";
 
 /**
  * Custom hook to handle drawing polygons on a Cesium scene.
@@ -15,7 +16,7 @@ import { generateZoneDescription } from "../zoning/ZoneInfobox";
  * @param {Object} activeZone - The currently active zone for drawing.
  * @param {Function} setActiveZone - Function to update the active zone state.
  * @returns {void}
- *  * @description This hook sets up event handlers for drawing polygons on the Cesium canvas.
+ * @description This hook sets up event handlers for drawing polygons on the Cesium canvas.
  * It handles left-click for adding points and double-click for completing the polygon.
  */
 
@@ -32,32 +33,10 @@ const useDrawingHandler = (
 ) => {
   const lastClickTimeRef = useRef(0);
   const doubleClickDetectedRef = useRef(false);
+  const labelOffset = useMemo(() => new Cesium.Cartesian2(0, -20), []);
 
-  useEffect(() => {
-    console.log("useDrawingHandler activeZone:", activeZone);
-    console.log("useDrawingHandler positions:", positions);
-  }, [activeZone, positions]);
-
-  useEffect(() => {
-    if (!scene || !isDrawing) return;
-
-    const handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
-
-    const zoneEntity = viewer.current.cesiumElement.entities.add({
-      polygon: {
-        hierarchy: new Cesium.PolygonHierarchy([]),
-        material: Cesium.Color.RED.withAlpha(0.5),
-      },
-      name: `Zone ${geometries.length + 1}`,
-      description: generateZoneDescription(
-        `Zone ${geometries.length + 1}`,
-        null
-      ), // Add this line
-      isGeometry: true,
-    });
-
-    // Left-click to draw
-    handler.setInputAction((click) => {
+  const handleLeftClick = useCallback(
+    (click) => {
       const currentTime = Date.now();
 
       if (currentTime - lastClickTimeRef.current < 300) {
@@ -71,6 +50,9 @@ const useDrawingHandler = (
       setTimeout(() => {
         if (!doubleClickDetectedRef.current) {
           let cartesian = scene.pickPosition(click.position);
+
+        //   console.log(`Cartesian report of a clicked spot: ${cartesian}`);
+
           if (!cartesian) {
             cartesian = scene.camera.pickEllipsoid(
               click.position,
@@ -96,7 +78,7 @@ const useDrawingHandler = (
                 points: [],
               };
               setActiveZone(newActiveZone);
-              console.log("New active zone created:", newActiveZone);
+            //   console.log("New active zone created:", newActiveZone);
 
               const pointEntity = viewer.current.cesiumElement.entities.add({
                 position: cartesian,
@@ -111,9 +93,8 @@ const useDrawingHandler = (
                   text: `Point ${positions.length + 1}`,
                   font: "14px Helvetica",
                   scale: 0.8,
-                  pixelOffset: new Cesium.Cartesian2(0, -20),
+                  pixelOffset: labelOffset,
                 },
-
                 parent: zoneEntity,
               });
 
@@ -136,7 +117,7 @@ const useDrawingHandler = (
                   text: `Point ${positions.length + 1}`,
                   font: "14px Helvetica",
                   scale: 0.8,
-                  pixelOffset: new Cesium.Cartesian2(0, -20),
+                  pixelOffset: labelOffset,
                 },
                 parent: activeZone.entity,
               });
@@ -150,56 +131,61 @@ const useDrawingHandler = (
           }
         }
       }, 300);
-    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    },
+    [scene, activeZone, viewer, geometries, positions, setPositions, setActiveZone, labelOffset]
+  );
 
-    // Double-click to complete geometry
-    handler.setInputAction(() => {
-      if (positions.length > 2 && activeZone) {
-        activeZone.entity.polygon.hierarchy = new Cesium.PolygonHierarchy(
-          positions
+  const handleRightClick = useCallback(() => {
+    if (positions.length > 2 && activeZone) {
+      activeZone.entity.polygon.hierarchy = new Cesium.PolygonHierarchy(
+        positions
+      );
+
+      if (!activeZone.entity.description) {
+        activeZone.entity.description = generateZoneDescription(
+          activeZone.entity.name,
+          null
         );
-
-        // Make sure the entity has a description
-        if (!activeZone.entity.description) {
-          activeZone.entity.description = generateZoneDescription(
-            activeZone.entity.name,
-            null
-          );
-        }
-
-        setGeometries((prevGeometries) => [
-          ...prevGeometries,
-          {
-            id: activeZone.id,
-            entity: activeZone.entity,
-            positions: [...positions],
-            points: activeZone.points,
-          },
-        ]);
-
-        setActiveZone(null);
-        setPositions([]);
       }
 
-      setTimeout(() => {
-        doubleClickDetectedRef.current = false;
-      }, 300);
-    }, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+      setGeometries((prevGeometries) => [
+        ...prevGeometries,
+        {
+          id: activeZone.id,
+          entity: activeZone.entity,
+          positions: [...positions],
+          points: activeZone.points,
+          show: true,
+        },
+      ]);
+
+    //   console.log("### Zone drawn:");
+    //   console.log(activeZone.id);
+      // activeZone.points
+    //   console.log(positions);
+      zyncPOST(activeZone, positions, new WebSocket("http:" + window.location.href.split(":")[1] + ":8000/ws"));
+
+      setActiveZone(null);
+      setPositions([]);
+    }
+
+    setTimeout(() => {
+      doubleClickDetectedRef.current = false;
+    }, 300);
+  }, [positions, activeZone, setGeometries, setActiveZone, setPositions]);
+
+  useEffect(() => {
+    if (!scene || !isDrawing) return;
+
+    const handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+
+    handler.setInputAction(handleLeftClick, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    handler.setInputAction(handleRightClick, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
 
     return () => {
       handler.destroy();
     };
-  }, [
-    scene,
-    isDrawing,
-    positions,
-    setPositions,
-    viewer,
-    geometries,
-    setGeometries,
-    activeZone,
-    setActiveZone,
-  ]);
+  }, [scene, isDrawing, handleLeftClick, handleRightClick]);
 };
 
 export default useDrawingHandler;

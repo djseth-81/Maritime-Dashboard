@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 // TODO: Integrate with App.jsx and utilities/Filters.js
+// Currently unused.
 
 axios.get(apiEndpoint)
     .then((response) => {

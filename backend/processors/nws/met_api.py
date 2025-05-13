@@ -38,12 +38,8 @@ producer = KafkaProducer(
 
 def nws_weather(station: dict):
 
-    print(station['name'])
-    print(station['id'])
-    pprint(loads(station['geom']))
-
     # Get NWS Point
-    point_url = f"https://api.weather.gov/points/{loads(station['geom'])['coordinates'][1]},{loads(station['geom'])['coordinates'][0]}"
+    point_url = f"https://api.weather.gov/points/{station['geom']['coordinates'][1]},{station['geom']['coordinates'][0]}"
     point_report = requests.get(point_url)
     if point_report.status_code not in [200, 201]:
         print(f"Error retrieving point report:\n{point_report.text}")
@@ -57,16 +53,9 @@ def nws_weather(station: dict):
         return
 
     report = weather_report.json()
-    # pprint(report)
-    # TODO: zone_operator.contain(station['geom']). I wanna see if geometry from forecast report matches
 
     zone_operator = DBOperator(table='zones')
     zones = zone_operator.contains(report['geometry'])
-
-    pprint(report['geometry'])  # wanna check with zone geometry
-    pprint(zones)
-
-    print()
 
     timestamp = report['properties']['generatedAt']
     guh = report['properties']['periods'][0]
@@ -105,14 +94,13 @@ def nws_weather(station: dict):
     elif guh['windDirection'] == "NNW":
         heading = 337.5
     else:
+        heading = None # Assume report has no wind to detect
         print("Wind direction is not of the 16 point compass rose", file=sys.stderr)
 
     # I'm just gonna go ahead and save the high end estimates provided by the report
     index = 0
     for i, item in enumerate(guh['windSpeed'].split()):
         index = i if item.isdigit() else index
-
-    # pprint(guh)
 
     weather_data = {
         'src_id': station['id'],
@@ -128,7 +116,7 @@ def nws_weather(station: dict):
     }
 
     try:
-        producer.send("NWS", key=station['id'], value=weather_data)
+        producer.send("Weather", key=station['id'], value=weather_data)
         print(f"Kafka: Sent weather report for station {station['id']}")
     except Exception as e:
         print(f"Failed to send weather report for {station['id']}: {e}")
@@ -172,7 +160,7 @@ if __name__ == "__main__":
     met.close()
 
     if failures:
-        with open('nws-weather-failures.csv', 'w', newline='') as outFile:
+        with open('nws-weather-failures.csv', 'a', newline='') as outFile:
             writer = csv.DictWriter(outFile, delimiter=',', fieldnames=failures[0].keys())
             writer.writeheader()
             for goob in failures:

@@ -28,7 +28,6 @@ for wfo in wfos:
         continue
     # pprint(station.json())
 
-    # TODO: Format and port into DB
     address = station.json()['address']
     tele = station.json()['telephone']
     # observation_stations = station.json()['approvedObservationStations']

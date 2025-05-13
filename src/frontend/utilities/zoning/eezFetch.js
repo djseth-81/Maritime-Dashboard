@@ -1,26 +1,21 @@
-import axios from "axios";
 import { toast } from "react-toastify";
-import { Color, GeoJsonDataSource } from "cesium";
+import { GeoJsonDataSource, Color } from "cesium";
+import axios from "axios";
 
 /**
- * Fetches EEZ data from API
- * @param {Object} viewer - The Cesium viewer instance
- * @returns {Promise<void>}
+ * @description Fetches EEZ zones from the API.
+ * @param {string} eezAPI - The API endpoint for fetching EEZ zones.
+ * @returns {Promise<Array>} - The array of EEZ zones.
  */
-
 export const fetchEEZZones = async (eezAPI) => {
   try {
+    // console.log("Fetching EEZ zones from API:", eezAPI);
     const response = await axios.get(eezAPI);
-
-    if (
-      !response.data ||
-      !response.data.payload ||
-      response.data.payload.length === 0
-    ) {
+    // console.log("EEZ API response:", response.data);
+    if (!response.data?.payload?.length) {
       toast.info("No EEZ zones found.");
       return [];
     }
-
     return response.data.payload;
   } catch (error) {
     console.error("Error fetching EEZ zones:", error.message);
@@ -30,67 +25,42 @@ export const fetchEEZZones = async (eezAPI) => {
 };
 
 /**
- * Loads EEZ zones onto the Cesium globe
- * @param {Object} viewer - The Cesium viewer instance
- * @param {Array} zones - The EEZ zone data
- * @returns {Promise<Object>} - The data source containing the EEZ zones
+ * @description Loads EEZ zones to the globe using Cesium's GeoJsonDataSource.
+ * @param {Object} viewer - The Cesium viewer instance.
+ * @param {Array} zones - The array of EEZ zones to load.
+ * @returns {Promise<GeoJsonDataSource|null>} - The loaded GeoJsonDataSource or null if an error occurs.
  */
-
 export const loadEEZZonesToGlobe = async (viewer, zones) => {
-  if (!viewer || !zones || zones.length === 0) return null;
+  if (!viewer || !zones?.length) return null;
 
   try {
-    // Create a data source for EEZ zones
     const dataSource = new GeoJsonDataSource("EEZ Zones");
-
-    // Define EEZ color {Chose Purple}
     const brightPurple = Color.PURPLE;
     const brightPurpleTransparent = Color.PURPLE.withAlpha(0.4);
 
-    // Process each zone
     for (const zone of zones) {
-      // Parse the geometry if it's a string
-      const geometry =
-        typeof zone.geom === "string" ? JSON.parse(zone.geom) : zone.geom;
-
-      // Create a GeoJSON feature
-      // Takes GeoJSON data and converts into Cesium entities
+      const geometry = typeof zone.geom === "string" ? JSON.parse(zone.geom) : zone.geom;
       const feature = {
         type: "Feature",
-        properties: {
-          id: zone.id,
-          name: zone.name || `EEZ Zone ${zone.id}`,
-          type: "EEZ",
-        },
-        geometry: geometry,
+        properties: { id: zone.id, name: zone.name || `EEZ Zone ${zone.id}`, type: "EEZ" },
+        geometry,
       };
 
-      // Load the feature
-      // With colored polygon on globe
       const featureDataSource = await GeoJsonDataSource.load(feature, {
         stroke: brightPurple,
         fill: brightPurpleTransparent,
         strokeWidth: 3,
       });
 
-      // Add entities to our main data source
-      const entities = featureDataSource.entities.values;
-      for (let i = 0; i < entities.length; i++) {
-        const entity = entities[i];
-
-        // Style the entity with bright purple
+      featureDataSource.entities.values.forEach((entity) => {
         entity.polygon.material = brightPurpleTransparent;
         entity.polygon.outlineColor = brightPurple;
         entity.polygon.outlineWidth = 3;
-
-        // Add to the main data source
         dataSource.entities.add(entity);
-      }
+      });
     }
 
-    // Add the data source to the viewer
-    await viewer.dataSources.add(dataSource);
-
+    viewer.dataSources.add(dataSource);
     return dataSource;
   } catch (error) {
     console.error("Error loading EEZ zones to globe:", error);
@@ -100,34 +70,32 @@ export const loadEEZZonesToGlobe = async (viewer, zones) => {
 };
 
 /**
- * Toggles the visibility of EEZ zones
- * @param {Object} viewer - The Cesium viewer instance
- * @param {boolean} currentVisibility - The current visibility state
- * @param {Function} setVisibility - State setter for visibility
- * @param {string} eezAPI - API endpoint for EEZ data
+ * @description Toggles the visibility of EEZ zones on the globe.
+ * @param {Object} viewer - The Cesium viewer instance.
+ * @param {boolean} currentVisibility - The current visibility state of EEZ zones.
+ * @param {Function} setVisibility - Function to update the visibility state.
+ * @param {string} eezAPI - The API endpoint for fetching EEZ zones.
+ * @returns {Promise<void>} - A promise that resolves when the visibility is toggled.
  */
-export const toggleEEZVisibility = async (
-  viewer,
-  currentVisibility,
-  setVisibility,
-  eezAPI
-) => {
+export const toggleEEZVisibility = async (viewer, currentVisibility, setVisibility, eezAPI) => {
   if (!viewer) return;
 
-  // Find the EEZ data source
+  console.log("Current EEZ visibility:", currentVisibility);
+
   const eezDataSources = viewer.dataSources.getByName("EEZ Zones");
 
-  if (eezDataSources && eezDataSources.length > 0) {
-    // Toggle visibility of existing data source
+  if (eezDataSources?.length > 0) {
+    // console.log("Toggling visibility of existing EEZ data source...");
     eezDataSources[0].show = !currentVisibility;
     setVisibility(!currentVisibility);
     toast.info(`EEZ zones ${!currentVisibility ? "shown" : "hidden"}`);
   } else if (!currentVisibility) {
-    // If toggling on and data source doesn't exist, load it
+    // console.log("Fetching and loading EEZ zones...");
     try {
-      setVisibility(true);
       const zones = await fetchEEZZones(eezAPI);
+      console.log("Fetched EEZ zones:", zones);
       await loadEEZZonesToGlobe(viewer, zones);
+      setVisibility(true);
       toast.success("EEZ zones loaded successfully!");
     } catch (error) {
       console.error("Error loading EEZ zones:", error);

@@ -20,10 +20,10 @@ const useLeftClickSelect = (scene, setSelectedGeometry, setShowContextMenu, setS
         const handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
 
         handler.setInputAction((click) => {
-            console.log("Left-click registered at position:", click.position);
+            // console.log("Left-click registered at position:", click.position);
             const pickedEntity = scene.pick(click.position);
             if (Cesium.defined(pickedEntity)) {
-                console.log("Left-click on entity:", pickedEntity);
+                // console.log("Left-click on entity:", pickedEntity);
                 const newEntityName = pickedEntity.id.name;
                 setEntityName(newEntityName)
                 setSelectedGeometry(pickedEntity.id);

@@ -18,13 +18,13 @@ Northrop Grumman - Capstone 2025 - Maritime Operations Monitoring Dashboard
 
 <br />
 
-## 3. Install PyGreSQL
-`pip install PyGreSQL`
+## 3. Install Psycopg2
+`pip install psycopg2`
 
 <br />
 
-## 4. Running FastAPI (cd into backend directory)
-`uvicorn main:app --reload`
+## 4. Running FastAPI (cd into Maritime-Ops-Dashboard directory)
+`uvicorn backend.main:app --reload`
 
 <br />
 
@@ -94,22 +94,47 @@ copy docs/build/html contents to /docs on main repo branch
 ### Run Dev Server
 `npm run dev`
 
+<br />
+
+# Unit Testing
+
+## Install Necessary Packages (if not installed already)
+
+### Core Packages
+`pip install fastapi uvicorn`
+
+### Machine Learning and Data Science Packages
+`pip install pandas scikit-learn numpy joblib`
+
+### Math Helper Packages
+`pip install geopy`
+
+### Pytest and FastAPI
+`pip install pytest pytest-asyncio httpx requests`
+
+
+## Running Tests
+cd into Maritime-Ops-Dashboard directory and run `ENV=test pytest`
+
+<br />
+
 # Activate virtual environment
 python -m venv .venv
 .venv\Scripts\activate
+
+<br />
 
 # Kafka reciver
 uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 .venv\Scripts\python.exe -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 
+<br />
 
 # Start Kafka
 bin/kafka-server-start.sh config/kraft/server.properties
 
 
 fast interact with frontend directly
-
-
 
 
 ## Notes for Yolvin
@@ -157,10 +182,13 @@ python -m backend.processors.nws.met_api
 .\.venv\Scripts\activate 
 pip install pytz requests kafka-python
 
-python -m backend.processors.gfw.gfw_runner
+python -m backend.processors.runner
 
 
-
+----------------------------------------COOP--------------------------------------------------------
+python -m backend.processors.coop.met_api
+python -m backend.processors.coop.oce_api
+python -m backend.processors.coop.stations_api
 
 
 
@@ -238,3 +266,20 @@ python -m backend.processors.gfw.gfw_runner
 - Saving custom presets were shelved
 - Bugs
   - EEZ zones and custom geometry zones collide, where one appears to override the other when displayed
+
+## v5.0
+### Features
+- Zone syncing between clients
+- Vessel tracking
+- Added a way to remove path prediction in context menu
+- Overhaul zone filtering on fronted to refresh and filter zone data
+
+### Bug Fixes
+- Filtering custom zones threw error when selecting ship or point
+- Zones would filter out vessels that appear inside zone drawn by user
+- Filtering custom zones threw a geometry error due fix for zones not properly filtering out vessels
+
+### Other
+- Bug
+  - Zones will sometimes include vessels that appear outside the zone
+- Unit testing on NWS, GFW, COOP processors, websocket, path prediction, and database operator

@@ -1,226 +1,133 @@
-import csv
+import os
+import sys
 import requests
-from datetime import datetime, timedelta
+import csv
 from pprint import pprint
+from json import dumps
+from datetime import datetime, timedelta, timezone
 from time import sleep
 from ...DBOperator import DBOperator
+from kafka import KafkaProducer
+
 
 """
 // Thinkin' Thoughts
 - I wonder if it's worth it to combine this and the NWS Forecast API into one
   that pulls stations based on Within() Zone, so Missing data can be
   potentially accounted between one another
-
-// TODO
-- Convert types to coincide with DB
-- Test
-    - improve logging
-    - error handling
-    - Adding/modifying DB entries
 """
 
 
-def request(id, product):
-    res = requests.get(
-        f"https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station={id}&product={product}&datum=STND&time_zone=gmt&units=english&format=json")
-    # print(f"Status: {res.status_code}")
-    if res.status_code >= 400:
-        return res
-    return res.json()
+producer = KafkaProducer(
+    bootstrap_servers='localhost:9092',
+    value_serializer=lambda v: dumps(v).encode('utf-8'),
+    key_serializer=lambda k: str(k).encode('utf-8')
+)
 
+THINGS = ['air_temperature', 'wind', 'visibility', 'humidity']
 
-weather_reports = []
-notices = []
+def fetch_station_datums(station_id: str) -> list[str]:
+    """Call the NOAA MDAPI to retrieve the list of available products/datums."""
+    url = (
+        f"https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/"
+        f"stations/{station_id}/datums.json"
+    )
+    r = requests.get(url)
+    if r.status_code != 200:
+        print(f"Warning: could not fetch datums for {station_id}: HTTP {r.status_code}")
+        return []
+    return [d.get('product') for d in r.json().get('datums', [])]
 
-# Retrieving stations
-sources = DBOperator(table='sources')
-stations = sources.query([{'type': 'NOAA-COOP'}])
+def request_data(station_id: str, product: str):
+    """Hit the DataGetter endpoint; return JSON or raw response on error."""
+    resp = requests.get(
+        "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter",
+        params={
+            'date': 'latest',
+            'station': station_id,
+            'product': product,
+            'datum': 'STND',
+            'time_zone': 'gmt',
+            'units': 'english',
+            'format': 'json'
+        }
+    )
+    return resp if resp.status_code >= 400 else resp.json()
 
+def main():
+    ts = datetime.now(timezone.utc)
+    ts_iso = ts.isoformat()
 
-things = "air_temperature wind visibility humidity".split()
-timestamp = datetime.now()
+    sources_op = DBOperator(table='sources')
+    stations = sources_op.query([{'type': 'NOAA-COOP'}])
+    sources_op.close()
+    print(f"Fetched {len(stations)} stations from DB")
 
-# iterate through stations
-for station in stations:
-    weather_report = {}
-    notice = {}
+    if not stations:
+        print("WARNING: No NOAA-COOP stations found in DB. Exiting.")
+        sys.exit(0)
 
-    # Metadata for met weather_report
-    # print(f"# Station {station['name']} ({station['id']})")
-    # print(f"timestamp: {timestamp.strftime('%Y-%m-%dT%H:%M:%S')}")
-    weather_report.update({'src_id': station['id'],
-                           'timestamp': timestamp.strftime('%Y-%m-%dT%H:%M:%S')})
+    WeatherOp = DBOperator(table='meteorology')
 
-    # Iterates through expected datums, and sees if station reports it. If so,
-    # report. Otherwise, set as NULL. This is the better outcome, becasue it
-    # singles out met data, BUT MORE IMPORTANTLY n will, AT MOST, be 4.
-    for thing in things:
-        # If expected datum is not recorded by station, continue
-        if thing not in station['datums']:
-            print(f"No {thing} to report from {station['name']}")
-            if thing == 'wind':
-                weather_report.update({'wind_heading': None,
-                                       'wind_speed': None})
-            else:
-                weather_report.update({f'{thing}': None})  # datum is entered as null
+    failures = []
+
+    for st in stations:
+        sid = st['id']
+        name = st.get('name','')
+        station_datums = st.get('datums')
+        if len(station_datums) < 1:
+            print(f"Station {sid} does not report data")
             continue
+        report = {
+            'src_id':   sid,
+            'timestamp': ts_iso,
+        }
 
-        # Executes API call to pull datum
-        data = request(station['id'], thing)
+        for aspect in THINGS:
+            if aspect not in station_datums:
+                continue
 
-        # If client or server error, quit while we're ahead and print out returned error
-        if type(data) is not type({"1":1}) and data.status_code not in [200, 201]:
-            print(f"### COOP-Meteorology API: HTTP ERROR {data.status_code}")
-            # pprint(data.json())
-            break
+            data = request_data(sid, aspect)
+            if isinstance(data, requests.Response) and data.status_code >= 400:
+                print(f"HTTP ERROR {data.status_code} for {aspect} @ {sid}")
+                break
+            if isinstance(data, dict) and data.get('error'):
+                print(f"{aspect} no longer recorded at {sid}")
+                continue
 
-        # if error found in data keys when trying a datum, notify that it's no longer valid
-        if 'error' in data.keys():
-            # TODO: Enable modify() to update datums for station
-            print(f"### COOP-Meteorology API: {thing} expected, but is no longer recorded at station {station['name']} ({station['id']})")
-            # I am in a panic for seemingly no reason because I feel like I'm
-            # behind for STILL processing API data, so this is just gross
-            if thing == 'wind':
-                weather_report.update({'wind_heading': None,
-                                       'wind_speed': None})
+            entry = data['data'][0]
+            if aspect == 'wind':
+                report.update({'wind_heading': entry.get('d'), 'wind_speed': entry.get('s')})
             else:
-                weather_report.update({f'{thing}': None})  # datum is entered as null
-            continue
-
-        # The JSON for wind datums is structured differently than the others...
-        if thing == 'wind':
-            # deg?
-            # print(f"Wind direction: {data['data'][0]['dr']} ({data['data'][0]['d']})")
-            # print(f"Wind speed: {data['data'][0]['s']}")  # kts?
-            weather_report.update({'wind_heading': data['data'][0]['d'],
-                                   'wind_speed': data['data'][0]['s']})
-        else:
-            # print(f"{thing}: {data['data'][0]['v']}")  # F/nautical mi/bar?
-            weather_report.update({f'{thing}': data['data'][0]['v']})
-
-    weather_report.update({'precipitation': None,
-                           'forecast': None,
-                           'event_id': None})  # Is this even necessary?
-    # pprint(weather_report)
-    pprint("### COOP Meteorology API: Queuing weather report...") # Printing for logs
-    weather_reports.append(weather_report)
-
-    # Even though I ask if associating weather data to a notice is necessary,
-    # I build the notice report anyway
-    res = requests.get(
-        f"https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/{station['id']}/notices.json")
-    # print(res.status_code)
-    # If a client or server error occurs, quit while we're ahead and print out error
-    if res.status_code not in [200,201]:
-        print(f"### COOP-Meteorology API: HTTP ERROR {res.status_code}:")
-        pprint(res.text)
-        break
-    data = res.json()
-    if len(data['notices']) > 0:
-        notice.update({
-            'src_id': station['id'],
-            'timestamp': timestamp.strftime('%Y-%m-%dT%H:%M:%S'),
-            'effective': timestamp.strftime('%Y-%m-%dT%H:%M:%S'),  # Defaulting effective time to when it was discovered
-            # Defaulting to the event expiring in an hour from when it was discovered
-            'end_time': (timestamp + timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%S'),
-            'active': True,
-            'type': 'Marine alert',
-            'description': data['notices'][0]['text'],
-            'expires': (timestamp + timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%S'),  # same as end_time
-            'instructions': "None",
-            'urgency': "low",
-            'severity': "low",
-            'headline': data['notices'][0]['name'],
-        })
-        # pprint(notice)
-        pprint("### COOP Meteorology API: Queuing notice...") # Printing for logs
-        notices.append(notice)
-    input()
-    sleep(0.1) # to avoid 504 Gateway Timeout
-
-print(f'{len(weather_reports)} weather reports to push to DB')
-print(f'{len(notices)} notices to push to DB')
-
-failures = []
-
-# Adding weather reports
-met = DBOperator(table='meteorology')
-for entity in weather_reports:
-    try:
-        """
-        I'm using this to add constructed entities to DB, but I imagine this is
-        where the Kafka stuff will go as well
-        """
-        print("Adding weather report to Meteorology...")
-        # Adding event
-        met.add(entity.copy())
-        met.commit()
-    except Exception as e:
-        print(f"An error occured adding weather report to DB...\n{e}")
-        print("This report caused the failure:")
-        pprint(entity)
-        input() # DEBUG
-        failures.append(entity)
-met.close()
-
-if len(failures) > 0:
-    with open('coop-met-failures.csv', 'w', newline='') as outFile:
-        writer = csv.DictWriter(outFile, delimiter=',',
-                                fieldnames=failures[0].keys())
-        writer.writeheader()
-        for goob in failures:
-            writer.writerow(goob)
-
-failures = []
-
-# Adding notices reported by stations
-events = DBOperator(table='events')
-for entity in notices:
-    try:
-        """
-        I'm using this to add constructed entities to DB, but I imagine this is
-        where the Kafka stuff will go as well
-        """
-        print("Adding notice to events table")
-        events.add(entity.copy())
-        events.commit()
-    except Exception as e:
-        print(f"An error occured adding notice to DB...\n{e}")
-        print("This notice caused the failure:")
-        pprint(entity)
-        input() # DEBUG
-        failures.append(entity)
-events.close()
-
-if len(failures) > 0:
-    with open('coop-notice-failures.csv', 'w', newline='') as outFile:
-        writer = csv.DictWriter(outFile, delimiter=',',
-                                fieldnames=failures[0].keys())
-        writer.writeheader()
-        for goob in failures:
-            writer.writerow(goob)
+                report[aspect] = entry.get('v')
 
 
-### DATUMS URL
-# datums_url = f"https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/{station[id]}/datums.json"
+        try:
+            WeatherOp.add(report.copy())
+            WeatherOp.commit()
 
+        except Exception as e:
+            WeatherOp.rollback()
+            print(f"WARNING: Failure to save weather report to DB:\n{e}")
+            print("This report failed:")
+            pprint(report)
+            failures.append(report)
 
+        print(f"Kafka: Sending weather report for station {sid}")
+        producer.send('Weather', key=sid, value=report)
 
+        sleep(0.1)
 
+    producer.flush()
+    producer.close()
+    WeatherOp.close()
 
+    if failures:
+        with open('coop-met-failures.csv','a',newline='') as f:
+            w = csv.DictWriter(f, fieldnames=failures[0].keys())
+            w.writeheader()
+            w.writerows(failures)
+        print(f"Wrote {len(failures)} failures to coop-oce-failures.csv")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+if __name__ == "__main__":
+    main()

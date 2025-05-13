@@ -25,7 +25,7 @@ const useFetchFilters = (apiEndpoint) => {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        let isMounted = true; 
+        let isMounted = true;
         setLoading(true);
 
         axios.get(apiEndpoint)
