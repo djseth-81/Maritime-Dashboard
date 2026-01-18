@@ -1,9 +1,11 @@
-documents/
 .env
 node_modules
 dist
 dist-ssr
 *.local
+
+# Ignoring directory holding my non-essential junk
+project_docs/
 
 # Editor directories and files
 .vscode/*
