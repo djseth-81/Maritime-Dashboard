@@ -19,7 +19,7 @@ NOAA weather.gov API
     - Could use existing lat/lon attrs from ships, COOP stations
     - OR could do some PostGIS calcs on zones to find central point and return forecast there?
 
-    - "https://api.weather.gov/gridpoints/OAX/90,48/forecast/hourly"
+    - "https://api.weather.gov/gridpoints/OAX/xx,yy/forecast/hourly"
         WFO code __________________________|  |   |
         lat __________________________________|   |
         lon ______________________________________|
@@ -37,8 +37,8 @@ NOAA weather.gov API
 """
 Forecast sequence
 """
-# my_location_url = "https://api.weather.gov/gridpoints/OAX/90,48/forecast/hourly"
-# point_report = requests.get("https://api.weather.gov/points/41,-95.74")
+# my_location_url = "https://api.weather.gov/gridpoints/OAX/xx,yy/forecast/hourly"
+# point_report = requests.get("https://api.weather.gov/points/xx,yy")
 # print(f"STATUS: {point_report.status_code}")
 # pprint(point_report.json())
 
