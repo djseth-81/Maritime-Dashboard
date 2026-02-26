@@ -123,15 +123,6 @@ def nws_weather(station: dict):
 
     return weather_data
 
-# my_location_url = f"https://api.weather.gov/gridpoints/{station['id']}/90,48/forecast/hourly"
-# point_report = requests.get("https://api.weather.gov/points/41,-95.74")
-# print(f"STATUS: {point_report.status_code}")
-# pprint(point_report.json())
-
-# forecast = requests.get(my_location_url)
-# print(f"STATUS: {forecast.status_code}")
-# pprint(forecast.json()['properties']['periods'][0])
-
 if __name__ == "__main__":
     operator = DBOperator(table='sources')
     stations = operator.query([{'type': 'NOAA-NWS'}])
